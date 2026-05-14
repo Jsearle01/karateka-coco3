@@ -322,7 +322,7 @@ Conditional compilation via lwasm `ifdef`/`endif`:
         ; Debug-only code — indented one extra level to distinguish
         ; from production code paths
         ldx     #msg_entering_scene
-        jsr     hal_debug_log_string    ; (P1.3 follow-up: see below)
+        jsr     HAL_debug_log           ; DEV_MODE only (src/hal.inc §Debug/Trace)
         endif
 ```
 
@@ -337,13 +337,16 @@ Per E-devmode patterns:
 - **E.3 Logging:** string/byte/hex logging during development
 - **E.4 Shortcuts:** skip cinematics in dev builds
 
-**P1.3 follow-up — debug/trace HAL subsystem:**
-`src/hal.inc` (P1.3) does not include a debug/trace subsystem.
-Pop-coco3 includes `hal_debug_trace_event` as an always-on function
-for harness instrumentation. Karateka-coco3 should add an equivalent
-debug subsystem to `hal.inc` before P2 scripted-test harness work
-begins. This is a P1.3 contract revision deferred to avoid blocking
-P1.4; it should be filed as a P1.3 follow-up task before P2.
+**Debug/Trace HAL subsystem (added P1.3 follow-up):**
+`src/hal.inc` declares three debug/trace functions:
+- `HAL_debug_trace_event` — always-on; MAME harness instrumentation
+- `HAL_debug_log` — DEV_MODE only; free-form debug string output
+- `HAL_debug_assert` — DEV_MODE only; precondition verification
+
+`HAL_debug_trace_event` is NOT wrapped in `ifdef DEV_MODE` — it is
+always present so the harness can run against release builds.
+The other two are DEV_MODE only; wrap them as shown in the example.
+See `docs/hal.md §5.8` for full specs.
 
 ---
 

@@ -81,6 +81,8 @@ ERR_INTERNAL    equ 8           ; internal HAL error
 ; 4. HAL_input_init
 ; 5. HAL_sound_init
 ; 6. HAL_file_init
+; -  Debug/Trace: no init function; HAL_debug_trace_event is
+;    available immediately at boot (ring buffer in static memory)
 ;--------------------------------------------------------------
 
 ;==============================================================
@@ -395,3 +397,71 @@ HAL_sys_target      equ *       ; (P2 stub)
 ;   Returns: does not return
 ;   Errors:  this IS the error path
 HAL_sys_panic       equ *       ; (P2 stub)
+
+;==============================================================
+; DEBUG/TRACE SUBSYSTEM — DETAILED
+; Always-on trace mechanism for harness instrumentation plus
+; DEV_MODE-only logging and assertions.
+;
+; HAL_debug_trace_event is ALWAYS present (all builds). The
+; MAME scripted-test harness reads the trace ring buffer to
+; verify engine behavior. Compiling it out of production builds
+; would prevent harness coverage on release binaries.
+;
+; HAL_debug_log and HAL_debug_assert are DEV_MODE-only. Wrap
+; them in ifdef DEV_MODE blocks (see docs/conventions.md §9).
+;
+; Engine event code enumeration is engine-internal. The HAL
+; accepts event codes as opaque bytes (0-255). Engine defines
+; its own enum in src/engine/trace_events.inc (materializes
+; during P2 when first trace points are added).
+;
+; Trace buffer: a fixed-size ring buffer at a known memory
+; address. Address assigned during P1.6 memory map work.
+; [no-ref: trace buffer location — deferred to P1.6]
+;==============================================================
+
+; HAL_debug_trace_event
+;   Record an instrumentation event in the trace ring buffer.
+;   Called by engine code at state transitions, subsystem
+;   entry/exit, and other significant points. MAME harness
+;   reads the ring buffer to verify expected event sequences.
+;   ALWAYS PRESENT — not DEV_MODE gated.
+;   Args:  A = event code (0-255; engine-defined opaque byte)
+;          X = event data pointer (or 0 if no data)
+;   Returns: nothing (always succeeds; no error path)
+;   Preserves: U, Y, X, B
+;   Clobbers: A, CC
+;   [no-ref: trace mechanism is engine-internal; no hardware
+;     reference applies]
+HAL_debug_trace_event equ *     ; defined in src/hal/coco3-dsk/debug.s
+
+; HAL_debug_log
+;   Emit a null-terminated debug string to implementation-
+;   defined destination (MAME debug log, serial port, ring
+;   buffer, etc.). DEV_MODE only — wrap in ifdef DEV_MODE.
+;   Args:  X = pointer to null-terminated string
+;   Returns: nothing (always succeeds)
+;   Preserves: U, Y, X
+;   Clobbers: A, B, CC
+;   [no-ref: debug output destination is implementation choice;
+;     no hardware reference applies]
+HAL_debug_log       equ *       ; defined in src/hal/coco3-dsk/debug.s
+
+; HAL_debug_assert
+;   Verify a precondition. If condition is false, call
+;   HAL_sys_panic with message and halt. DEV_MODE only —
+;   wrap in ifdef DEV_MODE (or use DEV_MODE_ASSERT macro).
+;   Args:  A = condition (0 = fail, non-zero = pass)
+;          X = pointer to null-terminated assertion message
+;   Returns: nothing on pass (CC.C clear)
+;   Errors:  does not return on failure — calls HAL_sys_panic
+;   Preserves: U, Y (on pass)
+;   Clobbers: A, B, CC
+;   Within-HAL call note: HAL_debug_assert calls HAL_sys_panic
+;     on failure. This is the one permitted within-HAL call in
+;     the contract; HAL functions are otherwise not safe to call
+;     from other HAL functions.
+;   [no-ref: assertion mechanism is engine-internal; no hardware
+;     reference applies]
+HAL_debug_assert    equ *       ; defined in src/hal/coco3-dsk/debug.s

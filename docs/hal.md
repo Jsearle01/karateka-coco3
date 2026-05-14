@@ -1,6 +1,6 @@
 # karateka-coco3 HAL Contract
 
-Version: 0.1 (P1.3 deliverable, 2026-05-13)
+Version: 0.1 + P1.3 follow-up (2026-05-13)
 
 ## 1. Overview
 
@@ -14,9 +14,12 @@ This document is the human-readable companion to `src/hal.inc`,
 which contains the assembly-syntactic contract.
 
 **Scope:**
-- Three subsystems are detailed: Graphics, Time, Sound
+- Four subsystems are detailed: Graphics, Time, Sound, Debug/Trace
 - Four subsystems are skeletoned: Memory, Input, File, System
   (detailed in P2 when consuming engine subsystem is ported)
+
+Debug/Trace added in P1.3 follow-up commit (closes gap surfaced
+during P1.4). 8 subsystems total; 24 functions.
 
 **Shape inherited from pop-coco3-design v0.7 Section 6.11:**
 calling convention, error mechanism, init order, and subsystem
@@ -471,6 +474,91 @@ Skeleton. Detailed design during P2.
 
 ---
 
+### 5.8 Debug/Trace
+
+Added in P1.3 follow-up. Three functions split by always-on vs
+DEV_MODE:
+
+| Function | Present in | Purpose |
+|----------|-----------|---------|
+| `HAL_debug_trace_event` | All builds | Harness instrumentation |
+| `HAL_debug_log` | DEV_MODE only | Free-form debug string output |
+| `HAL_debug_assert` | DEV_MODE only | Precondition verification |
+
+**Why HAL_debug_trace_event is always-on:** The MAME scripted-test
+harness reads the trace ring buffer to verify engine behavior.
+Compiling it out of production builds would prevent harness
+coverage on release binaries. Pop-coco3 made the same choice.
+
+**Trace buffer:** a fixed-size ring buffer at a known memory
+address assigned during P1.6 memory map work.
+`[no-ref: trace buffer location — deferred to P1.6]`
+
+**Engine event code enumeration:** the HAL accepts event codes
+as opaque bytes (0-255). The engine defines its own event ID
+enum in `src/engine/trace_events.inc`. This file materializes
+during P2 when the first trace instrumentation points are added.
+It is not part of the HAL contract.
+
+#### HAL_debug_trace_event
+
+Record an instrumentation event in the trace ring buffer.
+MAME harness reads the buffer to verify expected event sequences.
+
+| | |
+|---|---|
+| Args | A = event code (0-255, engine-defined opaque); X = data ptr (or 0) |
+| Returns | nothing (always succeeds) |
+| Errors | none |
+| Preserves | U, Y, X, B |
+| Clobbers | A, CC |
+| Always-on | Yes — present in all builds |
+
+`[no-ref: trace mechanism is engine-internal; no hardware reference]`
+
+#### HAL_debug_log
+
+Emit a null-terminated debug string to implementation-defined
+destination (MAME debug console, serial output, memory ring
+buffer, etc.). **DEV_MODE only** — wrap in `ifdef DEV_MODE`.
+
+| | |
+|---|---|
+| Args | X = pointer to null-terminated string |
+| Returns | nothing (always succeeds) |
+| Errors | none |
+| Preserves | U, Y, X |
+| Clobbers | A, B, CC |
+
+`[no-ref: debug output destination is implementation choice]`
+
+#### HAL_debug_assert
+
+Verify a precondition. If condition is false, emits a trace
+event then calls `HAL_sys_panic` with the message. **DEV_MODE
+only** — use via `DEV_MODE_ASSERT` macro which assembles to
+nothing in production.
+
+| | |
+|---|---|
+| Args | A = condition (0 = fail, non-zero = pass); X = message ptr |
+| Returns | nothing on pass |
+| Errors | does not return on failure — calls HAL_sys_panic |
+| Preserves | U, Y (on pass) |
+| Clobbers | A, B, CC |
+
+**Within-HAL call note:** `HAL_debug_assert` calls `HAL_sys_panic`
+on failure. This is the one permitted within-HAL call in the
+contract. HAL functions are otherwise main-context-only and not
+safe to call from other HAL functions. The assert→panic path is
+explicitly permitted because: (a) assertion failure is fatal by
+definition, (b) `HAL_sys_panic` is documented to never return,
+so re-entrancy is not a concern.
+
+`[no-ref: assertion mechanism is engine-internal]`
+
+---
+
 ## 6. Reference Citations
 
 ### Documented decisions
@@ -494,6 +582,10 @@ indicated document before writing implementation code.
 | CoCo3 keyboard matrix registers | CoCo3 keyboard matrix registers | CC3-TR |
 | CoCo3 system DP usage at $80-$FF | CoCo3 system DP usage at $80-$FF | CC3-TR |
 | GIME color 6-bit encoding | GIME color encoding | GIME-RM §3.x |
+| Trace mechanism (HAL_debug_trace_event) | trace mechanism is engine-internal | N/A (engine-internal) |
+| Debug output destination (HAL_debug_log) | debug output destination is implementation choice | N/A (implementation choice) |
+| Assertion mechanism (HAL_debug_assert) | assertion mechanism is engine-internal | N/A (engine-internal) |
+| Trace buffer memory address | trace buffer location | P1.6 memory map |
 
 ### Reference conflicts
 
@@ -513,6 +605,8 @@ when GIME-RM is read during P2.)
 4. HAL_input_init
 5. HAL_sound_init
 6. HAL_file_init         disk last
+-  Debug/Trace: no init — HAL_debug_trace_event available
+   immediately at boot (ring buffer in static memory)
 ```
 
 ---
