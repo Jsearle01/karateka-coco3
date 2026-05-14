@@ -339,6 +339,24 @@ This topology differs from pop-coco3's current structure (which has patterns doc
 
 Section 11 specifies the consumption details, directory conventions, bootstrap protocol, and cross-project coordination.
 
+### 5.12 Gate K.1.11 — Reference discipline for CoCo3 / 6809 content
+
+CoCo3 and 6809 platform content generation must cite project
+reference documentation or explicitly surface the absence of a
+covering reference. Discipline detailed in Section 6.6.
+
+Rationale: CoCo3 / 6809 details have subtle quirks (GIME revisions,
+6309 vs 6809 differences, timing dependencies). Project reference
+docs are authoritative; training-data recall or web-search-derived
+content is not. Citation creates audit trail enabling efficient
+debugging when real-hardware testing surfaces issues.
+
+This gate complements:
+- Gate K.1.9 (shared pattern library) — where the discipline is
+  documented as G.1
+- Gate K.1.10 (repository topology) — where the consumption
+  mechanism for the pattern is specified (path/URL reference)
+
 ---
 
 ## 6. Architecture
@@ -585,6 +603,107 @@ When a pattern surfaces during work on either project:
 The shared library becomes more valuable over time as both projects accumulate patterns. Velocity in P2/P3 work depends on the library being mature; investing in pattern discipline early pays off later.
 
 ---
+
+---
+
+### 6.6 Reference discipline
+
+CoCo3 / 6809 information generation in karateka-coco3 must cite
+project reference documentation or explicitly surface the absence
+of a reference. This is binding for:
+
+- HAL implementations (graphics, sound, input, file, time,
+  memory, system)
+- Engine code that touches platform-specific registers, timing,
+  or conventions
+- Memory map decisions
+- DAC / sound programming
+- GIME programming
+- Floppy / disk I/O
+- Boot-time CPU detection
+- Any architectural decision dependent on platform behavior
+
+Pure 6502 → 6809 instruction translation, platform-neutral engine
+logic, and build tooling are not subject to this rule (those
+follow their own discipline per Section 6.5 patterns).
+
+The full discipline is documented in
+`6502-6809-conversion-patterns/shared/G-methodology/G.1-reference-discipline.md`
+(consumed by path/URL reference per Gate K.1.10).
+
+#### 6.6.1 Reference document inventory
+
+Authoritative references available in `docs/`:
+
+| Reference | Short tag | Authority for |
+|-----------|-----------|---------------|
+| MC6809-MC6809E 8-Bit Microprocessor Programming Manual | MC6809 | CPU behavior, instruction semantics, cycle counts |
+| 6809 Assembly Language Programming | 6809-ALP | Programming idioms, register/addressing-mode conventions |
+| Color Computer Technical Reference Manual | CC3-TR | CoCo3 hardware, memory map, peripherals |
+| Color Computer 3 Service Manual | CC3-SM | Hardware service-level detail, schematics |
+| Lomont CoCo Hardware | Lomont | Community-augmented hardware reference, cross-check for CC3-TR |
+| GIME Reference Manual | GIME-RM | GIME chip programming (graphics modes, palette, video timing) |
+| Sockmaster GIME documentation | Sockmaster-GIME | GIME quirks and demoscene-derived empirical insights |
+| Color BASIC Unravelled | CB-Unravelled | Color BASIC ROM internals and entry points |
+| Extended BASIC Unravelled | EB-Unravelled | Extended BASIC ROM internals |
+| Super Extended BASIC Unravelled | SEB-Unravelled | Super Extended BASIC (CoCo3-specific) ROM internals |
+| Disk BASIC Unravelled | DB-Unravelled | RSDOS / Disk BASIC, file system, disk I/O |
+
+#### 6.6.2 Citation format
+
+Inline in source comments and commit messages:
+
+    [ref: <short-tag> <section-or-page>]
+
+Examples:
+- `[ref: MC6809 §4.5]`
+- `[ref: CC3-TR §6.3]`
+- `[ref: GIME-RM §3.2]`
+- `[ref: Sockmaster-GIME, "Palette"]`
+- `[ref: CB-Unravelled p.187]`
+
+#### 6.6.3 Surfacing absent reference
+
+When a decision is made without a covering reference, mark it
+explicitly:
+
+    ; [no-ref: brief description of what's unverified]
+
+Examples:
+- `; [no-ref: optimal VBL polling pattern not yet verified]`
+- `; [no-ref: assumed 6309 NSC behavior matches 6809]`
+
+This creates an audit trail. When real-hardware testing reveals
+a problem, we can quickly identify which decisions need revisit.
+
+#### 6.6.4 Conflict resolution
+
+When references disagree, document both interpretations and the
+chosen one with reasoning. Example pattern:
+
+    ; [ref: CC3-TR §6.3] GIME palette write timing unrestricted
+    ; [ref: Sockmaster-GIME, "Palette"] empirical: writes during
+    ;   active scanline cause artifact
+    ; → schedule writes during VBL per Sockmaster's empirical
+    ;   observation; Tandy's spec is permissive but doesn't
+    ;   address the artifact
+
+If real-hardware testing later reveals one interpretation was
+wrong, the audit trail identifies the specific decision to
+revisit.
+
+#### 6.6.5 Calibration phase emphasis
+
+During karateka-coco3's calibration phase (first 10-20 tasks),
+reference discipline applies rigorously. The discipline becomes
+habitual through repeated application; early laxness creates
+precedent that's harder to correct later.
+
+#### 6.6.6 Cross-references
+
+- Pattern definition: `6502-6809-conversion-patterns/shared/G-methodology/G.1-reference-discipline.md`
+- Related discipline (approach-level): `apple2-disasm-patterns/plan-deviation-discipline.md`
+- Related discipline (gate-level): `apple2-disasm-patterns/blocking-gate-discipline.md`
 
 ## 7. Phase plan
 
