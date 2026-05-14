@@ -10,7 +10,7 @@ Status: IN PROGRESS
 - P1.0 — Project state setup: COMPLETE (2026-05-13)
 - P1.1 — MAME test harness: COMPLETE (2026-05-13)
 - P1.2 — Asset conversion tooling: COMPLETE (2026-05-13)
-- P1.3 — HAL contract: not started
+- P1.3 — HAL contract: COMPLETE (2026-05-13)
 - P1.4 — Engine conventions: not started
 - P1.5 — Pattern library bootstrap (cross-project): not started
 - P1.6 — Memory map: not started
