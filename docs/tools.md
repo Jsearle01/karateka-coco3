@@ -54,9 +54,42 @@ Per-scene palette mechanism: scaffolded via content/palettes/ directory.
 v1.0 uses global.bin only. Future scene-specific palettes selected at
 scene-load time by engine code.
 
+## Sprite visualization
+
+Two independent decoders for visual verification of conversion
+correctness.
+
+`tools/sprite_render_apple2.py` — render Apple II source sprite to PNG.
+
+`tools/sprite_visualize.py` — render CoCo3 converted sprite binary to PNG.
+
+Usage:
+
+    python3 tools/sprite_render_apple2.py \
+        --source ../karateka_dissasembly_claude/src/<file>.s \
+        --label <sprite_label> \
+        --output viz/<name>_apple2.png
+
+    python3 tools/sprite_visualize.py \
+        --source content/sprites/<name>.bin \
+        --output viz/<name>_coco3.png
+
+Visual comparison: open both PNGs side-by-side. Conversion is verified
+if shapes match. The CoCo3 image will be 2 pixels wider on the right
+when Apple II width (multiples of 7px) doesn't divide evenly into CoCo3
+bytes (multiples of 4px) — this is expected padding.
+
+Color scheme:
+- Apple II render: black = pixel ON, white = pixel OFF
+- CoCo3 render: palette 0 = white, 1 = black, 2 = red, 3 = blue
+  (red/blue indicate misuse of reserved palette indices)
+
+Both tools support `--scale` (default 8×) for pixel zoom.
+
 ## Dependencies
 
-Python 3.12.3. Standard library only; no external packages.
+Python 3.12.3. Pillow required for visualization tools only
+(`pip install Pillow`). Converters use standard library only.
 
 ## Testing
 

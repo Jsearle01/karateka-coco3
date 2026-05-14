@@ -1,4 +1,4 @@
-# coco3_smoke_test.lua — 5/13/2026 9:05:48 PM
+# coco3_smoke_test.lua — 5/13/2026 9:17:01 PM
 # Check: PC in $8000-$FFFF (ROM/BASIC) at frame 300
 #
 # frame, pc, event
