@@ -4,15 +4,16 @@
 
 - Methodology version: Claude-Orchestrated Development Methodology v0.2
 - Project phase: P1.0 (repository setup, in progress)
-- Last update: 2026-05-12
+- Last update: 2026-05-13
 
 ## Phase status
 
 - P0: complete (karateka_dissasembly_claude M1/M2 closure provided
   the intro-time reference oracle; P0b ongoing for gameplay-state
   coverage)
-- P1.0: in progress (this commit)
-- P1.1-P1.6: not started
+- P1.0: complete (commit c4b06ec, 2026-05-13)
+- P1.1: complete (this commit, 2026-05-13)
+    - P1.2-P1.6: not started
 - P2-P5: not started
 
 ## Calibration phase tracking
@@ -21,7 +22,7 @@ Per methodology Section 9, the first 10-20 tasks of karateka-coco3
 are calibration. Higher human gate involvement, criteria
 refinement expected.
 
-Calibration task counter: 1 (this commit)
+Calibration task counter: 2
 
 ## Cross-project coordination
 

@@ -1,0 +1,10 @@
+# coco3_smoke_test.lua — 5/13/2026 8:53:14 PM
+# Check: PC in $8000-$FFFF (ROM/BASIC) at frame 300
+#
+# frame, pc, event
+100,$A7D5,snapshot
+300,$A7D5,snapshot
+300,$A7D5,PASS pc_in_rom_range ($8000-$FFFF)
+
+# EXIT frame=360 PC=$A7D5
+# checks_passed=1 checks_failed=0
