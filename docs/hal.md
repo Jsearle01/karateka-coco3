@@ -218,7 +218,7 @@ writes to front (visible) buffer.
 | Clobbers | A, B, X, Y, CC |
 
 `[no-ref: frame buffer address / size — depends on GIME MMU slot
-assignments, resolved during P1.6 memory map work]`
+assignments: [ref: memory-map §3.2] FFA4=$3C/$3D (Frame A), FFA6=$3E/$3F (Frame B)]`
 
 #### HAL_gfx_blit_sprite
 
@@ -491,8 +491,8 @@ Compiling it out of production builds would prevent harness
 coverage on release binaries. Pop-coco3 made the same choice.
 
 **Trace buffer:** a fixed-size ring buffer at a known memory
-address assigned during P1.6 memory map work.
-`[no-ref: trace buffer location — deferred to P1.6]`
+address assigned in P1.6 memory map: CPU `$7800`, 256 bytes.
+`[ref: memory-map §4.7]` trace ring buffer location and format.
 
 **Engine event code enumeration:** the HAL accepts event codes
 as opaque bytes (0-255). The engine defines its own event ID
@@ -577,7 +577,7 @@ indicated document before writing implementation code.
 | GIME 320×192×4 mode setup | GIME 320×192×4 mode setup — CRES/HRES bit values | GIME-RM |
 | GIME palette register addresses | GIME palette register addresses | GIME-RM §3.x |
 | VBL detection mechanism | VBL detection mechanism | CC3-TR, GIME-RM |
-| Frame buffer MMU slot assignments | Frame buffer address / size | GIME-RM, P1.6 |
+| Frame buffer MMU slot assignments | Frame buffer address / size | [ref: memory-map §4.8-4.9, GIME-RM §13] |
 | DAC register address | CoCo3 DAC register address | CC3-TR |
 | CoCo3 keyboard matrix registers | CoCo3 keyboard matrix registers | CC3-TR |
 | CoCo3 system DP usage at $80-$FF | CoCo3 system DP usage at $80-$FF | CC3-TR |
@@ -585,7 +585,7 @@ indicated document before writing implementation code.
 | Trace mechanism (HAL_debug_trace_event) | trace mechanism is engine-internal | N/A (engine-internal) |
 | Debug output destination (HAL_debug_log) | debug output destination is implementation choice | N/A (implementation choice) |
 | Assertion mechanism (HAL_debug_assert) | assertion mechanism is engine-internal | N/A (engine-internal) |
-| Trace buffer memory address | trace buffer location | P1.6 memory map |
+| Trace buffer memory address | — resolved: [ref: memory-map §4.7] CPU $7800, 256 B | — |
 
 ### Reference conflicts
 

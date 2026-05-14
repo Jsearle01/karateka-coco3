@@ -13,7 +13,7 @@ Status: IN PROGRESS
 - P1.3 — HAL contract: COMPLETE (2026-05-13; follow-up adds debug/trace subsystem)
 - P1.4 — Engine conventions: COMPLETE (2026-05-13)
 - P1.5 — Pattern library bootstrap (cross-project): not started
-- P1.6 — Memory map: not started
+- P1.6 — Memory map: COMPLETE (2026-05-13)
 
 ## P2 — Engine port
 

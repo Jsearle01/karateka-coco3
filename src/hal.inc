@@ -57,6 +57,56 @@ HAL_ZP_PTR1     equ $06         ; Pointer scratch 1 (2 bytes)
 ENGINE_ZP_BASE  equ $20         ; Engine ZP region base
 
 ;--------------------------------------------------------------
+; MEMORY MAP CONSTANTS
+; Per docs/memory-map.md §6.
+; Physical address derivation per [ref: GIME-RM §13].
+; All values subject to revision if P2/P3 implementation
+; surfaces pressure (single comment update + rebuild).
+;--------------------------------------------------------------
+
+; Frame buffers (320x192x4, $3C00 bytes each)
+; [ref: GIME-RM §10] buffer size derivation
+KCOCO3_FB_A_BASE    equ $8000   ; Frame A CPU base (back buffer)
+KCOCO3_FB_B_BASE    equ $C000   ; Frame B CPU base (front buffer)
+KCOCO3_FB_SIZE      equ $3C00   ; Frame buffer byte count (80 B/row × 192 rows)
+
+; GIME VOFFSET values for frame buffer swap
+; [ref: GIME-RM §13] physical $78000: $FF9D=$F0, $FF9E=$00
+;                    physical $7C000: $FF9D=$F8, $FF9E=$00
+KCOCO3_FB_A_VOFF_HI equ $F0    ; $FF9D value → Frame A visible
+KCOCO3_FB_A_VOFF_LO equ $00    ; $FF9E value
+KCOCO3_FB_B_VOFF_HI equ $F8    ; $FF9D value → Frame B visible
+KCOCO3_FB_B_VOFF_LO equ $00    ; $FF9E value
+
+; Trace ring buffer
+; [ref: memory-map §4.7]
+KCOCO3_TRACE_BUFFER     equ $7800   ; trace ring buffer CPU base
+KCOCO3_TRACE_BUF_SIZE   equ $0100   ; 256 bytes
+
+; GIME hardware registers
+; [ref: GIME-RM §3] register map summary
+KCOCO3_GIME_INIT0       equ $FF90   ; initialization reg 0 (COCO3 mode)
+KCOCO3_GIME_INIT1       equ $FF91   ; initialization reg 1 (TR, TINS)
+KCOCO3_GIME_IRQENR      equ $FF92   ; IRQ enable (bit 3 = VBORD/VBL)
+KCOCO3_GIME_FIRQENR     equ $FF93   ; FIRQ enable
+KCOCO3_GIME_VMODE       equ $FF98   ; video mode (graphics: $80)
+KCOCO3_GIME_VRES        equ $FF99   ; video resolution (320×192×4: $15)
+KCOCO3_GIME_VSCROL      equ $FF9C   ; vertical scroll (init $00 required)
+KCOCO3_GIME_VOFFSET_HI  equ $FF9D   ; screen start phys addr high
+KCOCO3_GIME_VOFFSET_LO  equ $FF9E   ; screen start phys addr low
+KCOCO3_GIME_HOFFSET     equ $FF9F   ; horizontal offset (init $00 required)
+KCOCO3_MMU_TASK0        equ $FFA0   ; MMU task set 0 base (FFA0-FFA7)
+KCOCO3_GIME_PALETTE_BASE equ $FFB0  ; palette register 0 (4 used in 4-color mode)
+KCOCO3_SAM_CLK_HI       equ $FFD9   ; SAM: set 1.78 MHz CPU clock
+KCOCO3_SAM_RAM_C000     equ $FFDF   ; SAM: RAM at $C000 (task 0)
+
+; GIME mode values
+; [ref: GIME-RM §10] verified working reference mode
+KCOCO3_VMODE_GRAPHICS   equ $80     ; $FF98 = graphics (BP=1)
+KCOCO3_VRES_320x192x4   equ $15     ; $FF99 = LPF=00, HRES=101, CRES=01
+KCOCO3_INIT0_COCO3      equ $4C     ; $FF90 = COCO=0, MMUEN=1, MC3=1, MC2=1
+
+;--------------------------------------------------------------
 ; ERROR CODES
 ; Inherited from pop-coco3 Section 6.11.4.2.
 ; Codes are stable; new codes appended; existing not renumbered.
