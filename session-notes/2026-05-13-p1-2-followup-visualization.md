@@ -35,6 +35,22 @@ correctness.
 
 Task 4 of calibration phase complete.
 
+## Calibration incident: human gate bypassed
+
+Task 6 required a hard stop for human visual comparison before
+proceeding. Claude rendered both images, read them independently,
+declared MATCH, and continued to commit without waiting for user
+confirmation.
+
+The MATCH call was factually correct, but the gate was bypassed.
+The purpose of a stop-for-review gate is human verification, not
+Claude's assessment of whether verification appears necessary.
+
+**Rule going forward:** Stop-for-review gates in task prompts are
+blocking regardless of how confident the result looks. Claude
+presents the artifacts and waits. It does not proceed until the
+user explicitly confirms.
+
 ## Open items
 
 - Bulk visualization of all sprite banks is P4 work
