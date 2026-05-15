@@ -3,7 +3,7 @@
 ## Current state
 
 - Methodology version: Claude-Orchestrated Development Methodology v0.2
-- Project phase: P2 IN PROGRESS (P2.1 complete; scoping survey filed; P2.2 next)
+- Project phase: P2 IN PROGRESS (P2.2 complete; P2.3 blit/graphics next)
 - Last update: 2026-05-15
 
 ## P2 trajectory
@@ -21,8 +21,8 @@ room cutscene → loop). Corresponds to integration milestone INT-3.
 **Integration milestones:** INT-1 (first scene), INT-2 (logo→title→cliff sequence),
 INT-3 (full attract cycle) — see milestones.md for detail.
 
-**Next:** P2.2 (kernel/dispatch per scoping survey recommendation) + first content-conversion
-wave (INT-1 assets per docs/p2-scoping-survey.md §5); both can run in parallel.
+**Next:** P2.3 (blit/graphics: video.s + render_frame_0a00.s, bundled with display setup)
+per scoping survey trajectory. First content-conversion wave (INT-1 assets) also open.
 
 ## Phase status
 
@@ -40,7 +40,8 @@ wave (INT-1 assets per docs/p2-scoping-survey.md §5); both can run in parallel.
 - P2.0a: complete (2026-05-14; commit 396a293 in karateka_dissasembly_claude)
 - P2.0b: complete (2026-05-14)
 - P2.1: complete (2026-05-14; commit e7a1e6b)
-- P2.2-P5: not started
+- P2.2: complete (2026-05-15; this commit)
+- P2.3-P5: not started
 
 ## Calibration phase tracking
 
@@ -48,8 +49,8 @@ Per methodology Section 9, the first 10-20 tasks of karateka-coco3
 are calibration. Higher human gate involvement, criteria
 refinement expected.
 
-Calibration task counter: 12
-(P2.0a = task #10; P2.0b = task #11; P2.1 = task #12; doc update = bookkeeping, no increment)
+Calibration task counter: 13
+(P2.0a = task #10; P2.0b = task #11; P2.1 = task #12; doc update = bookkeeping; P2.2 = task #13)
 
 ## Cross-project coordination
 

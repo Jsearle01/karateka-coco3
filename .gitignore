@@ -37,4 +37,8 @@ tests/scripted/*.bin
 # CoCo3 captures: runtime artifacts; committed verification evidence excepted
 captures/*
 !captures/p2_1a_coco3_*.json
+!captures/p2_2a_coco3_*.json
 !captures/.gitkeep
+
+# MAME test log artifacts (regenerable)
+build/kdtest*.log

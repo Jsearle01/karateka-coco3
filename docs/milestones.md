@@ -29,7 +29,8 @@ bootable CoCo3 disk running the complete intro/attract sequence (INT-3).
 - P2.0a — Apple II reference-capture instrumentation: COMPLETE (2026-05-14, commit 396a293 in karateka_dissasembly_claude)
 - P2.0b — CoCo3 verification kit: COMPLETE (2026-05-14)
 - P2.1 — Timer/frame-sync engine subsystem port: COMPLETE (2026-05-14)
-- P2.2+ — Remaining subsystems TBD (scoping pass next)
+- P2.2 — Kernel/dispatch engine subsystem port: COMPLETE (2026-05-15)
+- P2.3+ — Remaining subsystems per scoping survey trajectory
 
 ### Integration milestones (INT-N)
 

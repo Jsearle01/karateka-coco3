@@ -62,13 +62,37 @@
       "semantic_name": "frame_countdown",
       "subsystem": "scene_management",
       "apple2": { "address": 210, "size": 1 },
-      "coco3":  { "address": null, "size": 1 },
-      "status": "apple2-confirmed-coco3-predicted",
+      "coco3":  { "address": 83, "size": 1 },
+      "status": "confirmed",
       "citation": {
         "apple2": "[ref: data-areas-catalog.md ZP$D2 — frame countdown timer; DEC $D2 at $0249 in kernel_per_frame.s per-frame loop; triggers disk_load_trigger ($0300) on reaching 0]",
-        "coco3":  "[no-ref: TBD; predicted in DP $50-$5F (frame-coherent variables) per conventions.md §2; address assigned during scene_management port]"
+        "coco3":  "[ref: src/engine/kernel_per_frame.s — frame_countdown equ $53; DP $53 in frame-coherent band per conventions.md §2 ($50-$5F); copied from frame_done in per_frame_main_loop]"
       },
-      "notes": "Subsystem: scene_management (not timer_frame_sync). $D2 drives scene duration; triggers scene/disk transitions at zero. Co-resides with page-flip code in per-frame loop but is semantically distinct."
+      "notes": "CoCo3 address $53 (dec=83) confirmed by P2.2 port. frame_countdown = copy of frame_done (ZP$D0 analog) at start of each per-frame iteration. Apple II ZP$D2 = 0 at frame 700 (steady attract); CoCo3 DP$53 = 0 at test frame 15. Subsystem: scene_management (not kernel); co-resides with kernel in per-frame loop for historical Apple II reasons."
+    },
+    {
+      "semantic_name": "frame_done",
+      "subsystem": "scene_management",
+      "apple2": { "address": 208, "size": 1 },
+      "coco3":  { "address": 82, "size": 1 },
+      "status": "confirmed",
+      "citation": {
+        "apple2": "[ref: kernel_per_frame.s ZP$D0 — frame sync reference value; lda $D0 + jsr L0300 per-frame restart-trigger; 0 = steady attract state]",
+        "coco3":  "[ref: src/engine/kernel_per_frame.s — frame_done equ $52; DP $52 in frame-coherent band per conventions.md §2 ($50-$5F)]"
+      },
+      "notes": "CoCo3 address $52 (dec=82) confirmed by P2.2 port. ZP$D0 = 0 at steady attract state (triggers disk_load_trigger only when non-zero). CoCo3 DP$52 = 0 throughout P2.2 attract-time operation (scene_transition_check stub always returns without firing). Apple II frame 700: ZP$D0=0."
+    },
+    {
+      "semantic_name": "frame_sync_dc",
+      "subsystem": "scene_management",
+      "apple2": { "address": 220, "size": 1 },
+      "coco3":  { "address": 84, "size": 1 },
+      "status": "confirmed",
+      "citation": {
+        "apple2": "[ref: kernel_per_frame.s ZP$DC — frame sync state flag; set to $01 at input-detected paths; set to $00 at ctrl_r path; tracks whether input was detected in current frame window]",
+        "coco3":  "[ref: src/engine/kernel_per_frame.s — frame_sync_dc equ $54; DP $54 in frame-coherent band per conventions.md §2 ($50-$5F)]"
+      },
+      "notes": "CoCo3 address $54 (dec=84) confirmed by P2.2 port. ZP$DC = 0 in normal attract state (no input). CoCo3 DP$54 = 0 throughout P2.2 (HAL_input_poll stub always returns no-input). Apple II frame 700: ZP$DC not captured — confirm during input subsystem port."
     }
   ]
 }
