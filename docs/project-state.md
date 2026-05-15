@@ -3,7 +3,7 @@
 ## Current state
 
 - Methodology version: Claude-Orchestrated Development Methodology v0.2
-- Project phase: P1 COMPLETE; P2 (engine port) planning
+- Project phase: P2 IN PROGRESS (verification kit complete; P2.1 timer/frame-sync next)
 - Last update: 2026-05-14
 
 ## Phase status
@@ -19,7 +19,9 @@
 - P1.5: DEFERRED TO P2 (pattern bootstrap; populates during P2 engine porting)
 - P1.6: complete (commit e921889, 2026-05-13)
 - P1: PHASE COMPLETE (2026-05-14); P1.5 deferred to P2
-- P2-P5: not started
+- P2.0a: complete (2026-05-14; commit 396a293 in karateka_dissasembly_claude)
+- P2.0b: complete (2026-05-14; this commit)
+- P2.1-P5: not started
 
 ## Calibration phase tracking
 
@@ -27,7 +29,10 @@ Per methodology Section 9, the first 10-20 tasks of karateka-coco3
 are calibration. Higher human gate involvement, criteria
 refinement expected.
 
-Calibration task counter: 9
+Calibration task counter: 11
+(P2.0a = task #10, committed to karateka_dissasembly_claude 2026-05-14;
+ P2.0b = task #11, this commit; P2.0a increment batched here per option-b.
+ Both are karateka-coco3 phase tasks even though P2.0a commits to the ref repo.)
 
 ## Cross-project coordination
 

@@ -1,0 +1,74 @@
+{
+  "schema_version": "1.0",
+  "project": "karateka-coco3",
+  "created": "2026-05-14",
+  "description": "Apple II <-> CoCo3 variable mapping. The Rosetta Stone for behavioral comparison across the port. Production entries only — test fixtures live in verification/test_fixtures.json.",
+  "endianness_rule": "6502=little-endian (lo byte at lower address), 6809=big-endian (hi byte at lower address). For size>1 entries, compare.py computes the integer value from each side before comparing: Apple II value = bytes[addr] | (bytes[addr+1]<<8); CoCo3 value = (bytes[addr]<<8) | bytes[addr+1]. size always means bytes-in-memory on both platforms.",
+  "status_values": {
+    "confirmed": "Both sides pinned; compare.py runs the comparison.",
+    "apple2-confirmed-coco3-predicted": "Apple II address documented with citation; CoCo3 address TBD (coco3.address is null). compare.py reports as pending, not mismatch.",
+    "unmapped": "Neither side resolved; silently skipped."
+  },
+  "entries": [
+    {
+      "semantic_name": "page_register",
+      "subsystem": "timer_frame_sync",
+      "apple2": { "address": 7, "size": 1 },
+      "coco3":  { "address": null, "size": 1 },
+      "status": "apple2-confirmed-coco3-predicted",
+      "citation": {
+        "apple2": "[ref: data-areas-catalog.md ZP$07 — hires draw page base ($20=page1, $40=page2); set by kernel.s routine_0799 and routine_07ac at each page-flip/VBL cycle]",
+        "coco3":  "[no-ref: TBD-P2.1; predicted in engine DP $20-$2F (engine globals band) per conventions.md §2; specific address assigned when page-flip equivalent is ported]"
+      },
+      "notes": "Alternates $20/$40 each VBL cycle (once per animation frame). P2.0a write-trap trigger on ZP$07 confirmed this is the attract-loop page-flip indicator (writes happen after frame 650, value is 0x20 or 0x40). CoCo3 equivalent tracks which of frame buffer A ($8000) / B ($C000) is the active back-buffer."
+    },
+    {
+      "semantic_name": "page_source_blit",
+      "subsystem": "timer_frame_sync",
+      "apple2": { "address": 228, "size": 1 },
+      "coco3":  { "address": null, "size": 1 },
+      "status": "apple2-confirmed-coco3-predicted",
+      "citation": {
+        "apple2": "[ref: kernel.s routine_0799 lines 153-163 — sta $E4 saves the outgoing $07 value before switching; routine_07b9 uses $E4 as the source-page high byte for blit row pointer setup (ZP$E3 := hires_row_hi[x]+$E4)]",
+        "coco3":  "[no-ref: TBD-P2.1; CoCo3 equivalent would be a software copy of the source frame buffer address (high byte or bank selector)]"
+      },
+      "notes": "Holds the page that was just drawn (now the display page), so the blit loop (routine_0786) copies its rows to the new draw page. Companion to page_register."
+    },
+    {
+      "semantic_name": "blit_row_dst",
+      "subsystem": "timer_frame_sync",
+      "apple2": { "address": 224, "size": 2 },
+      "coco3":  { "address": null, "size": 2 },
+      "status": "apple2-confirmed-coco3-predicted",
+      "citation": {
+        "apple2": "[ref: kernel.s routine_07b9 — loads ZP$E0 from hires_row_lo[x], ZP$E1 from hires_row_hi[x]+$07; used as destination pointer in routine_0786 sta ($E0),y]",
+        "coco3":  "[no-ref: TBD-P2.1; CoCo3 equivalent is a 16-bit DP pointer for the GIME back-buffer row destination; 2 bytes in memory (BE: hi at lower addr)]"
+      },
+      "notes": "16-bit pointer; Apple II stores LE (lo=$E0, hi=$E1); CoCo3 stores BE (hi=lower-addr, lo=higher-addr). compare.py byte-swaps before value comparison. size=2 means 2 bytes in memory on both sides."
+    },
+    {
+      "semantic_name": "blit_row_src",
+      "subsystem": "timer_frame_sync",
+      "apple2": { "address": 226, "size": 2 },
+      "coco3":  { "address": null, "size": 2 },
+      "status": "apple2-confirmed-coco3-predicted",
+      "citation": {
+        "apple2": "[ref: kernel.s routine_07b9 — loads ZP$E2 from hires_row_lo[x], ZP$E3 from hires_row_hi[x]+$E4; used as source pointer in routine_0786 lda ($E2),y]",
+        "coco3":  "[no-ref: TBD-P2.1; CoCo3 equivalent is a 16-bit DP pointer for the source row (front buffer); 2 bytes in memory (BE)]"
+      },
+      "notes": "16-bit source pointer for blit loop. Apple II LE ($E2=lo, $E3=hi); CoCo3 BE. Source page comes from ZP$E4 (page_source_blit)."
+    },
+    {
+      "semantic_name": "frame_countdown",
+      "subsystem": "scene_management",
+      "apple2": { "address": 210, "size": 1 },
+      "coco3":  { "address": null, "size": 1 },
+      "status": "apple2-confirmed-coco3-predicted",
+      "citation": {
+        "apple2": "[ref: data-areas-catalog.md ZP$D2 — frame countdown timer; DEC $D2 at $0249 in kernel_per_frame.s per-frame loop; triggers disk_load_trigger ($0300) on reaching 0]",
+        "coco3":  "[no-ref: TBD-P2.1; predicted in DP $50-$5F (frame-coherent variables) per conventions.md §2]"
+      },
+      "notes": "Subsystem: scene_management (not timer_frame_sync). $D2 is decremented each frame by the per-frame loop at $0249 and triggers scene/disk transitions at zero — it governs scene duration, not VBL sync. It co-resides with the page-flip code in the per-frame loop but is semantically a scene timer. Value is scene-phase-dependent (often 0 during attract loop; initialized at scene start)."
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "schema_version": "1.0",
+  "project": "karateka-coco3",
+  "created": "2026-05-14",
+  "description": "Test fixtures for compare.py self-test. Same schema as mapping.json. Loaded by compare.py --test-mode. All entries use Apple II addresses from the P2.0a frame-700 capture with known values; CoCo3 addresses are synthetic (not real port assignments). See verification/synthetic_coco3_capture.json for the matching synthetic CoCo3 capture.",
+  "endianness_rule": "Same as mapping.json.",
+  "entries": [
+    {
+      "semantic_name": "_test_fixture_match",
+      "subsystem": "_test",
+      "apple2": { "address": 7, "size": 1 },
+      "coco3":  { "address": 32, "size": 1 },
+      "status": "confirmed",
+      "citation": {
+        "apple2": "[ref: data-areas-catalog.md ZP$07 = 0x40 at P2.0a frame-700 capture]",
+        "coco3":  "[no-ref: SYNTHETIC — DP$20 set to 0x40 in synthetic_coco3_capture.json to match. Proves match detection in compare.py.]"
+      },
+      "notes": "TEST FIXTURE. synthetic_coco3_capture.json DP$20=0x40 matches Apple II ZP$07=0x40. Expected compare.py result: MATCH."
+    },
+    {
+      "semantic_name": "_test_fixture_mismatch",
+      "subsystem": "_test",
+      "apple2": { "address": 228, "size": 1 },
+      "coco3":  { "address": 33, "size": 1 },
+      "status": "confirmed",
+      "citation": {
+        "apple2": "[ref: kernel.s ZP$E4 = 0x20 at P2.0a frame-700 capture (blit source page = page 1)]",
+        "coco3":  "[no-ref: SYNTHETIC — DP$21 deliberately set to 0xFF in synthetic_coco3_capture.json. Proves mismatch detection in compare.py.]"
+      },
+      "notes": "TEST FIXTURE. synthetic_coco3_capture.json DP$21=0xFF != Apple II ZP$E4=0x20. Expected compare.py result: MISMATCH."
+    },
+    {
+      "semantic_name": "_test_fixture_word_endian",
+      "subsystem": "_test",
+      "apple2": { "address": 224, "size": 2 },
+      "coco3":  { "address": 34, "size": 2 },
+      "status": "confirmed",
+      "citation": {
+        "apple2": "[ref: kernel.s ZP$E0=0x09, ZP$E1=0x0A at P2.0a frame-700 capture; LE value = 0x0A09]",
+        "coco3":  "[no-ref: SYNTHETIC — DP$22=0x0A (hi), DP$23=0x09 (lo) in synthetic_coco3_capture.json; BE value = 0x0A09. Proves endianness byte-swap in compare.py.]"
+      },
+      "notes": "TEST FIXTURE. Apple II LE: bytes[224]=0x09, bytes[225]=0x0A -> value 0x0A09. CoCo3 BE: bytes[34]=0x0A, bytes[35]=0x09 -> value 0x0A09. Match after endianness compensation. Expected compare.py result: MATCH."
+    },
+    {
+      "semantic_name": "_test_fixture_pending",
+      "subsystem": "_test",
+      "apple2": { "address": 210, "size": 1 },
+      "coco3":  { "address": null, "size": 1 },
+      "status": "apple2-confirmed-coco3-predicted",
+      "citation": {
+        "apple2": "[ref: data-areas-catalog.md ZP$D2 frame countdown]",
+        "coco3":  "[no-ref: SYNTHETIC TEST FIXTURE — null address; proves compare.py reports pending, not mismatch.]"
+      },
+      "notes": "TEST FIXTURE. coco3.address=null with status apple2-confirmed-coco3-predicted. Expected compare.py result: PENDING (not MISMATCH)."
+    }
+  ]
+}

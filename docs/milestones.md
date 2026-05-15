@@ -17,9 +17,13 @@ Status: COMPLETE
 
 ## P2 — Engine port
 
-Status: NOT STARTED
+Status: IN PROGRESS
 
 Subsystem-by-subsystem porting per design doc Section 7.4.
+
+- P2.0a — Apple II reference-capture instrumentation: COMPLETE (2026-05-14, commit 396a293 in karateka_dissasembly_claude)
+- P2.0b — CoCo3 verification kit: COMPLETE (2026-05-14)
+- P2.1 — Timer/frame-sync engine subsystem port: NOT STARTED
 
 ## P3 — HAL implementations
 
