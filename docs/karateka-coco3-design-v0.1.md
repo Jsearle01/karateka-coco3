@@ -705,6 +705,76 @@ precedent that's harder to correct later.
 - Related discipline (approach-level): `apple2-disasm-patterns/plan-deviation-discipline.md`
 - Related discipline (gate-level): `apple2-disasm-patterns/blocking-gate-discipline.md`
 
+### 6.7 Content-Conversion Visual Verification
+
+Each Apple II content asset converted for CoCo3 use is verified through human visual
+review at conversion time, before the converted assemblable form is committed for
+engine use.
+
+#### 6.7.1 Rationale
+
+Cross-platform content conversion is not pixel-equivalence — the CoCo3 (320×192,
+4 colors) cannot exactly reproduce the Apple II (280×192, 6 colors with half-pixel
+constraints). The "correct" conversion is a *fair representation* given platform
+differences, not a bit-exact match. There is no behavioral verification (compare.py
+and the P2.0 infrastructure handle engine state, not content fidelity). Human visual
+review is the appropriate verification mechanism for content fidelity.
+
+Without conversion-time visual review, content bugs would surface during integration
+testing, requiring backwards debugging through engine ports + HAL implementations +
+content conversion to find the actual cause. Visual review at conversion time catches
+content bugs at their source.
+
+#### 6.7.2 Protocol
+
+Each converted content asset produces three artifacts:
+
+1. **Apple II reference PNG** — rendered from the original Apple II content via
+   `sprite_render_apple2.py` (the independent decoder from P1.2 follow-up; not
+   downstream of the converter being tested)
+2. **CoCo3 converted PNG** — rendered from the converted CoCo3 bytes via
+   `sprite_visualize.py` (also an independent decoder)
+3. **CoCo3 assemblable `.s` file** — the actual engine deliverable
+
+Human review compares (1) and (2) side by side, asking: "Is this recognizably the
+same image, with expected platform differences?" If yes, (3) gets committed for
+engine use. If no, the converter is debugged before re-running.
+
+#### 6.7.3 Sound exception
+
+Sound conversion (Apple II speaker click data → CoCo3 DAC samples or tone-record
+data) has no natural visual analog. Produces WAV file pairs instead — Apple II
+reference WAV + CoCo3 converted WAV — for human ear comparison. Same approval gate.
+
+#### 6.7.4 Workflow
+
+Content conversion proceeds in waves scoped to integration milestones (Section 7.4.3).
+Each wave:
+
+1. Identifies the assets needed (e.g., for INT-1: Brøderbund logo sprite,
+   title-screen palette, etc.)
+2. Runs conversion + paired-PNG/WAV generation
+3. Produces a structured output directory:
+   ```
+   content/<asset>/
+       apple2.png
+       coco3.png
+       converted.s
+   ```
+4. Generates a summary view (HTML or markdown index) showing all pairs for quick
+   visual scanning
+5. Human review: scan all pairs, approve or flag bugs
+6. Approved `.s` files commit for engine use; flagged pairs trigger converter fixes
+   (P1.2 tooling work)
+
+#### 6.7.5 Pattern promotion candidate
+
+This protocol is karateka-coco3-specific now but will likely transfer to pop-coco3
+(the sibling port project, which faces the same Apple II → CoCo3 content conversion
+challenge). After the first content-conversion wave exercises this protocol and
+surfaces any refinements, it is a candidate for promotion to a shared pattern in
+`6502-6809-conversion-patterns` for both projects to consume.
+
 ## 7. Phase plan
 
 ### 7.1 Phase overview
@@ -808,20 +878,96 @@ This parallel structure means P0b doesn't block karateka-coco3 startup. The two 
 
 ### 7.4 P2 — Engine port
 
-Subsystem-by-subsystem porting from karateka_dissasembly_claude src/ to CoCo3 6809 engine code. Order suggested:
+#### 7.4.1 P2 target deliverable
 
-**P2.1 — Kernel & dispatch** (kernel.s, kernel_per_frame.s, kernel_dispatch_handlers.s → engine/kernel.s)
-**P2.2 — Scene dispatch & intro flow** (scene_dispatch.s, intro.s → engine/scene.s)
-**P2.3 — Gameplay state** (gameplay_state_0b00.s, gameplay_6000.s, gameplay_7000.s → engine/gameplay.s)
-**P2.4 — Combat animation** (fight_engine.s + animation tables → engine/combat.s)
-**P2.5 — Input handling** (input.s → engine/input.s + HAL interface)
-**P2.6 — Display & rendering glue** (display_7700.s, attract_*.s → engine/display.s + HAL interface)
-**P2.7 — Sound triggering** (sound_engine.s + pcm_player.s → engine/sound.s + HAL interface)
-**P2.8 — Timer dispatch** (timer_dispatch.s → engine/timer.s + HAL interface)
+> **P2 target deliverable:** a bootable CoCo3 disk that loads and runs the complete
+> intro/attract sequence (Brøderbund logo → title screen → cliff approach scene →
+> demo combat → Akuma throne room cutscene → loop), matching Apple IIe behavior
+> within unavoidable cross-platform differences (4-color GIME palette vs 6-color
+> Apple II hires; DAC sound vs Apple speaker; GIME timing vs Apple II VBL).
+
+#### 7.4.2 Three converging workstreams
+
+P2 runs three workstreams in parallel that converge at integration milestones (Section 7.4.3):
+
+**P2.x — Engine subsystem ports** against smart HAL stubs. Each port is verified
+per-subsystem via P2.0 infrastructure (Apple II capture + CoCo3 capture +
+compare.py against mapping.json). P2.1 (timer/frame-sync) is complete; P2.2+
+continue with remaining subsystems, ordered by a scoping pass before each
+milestone.
+
+Individual P2.x subsystem targets (order refined during scoping pass; P2.2+ TBD):
+- **P2.1 — Timer/frame-sync** (timer_dispatch.s → engine/timer.s + HAL interface) — COMPLETE (2026-05-14)
+- **P2.2+** — remaining subsystems, ordered by scoping pass per integration milestone
+
+Subsystem candidates (portable surface; see Section 7.4.4):
+- Blit/graphics (display_7700.s, attract_*.s → engine/display.s + HAL interface)
+- Sound triggering (sound_engine.s + pcm_player.s → engine/sound.s + HAL interface)
+- Scene management + scene transitions (scene_dispatch.s, intro.s → engine/scene.s)
+- Display setup / palette
+- Basic keyboard scan (input.s → engine/input.s + HAL interface)
+- Combat animation playback (fight_engine.s + animation tables → engine/combat.s)
+- Sprite composition / body-part assembly
+- Cutscene machinery
+- Kernel/dispatch (kernel.s, kernel_per_frame.s, kernel_dispatch_handlers.s → engine/kernel.s)
 
 Each subsystem has its own review gate per methodology Section 4.3.
 
-**End-of-P2 review gate.** Engine ported, integration test scenarios pass against stub HAL.
+**P3.x — Real HAL implementations** replacing stubs. Begins in parallel with P2.x
+after P2.2 lands (P2.2 surfaces any remaining HAL contract gaps before real
+implementation commits). Each P3.x implementation verified against the smart-stub
+behavior plus hardware-correctness (real VBL fires at GIME VBL, real palette writes
+during VBL, etc.). See Section 7.5 for P3 detail.
+
+**Content conversion** — Apple II sprite/palette/sound assets converted to CoCo3
+assemblable form via P1.2 tooling. Each conversion wave produces paired visual
+verification artifacts (Apple II PNG + CoCo3 PNG, or WAV pair for sound) for human
+review before content is committed for engine use. Conversion proceeds in waves
+scoped to integration milestones — convert what's needed for each milestone, not
+all-at-once. Protocol: Section 6.7.
+
+#### 7.4.3 Integration milestones
+
+Integration milestones are convergence checkpoints where P2.x + P3.x +
+content-conversion subsystems combine into a running deliverable. Naming uses
+`INT-N` prefix to distinguish from karateka_dissasembly_claude's disassembly
+milestones (M1/M2/M3/M4).
+
+- **INT-1:** First scene displays correctly. Requires engine ports + real HAL for:
+  scene management (basic), display setup, palette, blit/graphics. Content: first-scene
+  assets converted (Brøderbund logo + palette). Verification: human visual inspection
+  against Apple II reference rendering.
+- **INT-2:** Logo → title → cliff scene sequence with transitions. Adds: scene-transition
+  machinery (frame_countdown, disk_load_trigger handling), additional scenes' content
+  assets converted.
+- **INT-3:** Full attract cycle including sound, cutscenes. Adds: sound HAL real
+  implementation, tone-record interpreter, cutscene-specific machinery, Akuma throne
+  room composition + content. Target deliverable: bootable disk looping the complete
+  attract sequence (= P2 target deliverable).
+
+#### 7.4.4 Portable vs P0b-dependent subsystems
+
+**Portable from current M1/M2 disassembly** (exercised by the intro/attract
+sequence; available now without P0b):
+- Timer/frame-sync (P2.1 — COMPLETE)
+- Blit/graphics
+- Sound (attract music + demo SFX)
+- Scene management including scene transitions
+- Display setup / palette
+- Basic keyboard scan (attract→gameplay break-out poll)
+- Combat animation playback (demo fight visuals)
+- Sprite composition / body-part assembly (Akuma throne pose)
+- Cutscene machinery (Akuma throne room cutscene)
+- Kernel/dispatch
+
+**Waiting for P0b coverage** (only reachable through actual gameplay; wait for
+relevant karateka_dissasembly_claude dumps):
+- Combat input mapping (key codes → combat actions)
+- Player-driven scene state machines (cliff/courtyard/throne gameplay loops)
+- Win/lose ending sequences
+- Code paths reached only via player decisions
+
+**End-of-P2 review gate.** Engine ported; INT-3 delivered (bootable attract disk loops correctly).
 
 ### 7.5 P3 — HAL implementations
 
