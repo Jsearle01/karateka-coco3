@@ -14,49 +14,49 @@
       "semantic_name": "page_register",
       "subsystem": "timer_frame_sync",
       "apple2": { "address": 7, "size": 1 },
-      "coco3":  { "address": null, "size": 1 },
-      "status": "apple2-confirmed-coco3-predicted",
+      "coco3":  { "address": 80, "size": 1 },
+      "status": "confirmed",
       "citation": {
         "apple2": "[ref: data-areas-catalog.md ZP$07 — hires draw page base ($20=page1, $40=page2); set by kernel.s routine_0799 and routine_07ac at each page-flip/VBL cycle]",
-        "coco3":  "[no-ref: TBD-P2.1; predicted in engine DP $20-$2F (engine globals band) per conventions.md §2; specific address assigned when page-flip equivalent is ported]"
+        "coco3":  "[ref: src/engine/timer_framesync.s — page_register equ $50; DP $50 is in frame-coherent band per conventions.md §2 ($50-$5F)]"
       },
-      "notes": "Alternates $20/$40 each VBL cycle (once per animation frame). P2.0a write-trap trigger on ZP$07 confirmed this is the attract-loop page-flip indicator (writes happen after frame 650, value is 0x20 or 0x40). CoCo3 equivalent tracks which of frame buffer A ($8000) / B ($C000) is the active back-buffer."
+      "notes": "Alternates $20/$40 each VBL cycle. P2.0a write-trap confirmed attract-loop page-flip indicator. CoCo3 address $50 (dec=80) confirmed by P2.1 port. Phase-independent invariant: page_register + page_source_blit = $60 on both platforms always."
     },
     {
       "semantic_name": "page_source_blit",
       "subsystem": "timer_frame_sync",
       "apple2": { "address": 228, "size": 1 },
-      "coco3":  { "address": null, "size": 1 },
-      "status": "apple2-confirmed-coco3-predicted",
+      "coco3":  { "address": 81, "size": 1 },
+      "status": "confirmed",
       "citation": {
-        "apple2": "[ref: kernel.s routine_0799 lines 153-163 — sta $E4 saves the outgoing $07 value before switching; routine_07b9 uses $E4 as the source-page high byte for blit row pointer setup (ZP$E3 := hires_row_hi[x]+$E4)]",
-        "coco3":  "[no-ref: TBD-P2.1; CoCo3 equivalent would be a software copy of the source frame buffer address (high byte or bank selector)]"
+        "apple2": "[ref: kernel.s routine_0799 — sta $E4 saves prior $07 value; routine_07b9 uses $E4 as blit source page high byte]",
+        "coco3":  "[ref: src/engine/timer_framesync.s — page_source_blit equ $51; DP $51, companion to page_register at DP $50]"
       },
-      "notes": "Holds the page that was just drawn (now the display page), so the blit loop (routine_0786) copies its rows to the new draw page. Companion to page_register."
+      "notes": "Holds the prior page_register value (the just-drawn page). page_register + page_source_blit = $60 invariant. CoCo3 address $51 (dec=81) confirmed by P2.1 port."
     },
     {
       "semantic_name": "blit_row_dst",
-      "subsystem": "timer_frame_sync",
+      "subsystem": "blit_graphics",
       "apple2": { "address": 224, "size": 2 },
       "coco3":  { "address": null, "size": 2 },
-      "status": "apple2-confirmed-coco3-predicted",
+      "status": "unmapped",
       "citation": {
-        "apple2": "[ref: kernel.s routine_07b9 — loads ZP$E0 from hires_row_lo[x], ZP$E1 from hires_row_hi[x]+$07; used as destination pointer in routine_0786 sta ($E0),y]",
-        "coco3":  "[no-ref: TBD-P2.1; CoCo3 equivalent is a 16-bit DP pointer for the GIME back-buffer row destination; 2 bytes in memory (BE: hi at lower addr)]"
+        "apple2": "[ref: kernel.s routine_07b9 — loads ZP$E0/$E1 from hires_row_lo/hi[x]+$07; destination pointer for routine_0786 blit sta ($E0),y]",
+        "coco3":  "[no-ref: TBD; assigned when blit/graphics subsystem is ported (post-P2.1)]"
       },
-      "notes": "16-bit pointer; Apple II stores LE (lo=$E0, hi=$E1); CoCo3 stores BE (hi=lower-addr, lo=higher-addr). compare.py byte-swaps before value comparison. size=2 means 2 bytes in memory on both sides."
+      "notes": "Reassigned from timer_frame_sync to blit_graphics (P2.1 analysis). $E0/$E1 are set by routine_07b9 within routine_0786 (the blit loop), NOT by the page-flip/VBL routines. P2.0a captures confirm: $E0/$E1 change between frames 700-900 but are 0x00/0x00 for $E2/$E3 (blit loop not running in attract phase). 16-bit LE on Apple II; 16-bit BE on CoCo3."
     },
     {
       "semantic_name": "blit_row_src",
-      "subsystem": "timer_frame_sync",
+      "subsystem": "blit_graphics",
       "apple2": { "address": 226, "size": 2 },
       "coco3":  { "address": null, "size": 2 },
-      "status": "apple2-confirmed-coco3-predicted",
+      "status": "unmapped",
       "citation": {
-        "apple2": "[ref: kernel.s routine_07b9 — loads ZP$E2 from hires_row_lo[x], ZP$E3 from hires_row_hi[x]+$E4; used as source pointer in routine_0786 lda ($E2),y]",
-        "coco3":  "[no-ref: TBD-P2.1; CoCo3 equivalent is a 16-bit DP pointer for the source row (front buffer); 2 bytes in memory (BE)]"
+        "apple2": "[ref: kernel.s routine_07b9 — loads ZP$E2/$E3 from hires_row_lo/hi[x]+$E4; source pointer for routine_0786 blit lda ($E2),y]",
+        "coco3":  "[no-ref: TBD; assigned when blit/graphics subsystem is ported (post-P2.1)]"
       },
-      "notes": "16-bit source pointer for blit loop. Apple II LE ($E2=lo, $E3=hi); CoCo3 BE. Source page comes from ZP$E4 (page_source_blit)."
+      "notes": "Reassigned from timer_frame_sync to blit_graphics (P2.1 analysis). Companion to blit_row_dst. P2.0a captures: $E2/$E3 = $00/$00 throughout attract-loop frames (blit loop inactive)."
     },
     {
       "semantic_name": "frame_countdown",
@@ -66,9 +66,9 @@
       "status": "apple2-confirmed-coco3-predicted",
       "citation": {
         "apple2": "[ref: data-areas-catalog.md ZP$D2 — frame countdown timer; DEC $D2 at $0249 in kernel_per_frame.s per-frame loop; triggers disk_load_trigger ($0300) on reaching 0]",
-        "coco3":  "[no-ref: TBD-P2.1; predicted in DP $50-$5F (frame-coherent variables) per conventions.md §2]"
+        "coco3":  "[no-ref: TBD; predicted in DP $50-$5F (frame-coherent variables) per conventions.md §2; address assigned during scene_management port]"
       },
-      "notes": "Subsystem: scene_management (not timer_frame_sync). $D2 is decremented each frame by the per-frame loop at $0249 and triggers scene/disk transitions at zero — it governs scene duration, not VBL sync. It co-resides with the page-flip code in the per-frame loop but is semantically a scene timer. Value is scene-phase-dependent (often 0 during attract loop; initialized at scene start)."
+      "notes": "Subsystem: scene_management (not timer_frame_sync). $D2 drives scene duration; triggers scene/disk transitions at zero. Co-resides with page-flip code in per-frame loop but is semantically distinct."
     }
   ]
 }

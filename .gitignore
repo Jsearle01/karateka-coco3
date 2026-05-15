@@ -26,3 +26,15 @@ __pycache__/
 
 # Reference PDFs — large binary files, obtained separately
 docs/*.pdf
+
+# MAME runtime artifacts (regenerable)
+harness/smoke/last-run.log
+build/tftest*.log
+
+# Assembler test binaries (regenerable from source with lwasm)
+tests/scripted/*.bin
+
+# CoCo3 captures: runtime artifacts; committed verification evidence excepted
+captures/*
+!captures/p2_1a_coco3_*.json
+!captures/.gitkeep
