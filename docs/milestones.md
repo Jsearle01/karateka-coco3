@@ -3,16 +3,16 @@
 See `karateka-coco3-design-v0.1.md` Section 7 for the full phase
 plan. This document tracks current status.
 
-## P1 — Foundations
+## P1 — Foundations — COMPLETE (2026-05-14)
 
-Status: IN PROGRESS
+Status: COMPLETE
 
 - P1.0 — Project state setup: COMPLETE (2026-05-13)
 - P1.1 — MAME test harness: COMPLETE (2026-05-13)
 - P1.2 — Asset conversion tooling: COMPLETE (2026-05-13)
 - P1.3 — HAL contract: COMPLETE (2026-05-13; follow-up adds debug/trace subsystem)
 - P1.4 — Engine conventions: COMPLETE (2026-05-13)
-- P1.5 — Pattern library bootstrap (cross-project): not started
+- P1.5 — Pattern library bootstrap: DEFERRED TO P2 — karateka Category C patterns are speculative without engine code; they populate during P2 engine porting as patterns surface
 - P1.6 — Memory map: COMPLETE (2026-05-13)
 
 ## P2 — Engine port

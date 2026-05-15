@@ -3,8 +3,8 @@
 ## Current state
 
 - Methodology version: Claude-Orchestrated Development Methodology v0.2
-- Project phase: P1.0 (repository setup, in progress)
-- Last update: 2026-05-13
+- Project phase: P1 COMPLETE; P2 (engine port) planning
+- Last update: 2026-05-14
 
 ## Phase status
 
@@ -12,11 +12,13 @@
   the intro-time reference oracle; P0b ongoing for gameplay-state
   coverage)
 - P1.0: complete (commit c4b06ec, 2026-05-13)
-- P1.1: complete (2026-05-13)
-    - P1.2: complete (2026-05-13)
-    - P1.3: complete (2026-05-13; P1.3 follow-up: complete 2026-05-13)
-    - P1.4: complete (this commit, 2026-05-13)
-    - P1.2-P1.6: not started
+- P1.1: complete (commit 71c6894, 2026-05-13)
+- P1.2: complete (commit 88ffb27, 2026-05-13; follow-up: aa5753a/381bc43)
+- P1.3: complete (commit b319e42, 2026-05-13; follow-up: a97d41c)
+- P1.4: complete (commit ba88652, 2026-05-13)
+- P1.5: DEFERRED TO P2 (pattern bootstrap; populates during P2 engine porting)
+- P1.6: complete (commit e921889, 2026-05-13)
+- P1: PHASE COMPLETE (2026-05-14); P1.5 deferred to P2
 - P2-P5: not started
 
 ## Calibration phase tracking
