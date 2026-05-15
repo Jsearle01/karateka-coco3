@@ -3,7 +3,7 @@
 ## Current state
 
 - Methodology version: Claude-Orchestrated Development Methodology v0.2
-- Project phase: P2 IN PROGRESS (P2.1 complete; scoping pass next, then P2.2)
+- Project phase: P2 IN PROGRESS (P2.1 complete; scoping survey filed; P2.2 next)
 - Last update: 2026-05-15
 
 ## P2 trajectory
@@ -21,7 +21,8 @@ room cutscene → loop). Corresponds to integration milestone INT-3.
 **Integration milestones:** INT-1 (first scene), INT-2 (logo→title→cliff sequence),
 INT-3 (full attract cycle) — see milestones.md for detail.
 
-**Next:** scoping pass (identify P2.2 subsystem + INT-1 content wave), then P2.2.
+**Next:** P2.2 (kernel/dispatch per scoping survey recommendation) + first content-conversion
+wave (INT-1 assets per docs/p2-scoping-survey.md §5); both can run in parallel.
 
 ## Phase status
 
