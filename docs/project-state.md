@@ -49,7 +49,7 @@ Per methodology Section 9, the first 10-20 tasks of karateka-coco3
 are calibration. Higher human gate involvement, criteria
 refinement expected.
 
-Calibration task counter: 13
+Calibration task counter: 14
 (P2.0a = task #10; P2.0b = task #11; P2.1 = task #12; doc update = bookkeeping; P2.2 = task #13)
 
 ## Cross-project coordination
