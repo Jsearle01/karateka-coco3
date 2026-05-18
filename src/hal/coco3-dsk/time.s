@@ -32,9 +32,9 @@
 
         setdp   0
 
-* HAL-private DP locations (HAL scratch band $00-$1F)
-hal_frame_hi        equ $10     ; frame counter high byte
-hal_frame_lo        equ $11     ; frame counter low byte
+* HAL-private DP locations — declared in src/engine/globals.s (P2.3a.3)
+* hal_frame_hi equ $10  / hal_frame_lo equ $11
+* [ref: src/engine/globals.s — canonical DP home]
 
 * ---------------------------------------------------------------
 * HAL_time_init

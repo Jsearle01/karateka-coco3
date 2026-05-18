@@ -1,44 +1,188 @@
 * src/hal/coco3-dsk/sys.s
 *
-* HAL System subsystem — stubs for P2.2.
+* HAL System subsystem — P2.3a.0 deliverable.
 *
 * Purpose:
-*   Provides HAL_sys_panic, required by handler stubs in
-*   src/engine/kernel_dispatch.s. If a handler fires during attract,
-*   HAL_sys_panic halts MAME (infinite loop); the harness sees a
-*   timeout-failure instead of a PASS sentinel, surfacing the
-*   safety violation immediately.
+*   Handler dispatch block at $0100-$0111 (static RTI stubs;
+*     loaded into RAM by DECB; CoCo3 $FExx chain routes here).
+*   HAL_sys_init: CoCo3 bare-metal transition (mask + $FF90 + MMU).
+*   HAL_sys_panic: Unrecoverable error handler (infinite loop).
 *
-* HAL contract reference: src/hal.inc
-*   [ref: hal.inc HAL_sys_panic — Args: X=msg ptr; does not return]
-*   [ref: docs/hal.md §5.7 System — HAL_sys_panic spec]
-*   [ref: conventions.md §9 — DEV_MODE; panic is always active]
+* ORIGIN: HAL_sys_init is new karateka-coco3 work. Not ported from
+*   GFXMODE3.ASM. Designed for CoCo3 bare-metal transition per P2.3a.0.
 *
-* Calling convention:
-*   [ref: conventions.md §3 — DP preserved; Args: X (message ptr)]
+* CoCo3 INTERRUPT DISPATCH (three-level; per Sockmaster-GIME §1):
+*   CPU reads from $FFxx (ROM — unchangeable).
+*   $FFxx ROM values contain $FExx addresses (BASIC-installed secondary
+*     vectors). After $FF90=$4C is written, MC3=1 locks $FExx as
+*     "constant" — they cannot be overwritten.
+*   $FExx values contain JMPs/LBRAs to $01xx (the dispatch block below).
+*   This binary provides RTI stubs at $0100-$010F so that if an
+*     interrupt fires despite ORCC #$50 masking, the CPU safely returns.
+*
+*   HAL_sys_init does NOT write vectors at runtime. The dispatch block
+*   is statically allocated at .org $0100 in this file and loaded into
+*   RAM by DECB. BASIC's $FExx routing remains in effect (locked by
+*   MC3=1 in $FF90=$4C).
+*
+*   Per Sockmaster-GIME §1 (docs/SockmasterGime.md):
+*     SWI3 → $FFF2(ROM) → $FEEE → $0100
+*     SWI2 → $FFF4(ROM) → $FEF1 → $0103
+*     SWI  → $FFFA(ROM) → $FEFA → $0106
+*     NMI  → $FFFC(ROM) → $FEFD → $0109
+*     IRQ  → $FFF8(ROM) → $FEF7 → $010C
+*     FIRQ → $FFF6(ROM) → $FEF4 → $010F
+*
+*   [ref: docs/SockmasterGime.md §1 — Interrupt Vectors table]
+*   [ref: 6502-6809-conversion-patterns/shared/G-methodology/
+*         G.3-coco3-platform-assumptions.md — G.3.3 exemplar]
+*
+* INTERRUPT MASK POLICY (P2.3a.0 era):
+*   Three-layer protection:
+*     Layer 1: Test driver global ORCC #$50 at entry
+*     Layer 2: HAL_sys_init internal ORCC #$50 (belt-and-suspenders)
+*     Layer 3: Dispatch block RTI stubs (safe no-op if interrupt fires)
+*   This is acceptable while no interrupt-driven behavior exists.
+*   Migration required when real handlers land (P3.1 VBL at minimum).
+*   [ref: docs/conventions.md — "Interrupt mask policy" section]
+*   [ref: docs/open-questions.md Q001 — migration plan]
+*   [ref: docs/interrupt-handling.md — full dispatch documentation]
+*
+* PRODUCTION BUILD NOTE:
+*   The dispatch block at .org $0100 and the HAL code (HAL_sys_init,
+*   HAL_sys_panic) are in separate address regions ($0100 and HAL
+*   $2000-$3FFF respectively). A production linker script will place
+*   the two sections correctly. For test drivers (lwasm --decb single-
+*   file builds), both sections appear in the binary via multiple .org
+*   directives. This file is the authoritative source for both; the
+*   production build wiring is deferred to post-P2.
+*
+* Reference citations:
+*   [ref: docs/SockmasterGime.md §1] — three-level interrupt dispatch
+*   [ref: docs/memory-map.md §2] — dispatch block within stack region
+*   [ref: docs/memory-map.md §3.2] — MMU task 0 page values $38-$3F
+*   [ref: hal.inc HAL_sys_init — contract]
+*   [ref: docs/conventions.md §2 — DP $13 sys_init_cc_mask]
+*   [ref: docs/conventions.md — interrupt mask policy section]
+*   [ref: KCOCO3_INIT0_COCO3 = $4C in hal.inc]
+*
+* DP allocations (HAL scratch band $00-$1F):
+*   $12  gfx_initialized  — set by HAL_gfx_init (gfx.s)
+*   $13  sys_init_cc_mask — CC state post-HAL_sys_init (test diagnostic)
 * ---------------------------------------------------------------
 
         setdp   0
+
+* sys_init_cc_mask equ $13  — declared in src/engine/globals.s (P2.3a.3)
+
+* NOTE: Handler dispatch block ($0100-$0111) has been moved to
+*   src/engine/boot.s for the production build (P2.3a.3).
+*   Test drivers that need the dispatch block maintain their own
+*   inline copies (self-contained build pattern).
+*   [ref: src/engine/boot.s §Segment 1]
+*   [ref: docs/interrupt-handling.md §4 — dispatch block design]
+
+* ---------------------------------------------------------------
+* HAL_sys_init
+*
+* CoCo3 bare-metal transition: mask interrupts, enable all-RAM mode,
+* program MMU task 0 to P1.6 layout.
+*
+* ORIGIN: New karateka-coco3 work (P2.3a.0). Not from GFXMODE3.ASM.
+*
+* Args:    none
+* Returns: CC.C clear; CC.I=1, CC.F=1 (interrupts remain MASKED)
+* Preserves: U, Y
+* Clobbers: A, X, CC
+* Precondition: BASIC boot complete; DP=0; stack initialized
+* Postcondition:
+*   - Interrupts masked (ORCC #$50 applied)
+*   - $FF90=$4C: COCO=0, MMUEN=1, MC3=1, MC2=1 (all-RAM; MMU enabled;
+*       $FExx locked by MC3=1; ROM unmapped from $8000-$FEFF)
+*   - FFA0-FFA7=$38-$3F: MMU task 0 mapped to P1.6 layout
+*       ($0000-$1FFF=physical $70000, ..., $C000-$FFFF=physical $7C000+)
+*   - HAL_sys_init does NOT install interrupt vectors. Dispatch block
+*       RTI stubs at $0100-$010F are loaded by DECB. BASIC's $FExx
+*       secondary vectors remain in effect (MC3=1 locks them).
+*
+* Interrupt masking rationale:
+*   $FF90=$4C unmaps ROM from $8000-$FEFF, invalidating ROM interrupt
+*   handlers. Masking before the write ensures no interrupt fires
+*   during the transition window when vectors point to invalidated ROM.
+*   [ref: docs/interrupt-handling.md §3]
+*   [ref: docs/conventions.md — interrupt mask policy]
+*
+* $FF90=$4C value provenance:
+*   [ref: refs/GFXMODE3.ASM line 53-54 — LDA #$4C / STA $FF90]
+*   [ref: KCOCO3_INIT0_COCO3 in hal.inc]
+*   Bit semantics: [ref: docs/SockmasterGime.md — $FF90]
+*     COCO=0, MMUEN=1, MC3=1 (FExx constant), MC2=1 (standard SCS)
+*
+* MMU slot values:
+*   [ref: docs/memory-map.md §3.2] — P1.6 task 0 page assignments
+*   [ref: docs/SockmasterGime.md] — MMU task register documentation
+*
+* [ref: hal.inc HAL_sys_init — contract]
+* ---------------------------------------------------------------
+HAL_sys_init:
+        pshs    u,y                     ; preserve U, Y per contract
+
+* Step 1: Mask interrupts immediately.
+* ROM interrupt handlers will be invalidated by $FF90 write in step 2.
+* Must not take an interrupt during transition. Belt-and-suspenders:
+* caller (test driver) should also mask before calling HAL_sys_init.
+* [ref: docs/conventions.md — interrupt mask policy]
+        orcc    #$50                    ; set CC.I (IRQ mask) and CC.F (FIRQ mask)
+
+* Step 2: Enable all-RAM mode + MMU.
+* MC3=1 locks $FExx secondary vectors; they retain BASIC's routing to
+* $01xx dispatch block. MC2=1 = standard SCS. MMUEN=1 enables MMU.
+* COCO=0 switches from SAM-mode to GIME-mode address translation.
+* [ref: docs/SockmasterGime.md — $FF90 bit definitions]
+* [ref: refs/GFXMODE3.ASM line 53-54 — empirical provenance]
+        lda     #$4C
+        sta     $FF90                   ; INIT0: COCO=0,MMUEN=1,MC3=1,MC2=1
+
+* Step 3: Program MMU task 0 slots to P1.6 physical page layout.
+* Must be written AFTER $FF90=$4C (MMUEN bit enables MMU programming).
+* [ref: docs/memory-map.md §3.2]
+* [ref: docs/SockmasterGime.md — MMU task register layout]
+        lda     #$38
+        sta     $FFA0                   ; $0000-$1FFF → physical $70000
+        lda     #$39
+        sta     $FFA1                   ; $2000-$3FFF → physical $72000
+        lda     #$3A
+        sta     $FFA2                   ; $4000-$5FFF → physical $74000
+        lda     #$3B
+        sta     $FFA3                   ; $6000-$7FFF → physical $76000
+        lda     #$3C
+        sta     $FFA4                   ; $8000-$9FFF → physical $78000 (Frame A)
+        lda     #$3D
+        sta     $FFA5                   ; $A000-$BFFF → physical $7A000 (Frame A)
+        lda     #$3E
+        sta     $FFA6                   ; $C000-$DFFF → physical $7C000 (Frame B)
+        lda     #$3F
+        sta     $FFA7                   ; $E000-$FFFF → physical $7E000 (Frame B)
+
+        puls    u,y                     ; restore U, Y per contract
+        andcc   #$FE                    ; CC.C clear = success
+                                        ; CC.I, CC.F remain SET (interrupts masked)
+        rts
 
 * ---------------------------------------------------------------
 * HAL_sys_panic
 *
 * Unrecoverable error handler. Halts the CPU (infinite loop).
-* Called by handler stubs in kernel_dispatch.s when a stub fires.
 *
 * Args:  X = pointer to null-terminated message (or 0)
 * Returns: does not return
 *
-* [ref: hal.inc HAL_sys_panic — "Unrecoverable error handler.
-*  Display message, halt."]
+* [ref: hal.inc HAL_sys_panic — "Unrecoverable error handler."]
+* [ref: docs/hal.md §5.7]
 *
-* P2.x BEHAVIOR: infinite loop (bra *). The MAME harness detects
-*   this as a timeout-failure because the PASS sentinel is never
-*   written to the output directory. In a real system this would
-*   write the message (X) to a display or serial port before halting.
-*   [no-ref: display/serial output destination — deferred to P3+]
-*
-* Clobbers: (never returns)
+* P2.x BEHAVIOR: infinite loop (bra *). MAME harness detects as
+*   timeout-failure because PASS sentinel is never written.
+*   [no-ref: display/serial output destination — deferred P3+]
 * ---------------------------------------------------------------
 HAL_sys_panic:
         bra     HAL_sys_panic           ; infinite loop — MAME timeout failure

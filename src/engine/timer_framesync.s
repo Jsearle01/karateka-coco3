@@ -41,17 +41,16 @@
 
         setdp   0               ; DP=0; lwasm uses direct-page for <addr
 
-* DP variable declarations.
-* [NOTE: migrate to src/engine/globals.s when that file is created in P2.]
-page_register       equ $50     ; active draw buffer ($20=buf-A, $40=buf-B)
-page_source_blit    equ $51     ; prior buffer; used by blit loop each frame
-
-* Page-flip value constants.
-* [ref: data-areas-catalog.md ZP$07 — $20=hires page 1 ($2000), $40=hires page 2 ($4000)]
-* CoCo3 maps these to frame buffer A ($8000) and B ($C000) conceptually;
-* the $20/$40 values are preserved as behavioral tokens, not hardware addresses.
-PAGE_A              equ $20     ; "page 1" token (Apple II hires page 1 base)
-PAGE_B              equ $40     ; "page 2" token (Apple II hires page 2 base)
+* DP variables and constants declared in src/engine/globals.s (P2.3a.3).
+* Symbols available in production multi-file builds via globals.s.
+* Test driver builds maintain their own inline equ declarations.
+* [ref: src/engine/globals.s — canonical home for all DP allocations]
+*
+* Symbols used here (defined in globals.s):
+*   page_register  equ $50   ; active draw buffer (back buffer, Option B)
+*   page_source_blit equ $51 ; prior draw buffer
+*   PAGE_A_TOKEN        equ $20   ; draw target = buffer A ($20 = Apple II hires page 1 high byte)
+*   PAGE_B_TOKEN        equ $40   ; draw target = buffer B ($40 = Apple II hires page 2 high byte)
 
 * ---------------------------------------------------------------
 * page_flip
@@ -64,41 +63,45 @@ PAGE_B              equ $40     ; "page 2" token (Apple II hires page 2 base)
 * ORIGIN: karateka_dissasembly_claude src/kernel.s
 *         Apple II $0783 (JMP trampoline) -> $0799 (routine_0799)
 *
-* If page_register == PAGE_B ($40): tail-fall to page_flip_to_a
+* If page_register == PAGE_B_TOKEN ($40): tail-fall to page_flip_to_a
 * Otherwise: save page_register to page_source_blit,
-*            set page_register = PAGE_B, wait 1 frame, present.
+*            set page_register = PAGE_B_TOKEN, wait 1 frame, present.
 *
 * Clobbers: A, CC
 * ---------------------------------------------------------------
 page_flip:
         lda     <page_register          ; [ref: kernel.s routine_0799 lda $07]
-        cmpa    #PAGE_B                 ; already on buf-B?
+        cmpa    #PAGE_B_TOKEN           ; already on buf-B?
         beq     page_flip_to_a          ; [ref: kernel.s beq routine_07ac]
-        * Path: cur=PAGE_A -> switch to PAGE_B
+        * Path: cur=PAGE_A_TOKEN -> present A (just drawn), then switch to B
         sta     <page_source_blit       ; [ref: kernel.s sta $E4 (save blit source)]
-        lda     #PAGE_B
-        sta     <page_register          ; [ref: kernel.s lda #$40 / sta $07]
+        * Option I: VBL wait and present BEFORE toggling page_register.
+        * page_register still = PAGE_A_TOKEN so HAL_gfx_present shows Frame A.
         lda     #1
         jsr     HAL_time_vbl_wait       ; [ref: kernel.s jsr routine_07d7 (VBL sync)]
         jsr     HAL_gfx_present         ; [ref: kernel.s lda TXTPAGE1 (display gate)]
+        lda     #PAGE_B_TOKEN
+        sta     <page_register          ; [ref: kernel.s lda #$40 / sta $07] — set new draw target
         rts
 
 * ---------------------------------------------------------------
 * page_flip_to_a (internal label)
 *
-* Second half of the page-flip pair (cur=PAGE_B -> switch to PAGE_A).
-* Entered via beq from page_flip when page_register already == PAGE_B.
-* A = PAGE_B on entry (loaded before the beq; preserved across branch).
+* Second half of the page-flip pair (cur=PAGE_B_TOKEN -> switch to PAGE_A_TOKEN).
+* Entered via beq from page_flip when page_register already == PAGE_B_TOKEN.
+* A = PAGE_B_TOKEN on entry (loaded before the beq; preserved across branch).
 *
 * ORIGIN: karateka_dissasembly_claude src/kernel.s $07AC (routine_07ac)
 *
 * [ref: kernel.s routine_07ac — sta $E4; lda #$20; sta $07; jsr routine_07d7; lda TXTPAGE2]
 * ---------------------------------------------------------------
 page_flip_to_a:
-        sta     <page_source_blit       ; A = PAGE_B; [ref: kernel.s sta $E4]
-        lda     #PAGE_A
-        sta     <page_register          ; [ref: kernel.s lda #$20 / sta $07]
+        sta     <page_source_blit       ; A = PAGE_B_TOKEN; [ref: kernel.s sta $E4]
+        * Option I: VBL wait and present BEFORE toggling page_register.
+        * page_register still = PAGE_B_TOKEN so HAL_gfx_present shows Frame B.
         lda     #1
         jsr     HAL_time_vbl_wait       ; [ref: kernel.s jsr routine_07d7 (VBL sync)]
         jsr     HAL_gfx_present         ; [ref: kernel.s lda TXTPAGE2]
+        lda     #PAGE_A_TOKEN
+        sta     <page_register          ; [ref: kernel.s lda #$20 / sta $07] — set new draw target
         rts

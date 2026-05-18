@@ -247,6 +247,27 @@ def main():
     coco3_bitmap, coco3_width = convert_sprite_to_coco3(bitmap_bytes, height, apple_width,
                                                          args.start_col)
 
+    # Trim trailing and leading all-zero byte columns (P2.3a.11-followup-2)
+    original_width = coco3_width
+    if coco3_width > 0:
+        col_has_content = [
+            any(coco3_bitmap[row * coco3_width + col] != 0 for row in range(height))
+            for col in range(coco3_width)
+        ]
+        L = next((i for i in range(coco3_width) if col_has_content[i]), 0)
+        R = next((i for i in range(coco3_width - 1, -1, -1) if col_has_content[i]), coco3_width - 1)
+        trimmed_width = R - L + 1
+        leading_stripped = L
+        trailing_stripped = coco3_width - R - 1
+        if trimmed_width < coco3_width:
+            new_bitmap = bytearray()
+            for row in range(height):
+                new_bitmap.extend(coco3_bitmap[row * coco3_width + L:row * coco3_width + R + 1])
+            coco3_bitmap = new_bitmap
+            coco3_width = trimmed_width
+            print(f"Trim: original_W={original_width} lead_stripped={leading_stripped} "
+                  f"trail_stripped={trailing_stripped} -> trimmed_W={coco3_width}")
+
     source_ref = f"{os.path.basename(args.source)}"
     write_s_file(args.output, coco_label, height, coco3_width, coco3_bitmap,
                  source_ref, args.label, args.start_col)

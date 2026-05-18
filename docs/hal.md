@@ -128,21 +128,41 @@ Produced by `tools/sprite_convert.py`. Verified visually via
 
 ### 4.2 Palette format
 
-4 bytes, one per palette entry, each a 6-bit GIME color code (0-63):
+4 bytes, one per palette entry, each a 6-bit GIME color code (0-63) in
+composite mode (bits 5:4 = intensity 0-3; bits 3:0 = hue 0-15).
 
 ```
-byte 0: palette index 0 (background)
-byte 1: palette index 1 (foreground)
-byte 2: reserved
-byte 3: reserved
+byte 0: palette index 0 (background / black)
+byte 1: palette index 1 (orange chroma)
+byte 2: palette index 2 (blue/cyan chroma)
+byte 3: palette index 3 (white / foreground)
 ```
 
-v1.0 global palette: `[0, 63, 21, 42]` (black, white, mid-gray ×2).
-Produced by `tools/palette_derive.py`. Stored in
-`content/palettes/global.bin`.
+**Verified palette (Brøderbund splash descriptor 0, MAME composite, P2.3a):**
 
-`[no-ref: GIME color encoding (6-bit value → actual RGB) — verify
-in GIME-RM §3.x during P2]`
+| Index | GIME value | Composite (intensity, hue) | Color |
+|-------|------------|----------------------------|-------|
+| 0 | $00 | intensity 0 | black |
+| 1 | $26 | intensity 2, hue 6 | orange |
+| 2 | $1B | intensity 1, hue 11 | blue/cyan |
+| 3 | $3F | intensity 3, hue 15 | white |
+
+Written to GIME registers $FFB0-$FFB3 by `HAL_gfx_init` (descriptor 0).
+Verified via `tests/scripted/palette_test_driver.bin` + MAME observation
+(P2.3a.6-followup-2, P2.3a.7).
+
+**Note on color encoding:** MAME emulates CoCo3 in composite monitor mode.
+RGB monitor interpretation (bits 5:0 = R1 G1 B1 R0 G0 B0) is NOT used.
+`[ref: docs/SockmasterGime.md lines 218-242 — composite vs RGB mode]`
+
+**Note on 2bpp pixel values:** 2bpp pixel index 0 = transparent (black
+background), index 1 = orange (chroma fringing), index 2 = blue/cyan
+(chroma fringing), index 3 = white (primary content color). The orange and
+blue/cyan fringing at sprite edges is intentional NTSC artifacting from the
+chroma model in `tools/sprite_convert.py`.
+
+`[ref: src/hal/coco3-dsk/gfx.s HAL_gfx_init — palette register programming]`
+`[ref: docs/conventions.md §21 — transparency: index 0 = transparent key color]`
 
 ### 4.3 Sound data formats
 
@@ -220,21 +240,45 @@ writes to front (visible) buffer.
 `[no-ref: frame buffer address / size — depends on GIME MMU slot
 assignments: [ref: memory-map §3.2] FFA4=$3C/$3D (Frame A), FFA6=$3E/$3F (Frame B)]`
 
-#### HAL_gfx_blit_sprite
+#### HAL_gfx_blit_sprite (revised P2.4)
 
-Render a CoCo3 packed sprite into the back buffer at a given
-column and row position.
+Render a CoCo3 packed sprite into the back buffer at a sub-byte-precise
+position with transparency-aware semantics.
 
 | | |
 |---|---|
-| Args | X = sprite pointer (P1.2 format); A = byte column (0-79); B = pixel row (0-191) |
+| Args | X = sprite pointer (§4.1 format); A = byte_col (0-79); B = pixel_row (0-191); ZP $0C = subbyte (0-3) **caller must set** |
 | Returns | CC.C clear on success |
 | Errors | ERR_INVALID if sprite extends beyond frame buffer |
 | Preserves | U |
-| Clobbers | A, B, X, Y, CC |
+| Clobbers | A, B, X, Y, CC, ZP $0D/$0E/$0F |
 
-Column unit: byte (4 pixels). At 320px wide, 80 bytes per row.
-The blit algorithm is engine-internal; GIME has no sprite hardware.
+**Sub-byte rendering:** `ZP $0C (blit_subbyte)` must be set by the caller
+before each call. Shift amount = 2 × subbyte bits. Effective output width =
+sprite_width + 1 bytes when subbyte > 0 (overflow byte extends rightward).
+See `docs/conventions.md §20`.
+
+**Transparency semantics:** source index 0 (black, 2bpp = 00) preserves
+destination; non-zero source replaces destination. Applied to all 5 blit
+cases (sb0/sb1/sb2/sb3 + overflow byte). See `docs/conventions.md §21`.
+
+**Cycle cost per source byte:**
+- subbyte=0: ~43 cy
+- subbyte=1: ~83 cy
+- subbyte=2: ~94 cy
+- subbyte=3: ~102 cy
+
+**Bounds check:** `col + width <= 78` when subbyte > 0 (overflow byte must
+fit). Current implementation does not check overflow byte bounds.
+
+Column unit: byte (4 pixels). 80 bytes per row (320px / 4px per byte).
+GIME has no sprite hardware; all rendering is software blit.
+
+`[ref: docs/conventions.md §20 — sub-byte position convention]`
+`[ref: docs/conventions.md §21 — transparency semantics]`
+`[ref: src/hal/coco3-dsk/gfx.s HAL_gfx_blit_sprite — P2.4.1 implementation]`
+`[ref: p2-4-1-verdict-v1 — sub-byte shifter CONFIRMED]`
+`[ref: p2-4-1-followup-1-verdict-v1 — transparency CONFIRMED]`
 
 #### HAL_gfx_set_palette
 

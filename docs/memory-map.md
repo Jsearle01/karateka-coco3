@@ -124,6 +124,26 @@ P2 before writing any code that touches $80+]`
 grows downward from `$01FF`. Stack pointer initialized to `$01FF`
 at boot.
 
+Sub-allocation at bottom of stack region (P2.3a.0):
+
+```
+$0100-$0111  Handler dispatch block (18 bytes)
+               Six 3-byte RTI stubs; CoCo3 $FExx chain routes here.
+               Address order: swi3=$0100, swi2=$0103, swi=$0106,
+               nmi=$0109, irq=$010C, firq=$010F
+               [ref: docs/SockmasterGime.md §1]
+               [ref: src/hal/coco3-dsk/sys.s]
+$0112-$0117  Reserved for dispatch block expansion (6 bytes)
+$0118-$01FF  Stack (232 bytes available for runtime use)
+```
+
+With the 32-byte per-call budget (`docs/conventions.md §4`), the
+deepest stack reach is approximately `$01E0`, far above the dispatch
+block. The sub-allocation is architecturally safe.
+
+`[ref: docs/conventions.md §2 — handler dispatch block band entry]`
+`[ref: docs/interrupt-handling.md §4 — dispatch block design]`
+
 Conventional placement: `$0100-$01FF` is the standard 6809 stack
 region (immediately above DP, below engine code). This is simpler
 than pop-coco3's `$FE00-$FEFF` stack and keeps stack adjacent to

@@ -125,7 +125,8 @@ ERR_INTERNAL    equ 8           ; internal HAL error
 ;--------------------------------------------------------------
 ; INIT ORDER (call in this sequence at boot)
 ;
-; 1. HAL_mem_size_detect  (memory probe first)
+; 0. HAL_sys_init         (bare-metal transition: mask + $FF90 + MMU)
+; 1. HAL_mem_size_detect  (memory probe)
 ; 2. HAL_time_init        (timing before other init)
 ; 3. HAL_gfx_init         (screen up early for error display)
 ; 4. HAL_input_init
@@ -138,26 +139,36 @@ ERR_INTERNAL    equ 8           ; internal HAL error
 ;==============================================================
 ; GRAPHICS SUBSYSTEM — DETAILED
 ; Target: GIME 320×192×4 color mode, double-buffered.
+; P2.3a: HAL_gfx_init and HAL_gfx_clear implemented in
+;   src/hal/coco3-dsk/gfx.s. HAL_gfx_present remains a stub.
 ;
-; [no-ref: GIME mode setup (CRES/HRES bits for 320×192×4) —
-;   resolve during P2 by reading GIME-RM for CRES bit field
-;   and CC3-TR for mode register layout]
-; [no-ref: GIME palette register addresses ($FFB0-$FFBF assumed
-;   from Sockmaster-GIME; verify exact range in GIME-RM §3.x
-;   during P2]
-; [no-ref: frame buffer MMU slot assignments — resolve during
-;   P2 memory map work (P1.6 deliverable)]
+; Symbol resolution note (P2.3a, D2):
+;   The prior `equ *` pattern for HAL_gfx_init/HAL_gfx_clear was
+;   broken: including hal.inc at any point resolved all gfx symbols
+;   to the same PC value. Replaced with `import` declarations for
+;   lwasm multi-file builds. When building single-file test drivers
+;   (lwasm --decb), hal.inc is NOT included — drivers inline the HAL
+;   functions directly (existing pattern per timer_framesync_driver.s
+;   and kernel_dispatch_driver.s). The `import` declarations are
+;   effective only in multi-object production builds.
+;   Precedent: no prior lwasm import/export usage in this project.
+;   Pattern introduced here; document in build system when production
+;   build is wired (post-P2).
 ;==============================================================
 
 ; HAL_gfx_init
 ;   Initialize GIME for 320×192×4 mode with double buffering.
-;   Args:  A = palette descriptor index (0 = default global palette)
-;   Returns: CC.C clear on success
-;   Errors:  ERR_NOMEM if frame buffers cannot be allocated
+;   P2.3a: real implementation in src/hal/coco3-dsk/gfx.s.
+;   Args:  A = palette descriptor index (0 = Brøderbund default)
+;          A != 0 falls through to descriptor 0 (only descriptor
+;          implemented in P2.3a).
+;   Returns: CC.C clear on success (always; ERR_NOMEM never raised,
+;            frame buffers statically allocated per P1.6)
 ;   Preserves: U, Y
 ;   Clobbers: A, B, X, CC
 ;   Init order: 3
-HAL_gfx_init        equ *       ; defined in src/hal/coco3-dsk/gfx.s
+;   [ref: src/hal/coco3-dsk/gfx.s — implementation]
+        import  HAL_gfx_init            ; defined in src/hal/coco3-dsk/gfx.s
 
 ; HAL_gfx_shutdown
 ;   Restore screen mode (e.g. return to text for error display).
@@ -166,31 +177,42 @@ HAL_gfx_init        equ *       ; defined in src/hal/coco3-dsk/gfx.s
 ;   Errors:  none
 ;   Preserves: U, Y
 ;   Clobbers: A, B, X, CC
-HAL_gfx_shutdown    equ *       ; defined in src/hal/coco3-dsk/gfx.s
+HAL_gfx_shutdown    equ *       ; STUB-P3 — not yet implemented
 
 ; HAL_gfx_clear
 ;   Fill active back buffer with palette index 0 (background).
+;   P2.3a: real implementation in src/hal/coco3-dsk/gfx.s.
+;   Requires page_register (DP $50) initialized before call.
 ;   Args:  none
 ;   Returns: CC.C clear
 ;   Errors:  none
 ;   Preserves: U
 ;   Clobbers: A, B, X, Y, CC
 ;   Note: per D.3 back-buffer discipline; never writes to front
-HAL_gfx_clear       equ *       ; defined in src/hal/coco3-dsk/gfx.s
+;   [ref: src/hal/coco3-dsk/gfx.s — implementation]
+        import  HAL_gfx_clear           ; defined in src/hal/coco3-dsk/gfx.s
 
 ; HAL_gfx_blit_sprite
-;   Render CoCo3 packed sprite at (col, row) in back buffer.
+;   Render CoCo3 packed sprite at sub-byte-precise (col, row) in back buffer.
+;   Runtime pixel-shift port of Apple II Karateka L1A84 mechanism
+;   (karateka_dissasembly_claude/src/video.s lines 391-492, P2.4.1).
 ;   Args:  X = pointer to sprite binary (height + coco3_width +
 ;               packed bitmap per P1.2 format)
 ;          A = destination byte column (0-79; 4px per byte)
 ;          B = destination pixel row (0-191)
+;          ZP $0C (blit_subbyte) = sub-byte pixel offset 0-3; CALLER MUST SET
+;            0 = byte-aligned (same as prior P2.3a.6 behavior)
+;            1 = shift right 1 pixel (2 bits)
+;            2 = shift right 2 pixels (4 bits)
+;            3 = shift right 3 pixels (6 bits)
 ;   Returns: CC.C clear on success
 ;   Errors:  ERR_INVALID if sprite extends beyond frame buffer
 ;   Preserves: U
-;   Clobbers: A, B, X, Y, CC
-;   [no-ref: blit algorithm is engine-internal; GIME has no
-;     sprite hardware — pure packed-byte memory write]
-HAL_gfx_blit_sprite equ *       ; defined in src/hal/coco3-dsk/gfx.s
+;   Clobbers: A, B, X, Y, CC, ZP $0D/$0E (blit_ovf_new/prev)
+;   Note: when blit_subbyte>0, effective output width = sprite_width+1 bytes;
+;         caller must ensure col+width <= 78 to avoid out-of-bounds overflow write.
+;   [ref: src/hal/coco3-dsk/gfx.s — implementation]
+        import  HAL_gfx_blit_sprite     ; defined in src/hal/coco3-dsk/gfx.s (P2.4.1)
 
 ; HAL_gfx_set_palette
 ;   Write 4-entry palette to GIME palette registers.
@@ -204,7 +226,7 @@ HAL_gfx_blit_sprite equ *       ; defined in src/hal/coco3-dsk/gfx.s
 ;   [no-ref: GIME palette register addresses — verify in
 ;     GIME-RM §3.x during P2; Sockmaster-GIME empirical note:
 ;     writes during active scanline cause visible artifact]
-HAL_gfx_set_palette equ *       ; defined in src/hal/coco3-dsk/gfx.s
+HAL_gfx_set_palette equ *       ; STUB-P3 — not yet implemented
 
 ; HAL_gfx_present
 ;   Swap front/back buffers (double-buffer flip).
@@ -216,7 +238,7 @@ HAL_gfx_set_palette equ *       ; defined in src/hal/coco3-dsk/gfx.s
 ;   Timing: call after render complete, before or during VBL
 ;   [no-ref: GIME buffer-base register (VOFF or equivalent)
 ;     for page flip — resolve during P2 from GIME-RM]
-HAL_gfx_present     equ *       ; defined in src/hal/coco3-dsk/gfx.s
+        import  HAL_gfx_present         ; defined in src/hal/coco3-dsk/gfx.s (P2.3a.5)
 
 ;==============================================================
 ; TIME SUBSYSTEM — DETAILED
@@ -235,7 +257,7 @@ HAL_gfx_present     equ *       ; defined in src/hal/coco3-dsk/gfx.s
 ;   Preserves: U, Y
 ;   Clobbers: A, B, X, CC
 ;   Init order: 2
-HAL_time_init       equ *       ; defined in src/hal/coco3-dsk/time.s
+        import  HAL_time_init           ; defined in src/hal/coco3-dsk/time.s
 
 ; HAL_time_vbl_wait
 ;   Block until next vertical blanking interval.
@@ -247,7 +269,7 @@ HAL_time_init       equ *       ; defined in src/hal/coco3-dsk/time.s
 ;   Preserves: U, Y, X
 ;   Clobbers: A, B, CC
 ;   Side effects: increments internal frame counter
-HAL_time_vbl_wait   equ *       ; defined in src/hal/coco3-dsk/time.s
+        import  HAL_time_vbl_wait       ; defined in src/hal/coco3-dsk/time.s
 
 ; HAL_time_frame_count
 ;   Return current 16-bit frame counter (wraps $FFFF→$0000).
@@ -256,7 +278,7 @@ HAL_time_vbl_wait   equ *       ; defined in src/hal/coco3-dsk/time.s
 ;   Errors:  none
 ;   Preserves: U, Y, X, CC
 ;   Clobbers: D
-HAL_time_frame_count equ *      ; defined in src/hal/coco3-dsk/time.s
+        import  HAL_time_frame_count    ; defined in src/hal/coco3-dsk/time.s
 
 ; HAL_time_delay
 ;   Busy-wait N frames.
@@ -265,7 +287,7 @@ HAL_time_frame_count equ *      ; defined in src/hal/coco3-dsk/time.s
 ;   Errors:  none
 ;   Preserves: U, Y, X
 ;   Clobbers: A, B, CC
-HAL_time_delay      equ *       ; defined in src/hal/coco3-dsk/time.s
+        import  HAL_time_delay          ; defined in src/hal/coco3-dsk/time.s
 
 ;==============================================================
 ; SOUND SUBSYSTEM — DETAILED
@@ -285,7 +307,7 @@ HAL_time_delay      equ *       ; defined in src/hal/coco3-dsk/time.s
 ;   Preserves: U, Y
 ;   Clobbers: A, B, X, CC
 ;   Init order: 5
-HAL_sound_init      equ *       ; defined in src/hal/coco3-dsk/sound.s
+        import  HAL_sound_init          ; defined in src/hal/coco3-dsk/sound.s (P2.3a.3 stub)
 
 ; HAL_sound_shutdown
 ;   Silence output and release sound resources.
@@ -360,7 +382,7 @@ HAL_sound_play_event equ *      ; defined in src/hal/coco3-dsk/sound.s
 ;   Init order: 1 (first — other init may need memory info)
 ;   [no-ref: GIME MMU probing for 128K vs 512K — resolve
 ;     during P2 from CC3-TR MMU section; see D.5 pattern]
-HAL_mem_size_detect equ *       ; (P2 stub)
+        import  HAL_mem_size_detect     ; defined in src/hal/coco3-dsk/mem.s (P2.3a.3 stub)
 
 ;==============================================================
 ; INPUT SUBSYSTEM — SKELETON
@@ -375,7 +397,7 @@ HAL_mem_size_detect equ *       ; (P2 stub)
 ;   Preserves: U, Y
 ;   Clobbers: A, B, X, CC
 ;   Init order: 4
-HAL_input_init      equ *       ; (P2 stub)
+        import  HAL_input_init          ; defined in src/hal/coco3-dsk/input.s
 
 ; HAL_input_poll
 ;   Sample keyboard and joystick; return packed state.
@@ -389,7 +411,7 @@ HAL_input_init      equ *       ; (P2 stub)
 ;   Clobbers: A, B, CC
 ;   [no-ref: CoCo3 keyboard matrix registers — resolve during
 ;     P2 from CC3-TR input section]
-HAL_input_poll      equ *       ; (P2 stub)
+        import  HAL_input_poll          ; defined in src/hal/coco3-dsk/input.s
 
 ;==============================================================
 ; FILE SUBSYSTEM — SKELETON
@@ -404,7 +426,7 @@ HAL_input_poll      equ *       ; (P2 stub)
 ;   Preserves: U, Y
 ;   Clobbers: A, B, X, CC
 ;   Init order: 6 (last)
-HAL_file_init       equ *       ; (P2 stub)
+        import  HAL_file_init           ; defined in src/hal/coco3-dsk/file.s (P2.3a.3 stub)
 
 ; HAL_file_load
 ;   Load entire named file to a memory address.
@@ -419,9 +441,33 @@ HAL_file_init       equ *       ; (P2 stub)
 HAL_file_load       equ *       ; (P2 stub)
 
 ;==============================================================
-; SYSTEM SUBSYSTEM — SKELETON
-; Detailed during P2.
+; SYSTEM SUBSYSTEM — P2.3a.0
+; HAL_sys_init implemented. Remainder still skeleton.
 ;==============================================================
+
+; HAL_sys_init
+;   CoCo3 bare-metal transition. Call before all other HAL init.
+;   Masks interrupts, enables all-RAM mode + GIME MMU, programs
+;   MMU task 0 slots to P1.6 physical page layout ($38-$3F).
+;
+;   Does NOT install interrupt vectors at runtime. The dispatch
+;   block at $0100-$010F (RTI stubs) is loaded by DECB. BASIC's
+;   $FExx secondary vectors remain in effect (locked by MC3=1
+;   in $FF90=$4C). See docs/interrupt-handling.md for full
+;   dispatch documentation.
+;
+;   Args:    none
+;   Returns: CC.C clear; CC.I=1, CC.F=1 (interrupts MASKED on return)
+;   Errors:  none
+;   Preserves: U, Y
+;   Clobbers: A, X, CC
+;   Init order: 0 (first — call before HAL_mem_size_detect)
+;   Precondition: BASIC boot complete; DP=0; stack initialized
+;   Postcondition: all-RAM active, MMU $38-$3F, interrupts masked
+;   [ref: src/hal/coco3-dsk/sys.s — implementation]
+;   [ref: docs/interrupt-handling.md — dispatch block design]
+;   [ref: docs/conventions.md — interrupt mask policy section]
+        import  HAL_sys_init            ; defined in src/hal/coco3-dsk/sys.s
 
 ; HAL_sys_cpu
 ;   Return detected CPU type (cached from boot probe).
@@ -446,7 +492,7 @@ HAL_sys_target      equ *       ; (P2 stub)
 ;   Args:  X = pointer to null-terminated message (or 0)
 ;   Returns: does not return
 ;   Errors:  this IS the error path
-HAL_sys_panic       equ *       ; (P2 stub)
+        import  HAL_sys_panic           ; defined in src/hal/coco3-dsk/sys.s
 
 ;==============================================================
 ; DEBUG/TRACE SUBSYSTEM — DETAILED

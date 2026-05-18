@@ -64,13 +64,13 @@
 
         setdp   0               ; DP=0; direct-page for <addr
 
-* DP variable declarations (frame-coherent band $50-$5F).
-* [NOTE: migrate to src/engine/globals.s when created.]
-* page_register    equ $50     ; (P2.1: timer_framesync.s)
-* page_source_blit equ $51     ; (P2.1: timer_framesync.s)
-frame_done          equ $52     ; frame sync reference value (ZP$D0 analog)
-frame_countdown     equ $53     ; frame down-counter (ZP$D2 analog)
-frame_sync_dc       equ $54     ; frame sync flag (ZP$DC analog)
+* DP variables declared in src/engine/globals.s (P2.3a.3 migration).
+* [ref: src/engine/globals.s — canonical DP home]
+*
+* Symbols used here (defined in globals.s):
+*   frame_done      equ $52   ; frame sync reference value (ZP$D0 analog)
+*   frame_countdown equ $53   ; frame down-counter (ZP$D2 analog)
+*   frame_sync_dc   equ $54   ; frame sync flag (ZP$DC analog)
 
 * ---------------------------------------------------------------
 * per_frame_main_loop

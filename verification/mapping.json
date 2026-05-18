@@ -7,6 +7,7 @@
   "status_values": {
     "confirmed": "Both sides pinned; compare.py runs the comparison.",
     "apple2-confirmed-coco3-predicted": "Apple II address documented with citation; CoCo3 address TBD (coco3.address is null). compare.py reports as pending, not mismatch.",
+    "coco3-only-confirmed": "No Apple II equivalent exists. CoCo3 address assigned and verified by MAME capture (deferred-frame read). compare.py skips Apple II side. Added P2.3a.2 re-verification; P2.3a.0 status taxonomy extension.",
     "unmapped": "Neither side resolved; silently skipped."
   },
   "entries": [
@@ -20,7 +21,7 @@
         "apple2": "[ref: data-areas-catalog.md ZP$07 — hires draw page base ($20=page1, $40=page2); set by kernel.s routine_0799 and routine_07ac at each page-flip/VBL cycle]",
         "coco3":  "[ref: src/engine/timer_framesync.s — page_register equ $50; DP $50 is in frame-coherent band per conventions.md §2 ($50-$5F)]"
       },
-      "notes": "Alternates $20/$40 each VBL cycle. P2.0a write-trap confirmed attract-loop page-flip indicator. CoCo3 address $50 (dec=80) confirmed by P2.1 port. Phase-independent invariant: page_register + page_source_blit = $60 on both platforms always."
+      "notes": "Alternates $20/$40 each VBL cycle. P2.0a write-trap confirmed attract-loop page-flip indicator. CoCo3 address $50 (dec=80) confirmed by P2.1 port. Phase-independent invariant: page_register + page_source_blit = $60 on both platforms always. P2.3a.2 re-verification 2026-05-16: Re-run PASS DP$50=0x40. OPTION B CONVENTION (P2.3a.5-followup-1): page_register holds the BACK BUFFER (active draw target). $20=buf-A draw target; $40=buf-B draw target. GIME displays the OTHER buffer. This inverts industry-standard front-buffer terminology; project-canonical per timer_framesync.s P2.1."
     },
     {
       "semantic_name": "page_source_blit",
@@ -32,7 +33,7 @@
         "apple2": "[ref: kernel.s routine_0799 — sta $E4 saves prior $07 value; routine_07b9 uses $E4 as blit source page high byte]",
         "coco3":  "[ref: src/engine/timer_framesync.s — page_source_blit equ $51; DP $51, companion to page_register at DP $50]"
       },
-      "notes": "Holds the prior page_register value (the just-drawn page). page_register + page_source_blit = $60 invariant. CoCo3 address $51 (dec=81) confirmed by P2.1 port."
+      "notes": "Holds the prior page_register value (the just-drawn page = old back buffer). page_register + page_source_blit = $60 invariant. CoCo3 address $51 (dec=81) confirmed by P2.1 port. P2.3a.2 re-verification 2026-05-16: Re-run PASS DP$51=0x20. OPTION B CONVENTION: page_source_blit holds the buffer just drawn to (old back), used by the blit loop to read source pixels."
     },
     {
       "semantic_name": "blit_row_dst",
@@ -68,7 +69,7 @@
         "apple2": "[ref: data-areas-catalog.md ZP$D2 — frame countdown timer; DEC $D2 at $0249 in kernel_per_frame.s per-frame loop; triggers disk_load_trigger ($0300) on reaching 0]",
         "coco3":  "[ref: src/engine/kernel_per_frame.s — frame_countdown equ $53; DP $53 in frame-coherent band per conventions.md §2 ($50-$5F); copied from frame_done in per_frame_main_loop]"
       },
-      "notes": "CoCo3 address $53 (dec=83) confirmed by P2.2 port. frame_countdown = copy of frame_done (ZP$D0 analog) at start of each per-frame iteration. Apple II ZP$D2 = 0 at frame 700 (steady attract); CoCo3 DP$53 = 0 at test frame 15. Subsystem: scene_management (not kernel); co-resides with kernel in per-frame loop for historical Apple II reasons."
+      "notes": "CoCo3 address $53 (dec=83) confirmed by P2.2 port. frame_countdown = copy of frame_done (ZP$D0 analog) at start of each per-frame iteration. Apple II ZP$D2 = 0 at frame 700 (steady attract); CoCo3 DP$53 = 0 at test frame 15. Subsystem: scene_management (not kernel); co-resides with kernel in per-frame loop for historical Apple II reasons. P2.3a.2 re-verification 2026-05-16: kernel_dispatch_test uses frame-notifier reads; broken-tap pattern does not apply. Re-run PASS: DP$53=0x00 confirmed. Status: no-change."
     },
     {
       "semantic_name": "frame_done",
@@ -80,7 +81,7 @@
         "apple2": "[ref: kernel_per_frame.s ZP$D0 — frame sync reference value; lda $D0 + jsr L0300 per-frame restart-trigger; 0 = steady attract state]",
         "coco3":  "[ref: src/engine/kernel_per_frame.s — frame_done equ $52; DP $52 in frame-coherent band per conventions.md §2 ($50-$5F)]"
       },
-      "notes": "CoCo3 address $52 (dec=82) confirmed by P2.2 port. ZP$D0 = 0 at steady attract state (triggers disk_load_trigger only when non-zero). CoCo3 DP$52 = 0 throughout P2.2 attract-time operation (scene_transition_check stub always returns without firing). Apple II frame 700: ZP$D0=0."
+      "notes": "CoCo3 address $52 (dec=82) confirmed by P2.2 port. ZP$D0 = 0 at steady attract state (triggers disk_load_trigger only when non-zero). CoCo3 DP$52 = 0 throughout P2.2 attract-time operation (scene_transition_check stub always returns without firing). Apple II frame 700: ZP$D0=0. P2.3a.2 re-verification 2026-05-16: frame-notifier read; broken-tap pattern does not apply. Re-run PASS: DP$52=0x00 confirmed. Status: no-change."
     },
     {
       "semantic_name": "frame_sync_dc",
@@ -92,7 +93,319 @@
         "apple2": "[ref: kernel_per_frame.s ZP$DC — frame sync state flag; set to $01 at input-detected paths; set to $00 at ctrl_r path; tracks whether input was detected in current frame window]",
         "coco3":  "[ref: src/engine/kernel_per_frame.s — frame_sync_dc equ $54; DP $54 in frame-coherent band per conventions.md §2 ($50-$5F)]"
       },
-      "notes": "CoCo3 address $54 (dec=84) confirmed by P2.2 port. ZP$DC = 0 in normal attract state (no input). CoCo3 DP$54 = 0 throughout P2.2 (HAL_input_poll stub always returns no-input). Apple II frame 700: ZP$DC not captured — confirm during input subsystem port."
+      "notes": "CoCo3 address $54 (dec=84) confirmed by P2.2 port. ZP$DC = 0 in normal attract state (no input). CoCo3 DP$54 = 0 throughout P2.2 (HAL_input_poll stub always returns no-input). Apple II frame 700: ZP$DC not captured — confirm during input subsystem port. P2.3a.2 re-verification 2026-05-16: frame-notifier read; broken-tap pattern does not apply. Re-run PASS: DP$54=0x00 confirmed. Status: no-change."
+    },
+    {
+      "semantic_name": "gfx_initialized",
+      "subsystem": "hal_gfx",
+      "apple2": { "address": null, "size": null },
+      "coco3":  { "address": 18, "size": 1 },
+      "status": "coco3-only-confirmed",
+      "citation": {
+        "apple2": "[no-ref: no Apple II equivalent; Apple II hires always active after boot, no explicit init flag]",
+        "coco3":  "[ref: src/hal/coco3-dsk/gfx.s — gfx_initialized equ $12; DP $12 in HAL scratch band $00-$1F per conventions.md §2]"
+      },
+      "notes": "P2.3a: gfx_initialized set to $01 by HAL_gfx_init. $00 at reset. No Apple II equivalent. P2.3a.2 2026-05-16: deferred-read harness confirmed DP$12=$01 post-commit (gfx_init_test PASS). Status corrected from apple2-confirmed-coco3-predicted to coco3-only-confirmed per D11 schema extension (P2.3a.0). compare.py skips Apple II side."
+    },
+    {
+      "semantic_name": "gfx_frame_a_base_sample",
+      "subsystem": "hal_gfx",
+      "apple2": { "address": null, "size": null },
+      "coco3":  { "address": 32768, "size": 1 },
+      "status": "apple2-confirmed-coco3-predicted",
+      "citation": {
+        "apple2": "[no-ref: no direct Apple II equivalent; Apple II hires page 1 at $2000 has different pixel format]",
+        "coco3":  "[ref: memory-map.md §4.8 — Frame A (back buffer) base at $8000; HAL_gfx_init clears $8000-$BBFF to $00]"
+      },
+      "notes": "P2.3a: Frame A ($8000) cleared to $00 by HAL_gfx_init. Predicted post-init: $00. compare.py verifies if CoCo3 capture includes $8000-$BBFF region."
+    },
+    {
+      "semantic_name": "gfx_frame_a_tail_sample",
+      "subsystem": "hal_gfx",
+      "apple2": { "address": null, "size": null },
+      "coco3":  { "address": 48127, "size": 1 },
+      "status": "apple2-confirmed-coco3-predicted",
+      "citation": {
+        "apple2": "[no-ref: no Apple II equivalent]",
+        "coco3":  "[ref: memory-map.md §4.8 — Frame A ends at $BBFF (= $8000 + $3BFF); HAL_gfx_init clears 15,360 bytes ($3C00)]"
+      },
+      "notes": "P2.3a: Frame A tail byte ($BBFF, dec=48127) cleared to $00. Verifies HAL_gfx_init cleared the full $3C00-byte frame buffer without overflow. Predicted post-init: $00."
+    },
+    {
+      "semantic_name": "gfx_frame_b_base_sample",
+      "subsystem": "hal_gfx",
+      "apple2": { "address": null, "size": null },
+      "coco3":  { "address": 49152, "size": 1 },
+      "status": "apple2-confirmed-coco3-predicted",
+      "citation": {
+        "apple2": "[no-ref: no Apple II equivalent]",
+        "coco3":  "[ref: memory-map.md §4.9 — Frame B (front buffer) base at $C000; HAL_gfx_init clears $C000-$FBFF to $00]"
+      },
+      "notes": "P2.3a: Frame B ($C000, dec=49152) cleared to $00 by HAL_gfx_init. Predicted post-init: $00. compare.py verifies if CoCo3 capture includes $C000-$FBFF region."
+    },
+    {
+      "semantic_name": "gfx_frame_b_tail_sample",
+      "subsystem": "hal_gfx",
+      "apple2": { "address": null, "size": null },
+      "coco3":  { "address": 64511, "size": 1 },
+      "status": "apple2-confirmed-coco3-predicted",
+      "citation": {
+        "apple2": "[no-ref: no Apple II equivalent]",
+        "coco3":  "[ref: memory-map.md §4.9 — Frame B ends at $FBFF (= $C000 + $3BFF); HAL_gfx_init clears 15,360 bytes ($3C00)]"
+      },
+      "notes": "P2.3a: Frame B tail byte ($FBFF, dec=64511) cleared to $00. Verifies HAL_gfx_init cleared the full $3C00-byte Frame B without overflow. Predicted post-init: $00."
+    },
+    {
+      "semantic_name": "gime_vmode_vres",
+      "subsystem": "hal_gfx",
+      "apple2": { "address": null, "size": null },
+      "coco3":  { "address": 65432, "size": 2 },
+      "status": "unmapped",
+      "citation": {
+        "apple2": "[no-ref: no Apple II equivalent; Apple II hires mode is implicit, not register-programmed]",
+        "coco3":  "[ref: GIME-RM §10] $FF98=$80 (VMODE: graphics), $FF99=$15 (VRES: 320x192x4); [ref: refs/GFXMODE3.ASM line 48-49]"
+      },
+      "notes": "GIME WRITE-ONLY registers. Predicted post-init: $FF98=$80 (dec=128), $FF99=$15 (dec=21). Cannot be read back from CoCo3 hardware; compare.py silently skips (unmapped). P2.3a.1 sentinel test discharges R1/R2 by MAME screen-state observation."
+    },
+    {
+      "semantic_name": "gime_voffset",
+      "subsystem": "hal_gfx",
+      "apple2": { "address": null, "size": null },
+      "coco3":  { "address": 65437, "size": 2 },
+      "status": "unmapped",
+      "citation": {
+        "apple2": "[no-ref: Apple II hires page select via soft switches $C054/$C055, not memory-mapped registers with direct analogue]",
+        "coco3":  "[ref: GIME-RM §13] VOFFSET = physical_addr / 8; Frame B physical $7C000: $FF9D=$F8, $FF9E=$00; [ref: memory-map.md §4.9-4.10]"
+      },
+      "notes": "GIME WRITE-ONLY registers. Predicted post-init: $FF9D=$F8 (hi), $FF9E=$00 (lo) — GIME displays Frame B as initial front buffer. VOFFSET correctness NOT verified in P2.3a per plan §3.2 R6 amendment; discharge by P2.3a.1 sentinel test. Cannot be read back; silently skipped by compare.py."
+    },
+    {
+      "semantic_name": "gime_init0",
+      "subsystem": "hal_gfx",
+      "apple2": { "address": null, "size": null },
+      "coco3":  { "address": 65424, "size": 1 },
+      "status": "unmapped",
+      "citation": {
+        "apple2": "[no-ref: no Apple II equivalent]",
+        "coco3":  "[ref: GIME-RM §4] $FF90 INIT0: COCO=0,MMUEN=1,MC3=1,MC2=1 = $4C; [ref: refs/GFXMODE3.ASM line 53-54; [ref: GIME-RM §14] written LAST in init sequence]"
+      },
+      "notes": "GIME WRITE-ONLY register. Predicted post-init: $4C (dec=76). Cannot be read back. Bit semantics empirically from GFXMODE3.ASM (MAME-verified Nov 2025); GIME-RM §4 bit-level derivation is a non-blocking methodology open item. Silently skipped by compare.py."
+    },
+    {
+      "semantic_name": "gime_palette_0_3",
+      "subsystem": "hal_gfx",
+      "apple2": { "address": null, "size": null },
+      "coco3":  { "address": 65456, "size": 4 },
+      "status": "unmapped",
+      "citation": {
+        "apple2": "[no-ref: Apple II hires uses no explicit 4-color palette; color from bit7+pixel-position]",
+        "coco3":  "[ref: GIME-RM §8] palette registers $FFB0-$FFB3 (6-bit GIME codes); [ref: tools/sprite_convert.py chroma model P2.3a.6] values: $00,$2C,$03,$3F"
+      },
+      "notes": "GIME WRITE-ONLY registers. Brøderbund palette descriptor 0 (P2.3a.6 corrected). Predicted post-init: $FFB0=$00 (black), $FFB1=$2C (orange=44), $FFB2=$03 (blue=3), $FFB3=$3F (white=63). Cannot be read back. Silently skipped by compare.py. Values derived from MAME-empirical chroma model validated against snap 0083; corrected from GFXMODE3.ASM values ($26,$1B,$FF) in P2.3a.6."
+    },
+    {
+      "semantic_name": "dispatch_block_swi3_rti",
+      "subsystem": "hal_sys",
+      "apple2": { "address": null, "size": null },
+      "coco3":  { "address": 256, "size": 1 },
+      "status": "coco3-only-confirmed",
+      "citation": {
+        "apple2": "[no-ref: no Apple II equivalent; 6502 interrupt dispatch is 2-level, no $01xx dispatch block]",
+        "coco3":  "[ref: src/hal/coco3-dsk/sys.s — swi3_handler at $0100; rti opcode $3B; loaded by DECB]"
+      },
+      "notes": "P2.3a.0: SWI3 dispatch block entry at $0100 (dec=256). RTI opcode = $3B. Predicted post-load: $3B. Verifiable via RAM read (not GIME write-only). [ref: docs/SockmasterGime.md §1 — SWI3 routes $FFF2→$FEEE→$0100]"
+    },
+    {
+      "semantic_name": "dispatch_block_swi2_rti",
+      "subsystem": "hal_sys",
+      "apple2": { "address": null, "size": null },
+      "coco3":  { "address": 259, "size": 1 },
+      "status": "coco3-only-confirmed",
+      "citation": {
+        "apple2": "[no-ref: no Apple II equivalent]",
+        "coco3":  "[ref: src/hal/coco3-dsk/sys.s — swi2_handler at $0103; rti opcode $3B]"
+      },
+      "notes": "P2.3a.0: SWI2 dispatch slot at $0103 (dec=259). RTI=$3B. [ref: SockmasterGime §1 — SWI2→$FFF4→$FEF1→$0103]"
+    },
+    {
+      "semantic_name": "dispatch_block_swi_rti",
+      "subsystem": "hal_sys",
+      "apple2": { "address": null, "size": null },
+      "coco3":  { "address": 262, "size": 1 },
+      "status": "coco3-only-confirmed",
+      "citation": {
+        "apple2": "[no-ref: no Apple II equivalent]",
+        "coco3":  "[ref: src/hal/coco3-dsk/sys.s — swi_handler at $0106; rti opcode $3B]"
+      },
+      "notes": "P2.3a.0: SWI dispatch slot at $0106 (dec=262). RTI=$3B. [ref: SockmasterGime §1 — SWI→$FFFA→$FEFA→$0106]"
+    },
+    {
+      "semantic_name": "dispatch_block_nmi_rti",
+      "subsystem": "hal_sys",
+      "apple2": { "address": null, "size": null },
+      "coco3":  { "address": 265, "size": 1 },
+      "status": "coco3-only-confirmed",
+      "citation": {
+        "apple2": "[no-ref: no Apple II equivalent]",
+        "coco3":  "[ref: src/hal/coco3-dsk/sys.s — nmi_handler at $0109; rti opcode $3B]"
+      },
+      "notes": "P2.3a.0: NMI dispatch slot at $0109 (dec=265). RTI=$3B. [ref: SockmasterGime §1 — NMI→$FFFC→$FEFD→$0109]"
+    },
+    {
+      "semantic_name": "dispatch_block_irq_rti",
+      "subsystem": "hal_sys",
+      "apple2": { "address": null, "size": null },
+      "coco3":  { "address": 268, "size": 1 },
+      "status": "coco3-only-confirmed",
+      "citation": {
+        "apple2": "[no-ref: no Apple II equivalent]",
+        "coco3":  "[ref: src/hal/coco3-dsk/sys.s — irq_handler at $010C; rti opcode $3B]"
+      },
+      "notes": "P2.3a.0: IRQ dispatch slot at $010C (dec=268). RTI=$3B. P3.1 replacement target (VBL handler). [ref: SockmasterGime §1 — IRQ→$FFF8→$FEF7→$010C]"
+    },
+    {
+      "semantic_name": "dispatch_block_firq_rti",
+      "subsystem": "hal_sys",
+      "apple2": { "address": null, "size": null },
+      "coco3":  { "address": 271, "size": 1 },
+      "status": "coco3-only-confirmed",
+      "citation": {
+        "apple2": "[no-ref: no Apple II equivalent]",
+        "coco3":  "[ref: src/hal/coco3-dsk/sys.s — firq_handler at $010F; rti opcode $3B]"
+      },
+      "notes": "P2.3a.0: FIRQ dispatch slot at $010F (dec=271). RTI=$3B. [ref: SockmasterGime §1 — FIRQ→$FFF6→$FEF4→$010F]"
+    },
+    {
+      "semantic_name": "mmu_slot_0",
+      "subsystem": "hal_sys",
+      "apple2": { "address": null, "size": null },
+      "coco3":  { "address": 65440, "size": 1 },
+      "status": "coco3-only-confirmed",
+      "citation": {
+        "apple2": "[no-ref: Apple II has no MMU]",
+        "coco3":  "[ref: docs/memory-map.md §3.2 — FFA0=$38, $0000-$1FFF→physical $70000; [ref: docs/SockmasterGime.md] MMU task 0 register]"
+      },
+      "notes": "P2.3a.0: MMU task 0 slot 0 at $FFA0 (dec=65440). Predicted post-HAL_sys_init: $38 (dec=56). Maps $0000-$1FFF to physical $70000. Readable in MAME (palette register probe in P2.3a showed $FFA0-$FFA7 readable as RAM). Pre-init value set by CoCo3 ROM boot."
+    },
+    {
+      "semantic_name": "mmu_slot_1",
+      "subsystem": "hal_sys",
+      "apple2": { "address": null, "size": null },
+      "coco3":  { "address": 65441, "size": 1 },
+      "status": "coco3-only-confirmed",
+      "citation": {
+        "apple2": "[no-ref: no Apple II equivalent]",
+        "coco3":  "[ref: docs/memory-map.md §3.2 — FFA1=$39, $2000-$3FFF→physical $72000]"
+      },
+      "notes": "P2.3a.0: MMU slot 1 at $FFA1 (dec=65441). Predicted post-init: $39."
+    },
+    {
+      "semantic_name": "mmu_slot_2",
+      "subsystem": "hal_sys",
+      "apple2": { "address": null, "size": null },
+      "coco3":  { "address": 65442, "size": 1 },
+      "status": "coco3-only-confirmed",
+      "citation": {
+        "apple2": "[no-ref: no Apple II equivalent]",
+        "coco3":  "[ref: docs/memory-map.md §3.2 — FFA2=$3A, $4000-$5FFF→physical $74000]"
+      },
+      "notes": "P2.3a.0: MMU slot 2 at $FFA2 (dec=65442). Predicted post-init: $3A."
+    },
+    {
+      "semantic_name": "mmu_slot_3",
+      "subsystem": "hal_sys",
+      "apple2": { "address": null, "size": null },
+      "coco3":  { "address": 65443, "size": 1 },
+      "status": "coco3-only-confirmed",
+      "citation": {
+        "apple2": "[no-ref: no Apple II equivalent]",
+        "coco3":  "[ref: docs/memory-map.md §3.2 — FFA3=$3B, $6000-$7FFF→physical $76000]"
+      },
+      "notes": "P2.3a.0: MMU slot 3 at $FFA3 (dec=65443). Predicted post-init: $3B."
+    },
+    {
+      "semantic_name": "mmu_slot_4",
+      "subsystem": "hal_sys",
+      "apple2": { "address": null, "size": null },
+      "coco3":  { "address": 65444, "size": 1 },
+      "status": "coco3-only-confirmed",
+      "citation": {
+        "apple2": "[no-ref: no Apple II equivalent]",
+        "coco3":  "[ref: docs/memory-map.md §3.2 — FFA4=$3C, $8000-$9FFF→physical $78000 (Frame A first half)]"
+      },
+      "notes": "P2.3a.0: MMU slot 4 at $FFA4 (dec=65444). Predicted post-init: $3C."
+    },
+    {
+      "semantic_name": "mmu_slot_5",
+      "subsystem": "hal_sys",
+      "apple2": { "address": null, "size": null },
+      "coco3":  { "address": 65445, "size": 1 },
+      "status": "coco3-only-confirmed",
+      "citation": {
+        "apple2": "[no-ref: no Apple II equivalent]",
+        "coco3":  "[ref: docs/memory-map.md §3.2 — FFA5=$3D, $A000-$BFFF→physical $7A000 (Frame A second half)]"
+      },
+      "notes": "P2.3a.0: MMU slot 5 at $FFA5 (dec=65445). Predicted post-init: $3D."
+    },
+    {
+      "semantic_name": "mmu_slot_6",
+      "subsystem": "hal_sys",
+      "apple2": { "address": null, "size": null },
+      "coco3":  { "address": 65446, "size": 1 },
+      "status": "coco3-only-confirmed",
+      "citation": {
+        "apple2": "[no-ref: no Apple II equivalent]",
+        "coco3":  "[ref: docs/memory-map.md §3.2 — FFA6=$3E, $C000-$DFFF→physical $7C000 (Frame B first half)]"
+      },
+      "notes": "P2.3a.0: MMU slot 6 at $FFA6 (dec=65446). Predicted post-init: $3E."
+    },
+    {
+      "semantic_name": "mmu_slot_7",
+      "subsystem": "hal_sys",
+      "apple2": { "address": null, "size": null },
+      "coco3":  { "address": 65447, "size": 1 },
+      "status": "coco3-only-confirmed",
+      "citation": {
+        "apple2": "[no-ref: no Apple II equivalent]",
+        "coco3":  "[ref: docs/memory-map.md §3.2 — FFA7=$3F, $E000-$FFFF→physical $7E000 (Frame B second half)]"
+      },
+      "notes": "P2.3a.0: MMU slot 7 at $FFA7 (dec=65447). Predicted post-init: $3F."
+    },
+    {
+      "semantic_name": "sys_init_cc_mask",
+      "subsystem": "hal_sys",
+      "apple2": { "address": null, "size": null },
+      "coco3":  { "address": 19, "size": 1 },
+      "status": "coco3-only-confirmed",
+      "citation": {
+        "apple2": "[no-ref: no Apple II equivalent; 6502 does not have separate I and F mask bits in this sense]",
+        "coco3":  "[ref: src/hal/coco3-dsk/sys.s — sys_init_cc_mask equ $13; DP $13 in HAL scratch band per conventions.md §2]"
+      },
+      "notes": "P2.3a.0: CC register value captured by test driver after HAL_sys_init returns. DP $13 (dec=19). Predicted: bits I=1 and F=1 guaranteed (ORCC #$50 sets these). E bit (bit 7) may also be set from BASIC's interrupt handling prior to binary execution — ORCC preserves E. Observed: $D0 (E=1,F=1,I=1) on first MAME run, confirming F and I set. Pass criterion: (CC & $50) == $50. Written by test driver via TFR CC,A / STA <sys_init_cc_mask; not written by HAL_sys_init itself."
+    },
+    {
+      "semantic_name": "gfx_present_voffset_high",
+      "subsystem": "hal_gfx",
+      "apple2": { "address": null, "size": null },
+      "coco3":  { "address": 65437, "size": 1 },
+      "status": "unmapped",
+      "citation": {
+        "apple2": "[no-ref: Apple II hires page select via soft switches $C054/$C055, not a comparable memory-mapped VOFFSET register]",
+        "coco3":  "[ref: GIME-RM §13] VOFFSET high byte at $FF9D (dec=65437); HAL_gfx_present writes $F0 (Frame A) or $F8 (Frame B); [ref: src/hal/coco3-dsk/gfx.s HAL_gfx_present]"
+      },
+      "notes": "P2.3a.5: GIME $FF9D VOFFSET high byte. WRITE-ONLY register per P2.3a.2 GIME probe (readback = $1B open-bus, not written value). Predicted values: $F0 if GIME displaying Frame A; $F8 if displaying Frame B. Cannot be read back. Silently skipped by compare.py. Discharge by visual observation (P2.3a.5) and sentinel VOFFSET test (P2.3a.1)."
+    },
+    {
+      "semantic_name": "gfx_present_voffset_low",
+      "subsystem": "hal_gfx",
+      "apple2": { "address": null, "size": null },
+      "coco3":  { "address": 65438, "size": 1 },
+      "status": "unmapped",
+      "citation": {
+        "apple2": "[no-ref: no Apple II equivalent]",
+        "coco3":  "[ref: GIME-RM §13] VOFFSET low byte at $FF9E (dec=65438); HAL_gfx_present writes $00 (both Frame A and B base addresses have $00 low byte)"
+      },
+      "notes": "P2.3a.5: GIME $FF9E VOFFSET low byte. WRITE-ONLY. Predicted: $00 always (frame buffers at $78000 and $7C000 both produce VOFFSET low=$00). Cannot be read back. Silently skipped."
     }
   ]
 }

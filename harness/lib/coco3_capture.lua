@@ -108,11 +108,20 @@ end
 -- Fires the first time watch_addr is written AT OR AFTER min_frame.
 -- No -debug required (space:install_write_tap, MAME 0.237+).
 -- min_frame: skip hardware-init writes before engine is running.
+--
+-- TIMING NOTE (P2.3a.2): MAME Lua write-tap callbacks fire BEFORE the
+-- underlying RAM array is updated (the tap intercepts the bus write at
+-- the address-decode phase). Reading memory inside the callback returns
+-- pre-write values. This module defers the actual memory snapshot to the
+-- frame notifier, 1 frame after the tap fires, by which point:
+--   (a) the tapped write has committed to RAM, and
+--   (b) any subsequent CPU instructions have executed.
 function M.capture_at_write_tap(watch_addr, start_addr, end_addr, name, min_frame)
     M._write_tap_captures[#M._write_tap_captures + 1] = {
         watch_addr = watch_addr, start_addr = start_addr,
         end_addr = end_addr, name = name,
-        min_frame = min_frame or 0, fired = false, _tap = nil,
+        min_frame = min_frame or 0,
+        fired = false, pending = false, tap_frame = 0, _tap = nil,
     }
 end
 
@@ -127,11 +136,13 @@ function M.install_notifier()
             cap.watch_addr, cap.watch_addr,
             "coco3cap_" .. cap.name,
             function(offset, data, mask)
-                if not cap.fired and get_frame() >= cap.min_frame then
-                    cap.fired = true
-                    local frame = get_frame()
-                    write_capture(cap.name, "write_tap", cap.watch_addr,
-                        cap.start_addr, cap.end_addr, frame)
+                -- Fire only once, only after min_frame.
+                -- Do NOT read memory here: tap fires before RAM commit.
+                -- Set pending flag; frame notifier reads 1 frame later.
+                if not cap.fired and not cap.pending
+                        and get_frame() >= cap.min_frame then
+                    cap.pending   = true
+                    cap.tap_frame = get_frame()
                     if cap._tap then pcall(function() cap._tap:remove() end) end
                 end
             end
@@ -147,6 +158,17 @@ function M.install_notifier()
             if not c.fired and frame == c.target then
                 c.fired = true
                 write_capture(c.name, "frame", frame,
+                    c.start_addr, c.end_addr, frame)
+            end
+        end
+
+        -- Deferred write-tap captures: read 1 frame after tap fired.
+        -- (tap fires before RAM commit; this frame notifier fires after commit)
+        for _, c in ipairs(M._write_tap_captures) do
+            if c.pending and not c.fired and frame > c.tap_frame then
+                c.fired   = true
+                c.pending = false
+                write_capture(c.name, "write_tap", c.watch_addr,
                     c.start_addr, c.end_addr, frame)
             end
         end
