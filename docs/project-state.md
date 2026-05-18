@@ -147,6 +147,10 @@ capture a sync-point commit per design doc Section 11.6.
   other sprites; values await measurement. See docs/conventions.md §22.
 - docs/methodology.md Rule 1 (no color from screenshots) + framebuffer dump as
   canonical verification signal established across P2.3a chain.
+- Task C methodology patterns filed to 6502-6809-conversion-patterns:
+  G.3-G.38 (36 G-methodology patterns, commits 1724351) and T-technical/T-toolchain
+  (6 references, commit 5785ee0). Both pushed to Jsearle01/6502-6809-
+  conversion-patterns on 2026-05-17.
 
 ## Open questions (will accumulate)
 
