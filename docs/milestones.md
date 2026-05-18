@@ -40,6 +40,12 @@ deliverable. Naming uses INT-N to distinguish from karateka_dissasembly_claude's
 - INT-1 — First scene displays correctly: NOT STARTED
   Requires: scene management, display setup, palette, blit/graphics engine ports +
   real HAL; first-scene assets converted (Brøderbund logo + palette).
+  Content-asset preconditions: SUBSTANTIALLY COMPLETE (2026-05-17 — logos converted,
+  6 "presents" glyphs converted (INT-1 minimum met), positions proven via visible-
+  extent formula, palette verified; full 30-glyph font and font-metrics regeneration
+  not yet done — see project-state.md §Execution history).
+  Remaining blockers: R-p23 (blit/graphics engine port), R-p24 (scene-1 path),
+  R-vbl (real GIME VBL / P3.1), R-boot (boot-path integration).
 - INT-2 — Logo → title → cliff scene sequence with transitions: NOT STARTED
   Adds: scene-transition machinery; additional scenes' content assets.
 - INT-3 — Full attract cycle including sound, cutscenes: NOT STARTED
