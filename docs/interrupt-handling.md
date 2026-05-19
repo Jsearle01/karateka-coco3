@@ -153,10 +153,11 @@ When the VBL interrupt is needed for frame synchronization (P3.1):
    driver's entry mask — these must be relaxed to allow IRQ to fire.
 4. Ensure `HAL_time_vbl_wait` uses the interrupt rather than polling.
 
-The `FIRQ` and `IRQ` distinction: the CoCo3 GIME's VSYNC can be routed
-to either FIRQ or IRQ via $FF93 (FIRQENR). Current plan routes VBL to IRQ
-(conventional CoCo3 programming). Verify against $FF93 documentation when
-implementing.
+The `FIRQ` and `IRQ` distinction: VBORD (bit 3) in `$FF92` routes VBL to IRQ;
+VBORD in `$FF93` routes VBL to FIRQ. The project routes VBL to IRQ. Canonical
+configuration: `$FF92=$08`, `$FF93=$00`, `$FF90` IEN=1. See §8 for the full
+enabling sequence, acknowledgement mechanism, and MAME verification approach.
+See §9 for the reference handler skeleton.
 
 `[ref: docs/open-questions.md Q001 — full migration question]`
 `[ref: docs/conventions.md — interrupt mask policy section]`
@@ -167,9 +168,157 @@ implementing.
 
 - `src/hal/coco3-dsk/sys.s` — HAL_sys_init implementation; dispatch block
 - `docs/conventions.md §2` — DP $13 sys_init_cc_mask allocation
-- `docs/conventions.md` — Interrupt mask policy section
+- `docs/conventions.md §16` — Interrupt mask policy section
 - `docs/memory-map.md §2` — Dispatch block within stack region
 - `docs/open-questions.md Q001` — Interrupt discipline migration
 - `docs/SockmasterGime.md §1` — Authoritative $01xx address table
+- `docs/SockmasterGime.md lines 52-67` — $FF92/$FF93 bit layout; ack mechanism
 - `6502-6809-conversion-patterns/shared/G-methodology/G.3-coco3-platform-assumptions.md`
   — G.3.3 exemplar (incident report for this issue class)
+- `docs/conventions.md §16 line 653` — note: references $FF93 for enable;
+  correct register is $FF92 (IRQENR); §8 of this document is authoritative
+
+---
+
+## 8. GIME VBL Interrupt: Hardware Specifics
+
+**Source:** `docs/SockmasterGime.md`. The Tandy CC3 Technical Reference Manual
+would corroborate these findings; PDF extraction was not available at X3
+research time. Findings here are single-source from the project's designated
+authoritative GIME reference.
+
+### 8.1 Enabling VBL on IRQ
+
+Two registers must be programmed. Order matters: enable the GIME source
+before unmasking the 6809 CPU.
+
+**Step 1 — Enable GIME IRQ globally ($FF90 IEN bit)**
+
+`[ref: docs/SockmasterGime.md — $FF90 Bit 5: IEN 1=GIME chip IRQ enabled]`
+
+The current `HAL_sys_init` writes `$FF90=$4C` (IEN=0, FEN=0 — GIME interrupts
+globally off). To enable GIME → IRQ propagation, IEN (bit 5) must be set:
+`$FF90=$6C` (`$4C | $20`). This change is part of the Q001 interrupt-discipline
+migration; see `docs/open-questions.md Q001`.
+
+**Step 2 — Enable VBORD source in $FF92 IRQENR**
+
+`[ref: docs/SockmasterGime.md lines 52-66 — $FF92 IRQENR bit layout]`
+
+| Bit | Name  | Function                        |
+|-----|-------|---------------------------------|
+| 7-6 | —     | Unused                          |
+|   5 | TMR   | Timer interrupt                 |
+|   4 | HBORD | Horizontal border interrupt     |
+|   3 | VBORD | Vertical border interrupt (VBL) |
+|   2 | EI2   | Serial data interrupt           |
+|   1 | EI1   | Keyboard interrupt              |
+|   0 | EI0   | Cartridge interrupt             |
+
+To enable VBL only:
+```asm
+        lda     #$08            ; VBORD bit only
+        sta     $FF92           ; write IRQENR — full overwrite (not RMW)
+```
+All other GIME IRQ sources remain disabled.
+
+**Step 3 — Unmask 6809 CPU IRQ**
+
+```asm
+        andcc   #$EF            ; clear CC.I (bit 4) — allows IRQ to reach CPU
+```
+
+### 8.2 Interrupt Acknowledgement
+
+`[ref: docs/SockmasterGime.md line 67 — "Reading from the register tells you`
+`which interrupts came in and acknowledges and resets the interrupt source."]`
+
+**Ack = read $FF92.** A single read simultaneously:
+1. Returns the pending source bitmap (bit 3 = VBORD if VBL fired)
+2. Clears all pending GIME IRQ flags
+
+No separate clear register. The handler must read `$FF92` before RTI. If the
+read is skipped, the IRQ line remains asserted and the CPU re-enters the
+handler immediately after RTI (infinite loop).
+
+**Timing:** ack must occur inside the handler body. No grace window.
+
+**Note on $FF03:** `docs/conventions.md §16` mentions "read $FF03 or $FF92 as
+applicable." $FF03 is the legacy PIA0 data port B (CoCo 1/2 MC6847 VSYNC
+path). With $FF90 COCO=0 (CoCo3 GIME mode, karateka-coco3 default), $FF92
+is the correct VBL ack register.
+
+### 8.3 IRQ vs FIRQ Routing
+
+`[ref: docs/SockmasterGime.md lines 52-53 — $FF93 FIRQENR identical bit layout]`
+
+$FF92 (IRQENR) and $FF93 (FIRQENR) share the same bit layout. VBORD (bit 3)
+in $FF92 routes VBL to the 6809 IRQ pin; VBORD in $FF93 routes VBL to FIRQ.
+Setting VBORD in both simultaneously asserts both pins — misconfiguration.
+
+**Canonical VBL-on-IRQ configuration:**
+```
+$FF90 = $6C    (IEN=1, FEN=0 — GIME IRQ enabled, FIRQ disabled)
+$FF92 = $08    (VBORD only on IRQ)
+$FF93 = $00    (no FIRQ sources)
+```
+
+**MAME verification:** With interrupt-driven increment, the frame counter
+advances at exactly ~60 Hz (1 count per MAME VBL tick). The Lua harness can
+capture successive `hal_frame_lo` reads to verify rate vs the polling stub.
+
+---
+
+## 9. Reference IRQ Handler Skeleton
+
+Reference body for the R-vbl VBL handler. Not deployed code — see §4 for
+the install procedure into the $010C dispatch slot.
+
+**6809 entry state:** IRQ automatically stacks full machine state
+(CC, A, B, DP, X, Y, U, PC — 12 bytes). CC.I set by hardware on IRQ entry.
+DP = 0 (karateka-coco3 invariant; HAL scratch $00-$1F in page 0).
+
+```asm
+* IRQ handler — VBL frame sync reference skeleton
+* Install at $010C per docs/interrupt-handling.md §4.
+*
+* [ref: docs/SockmasterGime.md line 67 — reading $FF92 = ack]
+* [ref: src/hal/coco3-dsk/time.s — hal_frame_hi ($10), hal_frame_lo ($11)]
+
+real_irq_handler:
+        lda     $FF92           ; ACK: read IRQENR; get source bitmap;
+                                ;      reading clears all GIME IRQ pending flags
+        bita    #$08            ; test VBORD (bit 3): did VBL fire?
+        beq     irq_exit        ; no: spurious or other source — exit
+        inc     <hal_frame_lo   ; VBL: increment frame counter lo byte
+        bne     irq_exit        ;      no wrap: done
+        inc     <hal_frame_hi   ;      wrap: carry to hi byte
+irq_exit:
+        rti                     ; restore stacked state; CC.I restored from
+                                ; stacked CC (re-enables IRQ if main context
+                                ; had CC.I=0 after andcc #$EF)
+```
+
+**Handler runtime constraint:** Handler must complete in less than one VBL
+period (~1.4ms at 60Hz NTSC; ~1.79MHz 6809 → ~2500 cycles) to avoid
+back-to-back re-entries. The current 9-instruction skeleton uses ~30 cycles;
+future extensions with larger work bodies or multi-source dispatch must keep
+this budget in view.
+
+**Source identification note:** with only VBORD enabled in $FF92, the BITA
+check is defensive but correct.
+
+**Multi-source extension constraint:** The `lda $FF92` ack-read clears ALL
+pending GIME IRQ flags simultaneously, not just VBORD. If future work enables
+additional GIME sources (timer, HBORD, keyboard, serial, cartridge), the
+handler must save the read value and dispatch on each pending bit in sequence.
+Discarding bits after `bita #$08` loses other sources' pending state and
+creates silent-drop behavior. For the R-vbl single-source configuration this
+is moot; for any multi-source future this is load-bearing.
+
+**HAL-internal boundary:** Handler is entirely HAL-internal. The public
+surface is `HAL_time_vbl_wait` (unchanged contract). Post-R-vbl, its body
+changes from counter-increment to counter-watch spin.
+
+`[ref: docs/interrupt-handling.md §4 — handler install procedure]`
+`[ref: docs/interrupt-handling.md §8 — ack mechanism, enable sequence]`
