@@ -30,7 +30,8 @@ bootable CoCo3 disk running the complete intro/attract sequence (INT-3).
 - P2.0b — CoCo3 verification kit: COMPLETE (2026-05-14)
 - P2.1 — Timer/frame-sync engine subsystem port: COMPLETE (2026-05-14)
 - P2.2 — Kernel/dispatch engine subsystem port: COMPLETE (2026-05-15)
-- P2.3+ — Remaining subsystems per scoping survey trajectory
+- P2.3 — Blit/graphics engine port (INT-1 scope): COMPLETE per audit 2026-05-17
+- P2.4+ — Remaining subsystems per scoping survey trajectory
 
 ### Integration milestones (INT-N)
 
@@ -44,8 +45,9 @@ deliverable. Naming uses INT-N to distinguish from karateka_dissasembly_claude's
   6 "presents" glyphs converted (INT-1 minimum met), positions proven via visible-
   extent formula, palette verified; full 30-glyph font and font-metrics regeneration
   not yet done — see project-state.md §Execution history).
-  Remaining blockers: R-p23 (blit/graphics engine port), R-p24 (scene-1 path),
-  R-vbl (real GIME VBL / P3.1), R-boot (boot-path integration).
+  Remaining blockers: R-p24 (scene-1 path), R-vbl (real GIME VBL / P3.1),
+  R-boot (boot-path integration). R-p23 closed 2026-05-17 per canonical P2.3
+  audit (INT-1-bounded; 11 ABSORBED-HAL, 3 OUT-OF-SCOPE).
 - INT-2 — Logo → title → cliff scene sequence with transitions: NOT STARTED
   Adds: scene-transition machinery; additional scenes' content assets.
 - INT-3 — Full attract cycle including sound, cutscenes: NOT STARTED

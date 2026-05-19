@@ -3,9 +3,9 @@
 ## Current state
 
 - Methodology version: Claude-Orchestrated Development Methodology v0.2
-- Project phase: P2 IN PROGRESS (P2.2 complete; canonical P2.3 not started;
-  P2.3a chain + P2.4 chain HAL/capability work CONFIRMED — see §Execution history)
-- Last update: 2026-05-17
+- Project phase: P2 IN PROGRESS (P2.3 COMPLETE per audit 2026-05-17;
+  canonical P2.4 not started — see §Execution history)
+- Last update: 2026-05-19
 
 ## P2 trajectory
 
@@ -22,10 +22,10 @@ room cutscene → loop). Corresponds to integration milestone INT-3.
 **Integration milestones:** INT-1 (first scene), INT-2 (logo→title→cliff sequence),
 INT-3 (full attract cycle) — see milestones.md for detail.
 
-**Next (canonical):** P2.3 (blit/graphics engine port: video.s + render_frame_0a00.s +
-display setup bundled). INT-1 content-asset preconditions are substantially complete
-(see §Execution history); INT-1 closure additionally requires P3.1 (real GIME VBL),
-canonical P2.4 (intro.s scene-1 path), and boot-path integration.
+**Next (canonical):** Major-work decision pending among R-p24 (canonical P2.4 /
+intro.s scene-1 path), R-vbl (real GIME VBL / P3.1), R-boot (boot-path
+integration). P2.3 COMPLETE per audit 2026-05-17 (see §Execution history).
+INT-1 content-asset preconditions are substantially complete (see §Execution history).
 
 ## Phase status
 
@@ -44,7 +44,8 @@ canonical P2.4 (intro.s scene-1 path), and boot-path integration.
 - P2.0b: complete (2026-05-14)
 - P2.1: complete (2026-05-14; commit e7a1e6b)
 - P2.2: complete (2026-05-15; this commit)
-- P2.3 (canonical blit/graphics engine port): not started
+- P2.3 (canonical blit/graphics engine port, INT-1 scope): COMPLETE per audit 2026-05-17
+  (3 deferred routines: routine_1c5b, routine_1c64, L0A03 — combat-path, not INT-1 scope)
 - P2.4 (canonical intro.s scene-1 path): not started
 - P2.5-P5: not started
 
@@ -59,7 +60,9 @@ animation) is superseded by the execution trajectory.
 ### P2.3a chain — HAL infrastructure + display setup (CONFIRMED 2026-05-17)
 
 Work executed 2026-05-16/17. This is HAL capability and display infrastructure
-work, NOT the canonical blit/graphics engine port (P2.3).
+work, NOT the canonical blit/graphics engine port (P2.3). [Note 2026-05-19: the
+P2.3a chain + P2.4 chain together satisfy canonical P2.3 per 2026-05-17 audit —
+see §Canonical P2.3 scope audit below.]
 
 - P2.3a.0: HAL_sys_init + HAL_gfx_init scaffolding: CONFIRMED
 - P2.3a.6: Brøderbund splash + palette descriptor 0: CONFIRMED
@@ -105,14 +108,34 @@ single CoCo3 frame. Visual gate: Jay "the visual looks good."
   Font metrics regeneration bypassed — CoCo3 uses direct per-glyph blit calls
   rather than porting Apple II text_render.s font-metrics path.
 
+### Canonical P2.3 scope audit (COMPLETE per audit 2026-05-17; recorded 2026-05-19)
+
+Route-by-route audit of Apple II video.s + render_frame_0a00.s against karateka-coco3.
+INT-1-bounded interpretation (Jay's call 2026-05-17).
+
+Audit results (14 routines total):
+- ABSORBED-HAL: 11 — all functionality provided via HAL_gfx_clear (gfx.s:242-258)
+  and HAL_gfx_blit_sprite (gfx.s:415-603)
+- OUT-OF-SCOPE (deferred to combat-path): 3
+    * video.s routine_1c5b (draw-B, no Y offset) — gameplay only; 0 splash-path fires
+    * video.s routine_1c64 (draw-B, Y offset) — gameplay only; 0 splash-path fires
+    * render_frame_0a00.s L0A03 / render_pass_b — attract/combat path, not splash
+- UNPORTED: 0 / PARTIAL: 0 / UNCLEAR: 0
+
+Interpretation choice: INT-1-bounded scope. Literal-files scope would return
+SUBSTANTIAL (3 UNPORTED-DEFERRED); INT-1-bounded returns COMPLETE. Jay's
+2026-05-17 call: INT-1-bounded. Deferred 3 reactivate when combat-path work begins.
+
 ### INT-1 distance
 
 INT-1 ("first scene displays correctly") is NOT closed by the above work.
-Four remaining requirements (per milestones.md + scoping survey §6.2):
-- R-p23: canonical blit/graphics engine port (P2.3) — not started
+Three remaining requirements:
 - R-p24: canonical intro.s scene-1 path (P2.4) — not started
 - R-vbl: real GIME VBL implementation (P3.1) — not started
 - R-boot: boot-path integration (scene runs at karateka.bin boot) — not started
+R-p23 (canonical blit/graphics engine port) CLOSED 2026-05-17 per canonical
+P2.3 audit (INT-1-bounded; 11 ABSORBED-HAL, 3 OUT-OF-SCOPE; see
+§Canonical P2.3 scope audit above).
 
 ---
 
@@ -151,6 +174,14 @@ capture a sync-point commit per design doc Section 11.6.
   G.3-G.38 (36 G-methodology patterns, commits 1724351) and T-technical/T-toolchain
   (6 references, commit 5785ee0). Both pushed to Jsearle01/6502-6809-
   conversion-patterns on 2026-05-17.
+- HAL absorption is legitimate porting. Classify ABSORBED-HAL distinctly from UNPORTED
+  in subsystem audits — an ABSORBED-HAL routine is complete via HAL contract, not a gap.
+  A subsystem-audit verdict of COMPLETE requires that the absorbed routines cover the
+  subsystem's load-bearing call surface AND that the remaining routines are explicitly
+  OUT-OF-SCOPE under a documented interpretation choice. The P2.3 audit found 11
+  ABSORBED-HAL / 0 UNPORTED; the "not started" label persisted because the
+  implementation path was HAL-mediated rather than literal source translation. Watch
+  for this when recording future phase-status entries.
 
 ## Open questions (will accumulate)
 
