@@ -28,6 +28,7 @@ PROD_SRCS := \
     src/engine/kernel_per_frame.s \
     src/engine/timer_framesync.s \
     src/hal/coco3-dsk/sys.s \
+    src/hal/coco3-dsk/irq_vbl.s \
     src/hal/coco3-dsk/gfx.s \
     src/hal/coco3-dsk/time.s \
     src/hal/coco3-dsk/input.s \
@@ -39,7 +40,7 @@ PROD_SRCS := \
         test-sys-init test-gfx-init test-visual-smoke \
         test-timer-framesync test-kernel-dispatch \
         test-broderbund-splash test-presents test-sub-byte-shifter \
-        test-broderbund-presents-scene
+        test-broderbund-presents-scene test-vbl-irq
 
 all: $(BUILDDIR)/karateka.bin tests
 
@@ -59,7 +60,7 @@ karateka.bin: $(BUILDDIR)/karateka.bin
 tests: test-sys-init test-gfx-init test-visual-smoke \
        test-timer-framesync test-kernel-dispatch \
        test-broderbund-splash test-presents test-sub-byte-shifter \
-       test-broderbund-presents-scene
+       test-broderbund-presents-scene test-vbl-irq
 
 test-sys-init: tests/scripted/sys_init_driver.bin
 tests/scripted/sys_init_driver.bin: tests/scripted/sys_init_driver.s
@@ -113,6 +114,11 @@ tests/scripted/broderbund_presents_scene_driver.bin: tests/scripted/broderbund_p
         content/glyph_n/converted.s content/glyph_t/converted.s
 	$(LWASM) --decb -o $@ tests/scripted/broderbund_presents_scene_driver.s
 	@echo "broderbund_presents_scene_driver: $@ ($$(wc -c < $@) bytes)"
+
+test-vbl-irq: tests/scripted/vbl_irq_test_driver.bin
+tests/scripted/vbl_irq_test_driver.bin: tests/scripted/vbl_irq_test_driver.s
+	$(LWASM) --decb -o $@ $<
+	@echo "vbl_irq_test_driver: $@ ($$(wc -c < $@) bytes)"
 
 test-palette: tests/scripted/palette_test_driver.bin
 tests/scripted/palette_test_driver.bin: tests/scripted/palette_test_driver.s

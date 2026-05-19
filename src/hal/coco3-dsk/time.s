@@ -3,18 +3,13 @@
 * HAL Time subsystem — minimal-functional stubs for P2.1.
 *
 * Purpose:
-*   Provides a real incrementing 16-bit frame counter (HAL-private)
-*   and a logical frame-advance function (HAL_time_vbl_wait). These
-*   stubs satisfy the HAL contract and support engine behavioral
-*   verification without requiring real GIME VBL hardware timing.
+*   HAL Time subsystem — real GIME VBL interrupt implementation (R-vbl).
+*   Provides a 16-bit frame counter (DP $10/$11) backed by the VBL IRQ
+*   handler in irq_vbl.s. HAL_time_vbl_wait blocks on real VBL when IRQ
+*   is unmasked; falls back to synthetic increment when masked (N3=β).
 *
-* P3 REPLACEMENT NOTE: HAL_time_vbl_wait is a STUB.
-*   Current behavior: increment frame counter and return immediately.
-*   P3 replaces with: spin on GIME VBL interrupt/timer until the
-*   next vertical blank. Until P3, the engine advances logically but
-*   not in sync with the actual display refresh rate.
-*   [no-ref: GIME VBL source (interrupt vs timer vs FIRQ) —
-*     resolve from GIME-RM §8 / Sockmaster-GIME during P3]
+*   [ref: docs/interrupt-handling.md §10 — per-driver opt-in sequence]
+*   [ref: docs/open-questions.md Q001 — design decisions]
 *
 * HAL contract reference: src/hal.inc (HAL_time_* definitions)
 *   [ref: hal.inc HAL_time_init, HAL_time_vbl_wait,
@@ -37,70 +32,148 @@
 * [ref: src/engine/globals.s — canonical DP home]
 
 * ---------------------------------------------------------------
-* HAL_time_init
+* HAL_time_init  [extended R-vbl]
 *
-* Zero the frame counter. Called at engine startup (init order: 2).
+* Zero the frame counter; install real IRQ handler at $010C;
+* configure GIME for VBL -> IRQ. Does NOT unmask CPU IRQ.
+* Caller must call andcc #$EF to opt in to real-VBL behavior.
 *
 * ORIGIN: no Apple II equivalent (Apple II uses ROM-managed timing)
 *
-* [ref: hal.inc HAL_time_init — Args: none; Returns: CC.C clear]
-* Clobbers: A, CC
+* Init order: 2 (after HAL_sys_init; before HAL_gfx_init).
+*   HAL_sys_init writes $FF90=$4C (IEN=0). This function writes
+*   $FF90=$6C (IEN=1). MC3=1 and MMUEN=1 are preserved.
+*   Source/FIRQ enables written BEFORE enabling IEN (step 3 before
+*   step 4) to avoid IRQ assertion from stale boot state.
+*
+* [ref: hal.inc HAL_time_init — contract]
+* [ref: docs/interrupt-handling.md §10.1 — five-step sequence]
+* [ref: docs/interrupt-handling.md §8.1 — enabling sequence]
+* Clobbers: A, X, CC
 * ---------------------------------------------------------------
 HAL_time_init:
+* Step 1: Zero the frame counter.
         clr     <hal_frame_hi           ; frame counter hi = 0
         clr     <hal_frame_lo           ; frame counter lo = 0
-        andcc   #$FE                    ; CC.C clear = success
+
+* Step 2: Patch $010C dispatch slot with JMP to real VBL handler.
+* hal_vbl_handler defined in src/hal/coco3-dsk/irq_vbl.s.
+* [ref: docs/interrupt-handling.md §4 — install procedure]
+        lda     #$7E                    ; JMP opcode
+        sta     $010C                   ; overwrite RTI stub at irq_handler slot
+        ldx     #hal_vbl_handler        ; handler address (irq_vbl.s)
+        stx     $010D                   ; write hi/lo address bytes
+
+* Step 3: Configure GIME source enables BEFORE enabling IEN globally.
+* Writing $FF92/$FF93 while IEN=0 prevents IRQ assertion from stale
+* boot-state pending flags during the write sequence.
+* [ref: docs/interrupt-handling.md §8.1 steps 2-3 / §8.3]
+        clra
+        sta     $FF93                   ; FIRQENR = 0: no FIRQ sources
+        lda     #$08                    ; VBORD bit (bit 3) only
+        sta     $FF92                   ; IRQENR: enable VBL -> IRQ only
+
+* Step 4: Enable GIME IRQ globally (IEN bit in $FF90).
+* Done AFTER source enables to avoid asserting IRQ on stale state.
+* $4C -> $6C: set bit 5 (IEN=1); all other bits preserved.
+* [ref: docs/SockmasterGime.md — $FF90 Bit 5 IEN]
+        lda     #$6C
+        sta     $FF90                   ; INIT0: IEN=1 added; MC3/MMUEN/COCO preserved
+
+* Step 5: Return CC.C clear. CC.I intentionally preserved.
+* andcc #$FE clears CC.C (bit 0) ONLY. CC.I (bit 4) is NOT cleared.
+* INTENTIONALLY preserves CC.I per E1.c invariant (HAL init does not
+* change caller's mask state). Do not broaden this mask.
+* [ref: docs/interrupt-handling.md §10.1 — step 5]
+* [ref: docs/open-questions.md Q001 EXTRA-1 — E1.c decision]
+        andcc   #$FE                    ; CC.C clear = success; CC.I unchanged
         rts
 
 * ---------------------------------------------------------------
-* HAL_time_vbl_wait  [STUB-P3]
+* HAL_time_vbl_wait  [real VBL gate — R-vbl]
 *
-* Advance the frame counter by A frames and return.
+* Block until next vertical blanking interval.
+* N3=β: if CC.I=1 (IRQ masked), fall back to synthetic one-frame
+*   increment (backward compatibility for masked callers).
 *
-* P3 STUB: does NOT wait for actual VBL. Increments counter A times
-* and returns immediately. P3 replaces with GIME VBL sync.
+* Contract change (R-vbl): A argument dropped. Callers that loaded
+*   A=1 before calling (timer_framesync.s lda #1 / jsr) are NOT
+*   modified; the lda #1 is harmless dead code post-R-vbl.
+*   [ref: docs/open-questions.md Q001 — N3=β; Q001.4/4.c callers]
 *
 * ORIGIN: karateka_dissasembly_claude src/kernel.s $07D7 (routine_07d7)
 *         Apple II spins on RDVBL ($C019); replaced entirely by HAL.
 *         [ref: kernel.s routine_07d7 — lda ROM_VERSION; lda RDVBL; bmi spin]
 *
-* [ref: hal.inc HAL_time_vbl_wait — Args: A=frames; Returns: CC.C clear]
-* Clobbers: A, CC
-* NOTE: A=0 on entry causes 256 iterations (unsigned wraparound).
-*       P2.1 callers always pass A=1; edge case benign for now.
+* [ref: hal.inc HAL_time_vbl_wait — contract (no args)]
+* [ref: docs/interrupt-handling.md §10.2 — opt-in sequence]
+* Clobbers: A, B, CC
 * ---------------------------------------------------------------
 HAL_time_vbl_wait:
-hal_vbl_loop:
-        inc     <hal_frame_lo           ; increment lo byte
-        bne     hal_vbl_no_carry        ; if no wrap (lo != 0), skip carry
-        inc     <hal_frame_hi           ; carry: increment hi byte
-hal_vbl_no_carry:
-        deca                            ; decrement frame-wait counter
-        bne     hal_vbl_loop            ; loop if more frames to advance
+        tfr     cc,a                    ; A = CC register value
+        bita    #$10                    ; test CC.I (bit 4): IRQ masked?
+        bne     hal_vbl_synthetic       ; CC.I=1: masked path (N3=β fallback)
+
+* Unmasked path: spin until frame counter lo advances.
+* hal_vbl_handler (irq_vbl.s) increments hal_frame_lo on each VBL IRQ.
+        ldb     <hal_frame_lo           ; B = current lo byte (snapshot)
+hal_vbl_spin:
+        cmpb    <hal_frame_lo           ; counter changed?
+        beq     hal_vbl_spin            ; no: keep spinning
+        andcc   #$FE                    ; CC.C clear = success
+        rts
+
+* Masked path (N3=β): synthetic one-frame increment.
+* Matches prior FRAME-COUNTER STUB behavior for A=1 masked callers.
+* [ref: docs/open-questions.md Q001 N3=β decision]
+hal_vbl_synthetic:
+        inc     <hal_frame_lo           ; synthetic increment lo byte
+        bne     hal_vbl_syn_done        ; no wrap: done
+        inc     <hal_frame_hi           ; wrap: carry to hi byte
+hal_vbl_syn_done:
         andcc   #$FE                    ; CC.C clear = success
         rts
 
 * ---------------------------------------------------------------
-* HAL_time_frame_count
+* HAL_time_frame_count  [race fix — R-vbl]
 *
-* Return current 16-bit frame counter.
+* Return current 16-bit frame counter. Masks IRQ during the two-
+* instruction read to prevent torn values from a handler firing
+* between the two loads. Saves/restores caller's CC to preserve
+* their mask state exactly.
 *
+* [ref: docs/interrupt-handling.md §10.4 — race fix, Option A]
+* [ref: docs/open-questions.md Q001 EXTRA-2]
 * [ref: hal.inc HAL_time_frame_count — Args: none; Returns: D=frame count]
-* Clobbers: A, B (D), CC
+* Clobbers: A, B (D), CC (except caller's mask bits via pshs/puls)
+* Overhead: ~14 cycles (negligible; not called in inner loops)
 * ---------------------------------------------------------------
 HAL_time_frame_count:
+        pshs    cc                      ; save caller's CC (preserves mask state)
+        orcc    #$10                    ; mask IRQ (CC.I=1) — no handler mid-read
         lda     <hal_frame_hi           ; D hi = frame counter high byte
-        ldb     <hal_frame_lo           ; D lo = frame counter low byte
+        ldb     <hal_frame_lo           ; D lo = frame counter low byte (atomic pair)
+        puls    cc                      ; restore caller's CC exactly
         rts                             ; D = 16-bit frame count (BE)
 
 * ---------------------------------------------------------------
-* HAL_time_delay
+* HAL_time_delay  [restructured — R-vbl]
 *
-* Busy-wait N frames (delegate to HAL_time_vbl_wait).
+* Wait A frames by calling HAL_time_vbl_wait A times.
+* HAL_time_vbl_wait clobbers A; saved on stack per iteration.
+*
+* NOTE: A=0 causes 256 iterations (unsigned wraparound; preserved
+*   from prior stub behavior).
 *
 * [ref: hal.inc HAL_time_delay — Args: A=frame count; Returns: CC.C clear]
-* Clobbers: A, CC
+* Clobbers: A, B, CC
 * ---------------------------------------------------------------
 HAL_time_delay:
-        jsr     HAL_time_vbl_wait
+hal_delay_loop:
+        pshs    a                       ; save remaining frame count
+        jsr     HAL_time_vbl_wait       ; wait 1 frame (real or synthetic per N3=β)
+        puls    a                       ; restore remaining count
+        deca                            ; decrement
+        bne     hal_delay_loop          ; loop if more frames remaining
+        andcc   #$FE                    ; CC.C clear = success
         rts
