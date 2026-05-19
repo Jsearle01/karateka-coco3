@@ -8,7 +8,7 @@ disasm Appendix A template.
 
 ## Q001 — Interrupt discipline migration
 
-**Status:** Open  
+**Status:** CLOSED (2026-05-19; X4)  
 **Priority:** Medium  
 **Opened:** 2026-05-16
 
@@ -67,7 +67,43 @@ All of the following:
 - VBL interrupt confirmed working (frame counter advances per interrupt,
   not per polling)
 
-**Next action:**
+**Resolution (closed 2026-05-19 — X4 / D4.a):**
 
-Resolve when P3.1 begins, or when the first interrupt-driven HAL design
-work is planned. Assign as P3.1 pre-work gate.
+Decisions per sub-question:
+
+**Q001.1 — Migration sequence: per-driver opt-in (1.c).**
+Existing drivers unchanged. Drivers that need real-VBL call the explicit
+three-step enable sequence after HAL_time_init. No global mask change.
+`[ref: docs/interrupt-handling.md §10 — per-driver opt-in sequence]`
+
+**Q001.2 — Silent-failure avoidance: counter-rate verification (2.a).**
+Capture `hal_frame_lo` via MAME Lua harness over N frames; verify counter
+advances at ~60 Hz independent of HAL_time_vbl_wait calls.
+`[ref: docs/interrupt-handling.md §10.3 — verification pattern]`
+
+**Q001.3 — HAL_sys_init mask policy: keep ORCC #$50 in HAL_sys_init (3.b).**
+Rationale: HAL init functions preserve caller's mask state by convention —
+they do not change CC beyond documented return values. Explicit unmask is
+per-driver responsibility. HAL_sys_init behavior is unchanged post-R-vbl.
+
+**Q001.4 — Test driver entry mask: existing drivers as-is (4.c); R-vbl
+driver uses explicit andcc #$EF (4.b).**
+Existing test drivers retain ORCC #$50 at entry. VBL-dependent drivers
+follow the opt-in sequence per §10.
+
+Additional design decisions surfaced by X2/X3:
+
+**EXTRA-1 — VBL-source configuration in HAL_time_init (E1.c).**
+HAL_time_init extended to: zero counter, patch $010C with JMP to real
+handler, write $FF90=$6C (IEN=1), write $FF92=$08 (VBORD). Does NOT
+unmask CPU; that is caller responsibility.
+`[ref: docs/interrupt-handling.md §10.1]`
+
+**EXTRA-2 — HAL_time_frame_count race fix (E2.a, Option A).**
+`pshs cc` / `orcc #$10` / load both bytes / `puls cc`. Preserves caller's
+prior mask state. ~14-cycle overhead; not in inner loops.
+`[ref: docs/interrupt-handling.md §10.4]`
+
+**EXTRA-3 — Multi-source future readiness: single-source per §9 (E3.a).**
+§9 multi-source-extension constraint note covers what to watch for when
+a second GIME IRQ source is enabled.

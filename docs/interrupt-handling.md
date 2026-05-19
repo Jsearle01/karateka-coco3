@@ -322,3 +322,125 @@ changes from counter-increment to counter-watch spin.
 
 `[ref: docs/interrupt-handling.md §4 — handler install procedure]`
 `[ref: docs/interrupt-handling.md §8 — ack mechanism, enable sequence]`
+
+---
+
+## 10. Per-Driver VBL Opt-In Sequence
+
+`[ref: docs/open-questions.md Q001 — design decisions recorded here]`
+
+Q001 established that VBL-driven behavior is per-driver opt-in.
+HAL_sys_init and HAL_time_init handle hardware setup; the CPU unmask is
+caller responsibility. This section documents the complete opt-in pattern.
+
+### 10.1 What HAL_time_init does post-R-vbl (EXTRA-1 / E1.c)
+
+HAL_time_init post-R-vbl extends from "zero counter only" to:
+
+1. Zero the frame counter (DP `$10`/`$11` = hal_frame_hi/hal_frame_lo)
+2. Patch the `$010C` dispatch slot with `JMP` to the real IRQ handler
+   (see §4 for the install procedure: write `$7E` then 2-byte address)
+3. Set `$FF90` IEN bit: write `$6C` (`$4C | $20`)
+4. Write `$FF92=$08` (VBORD enable; all other GIME IRQ sources off)
+5. Return CC.C clear. Does **not** call `andcc #$EF`.
+
+CPU unmask is caller responsibility, separated from hardware setup so that
+drivers can complete their own initialization before the first VBL fires.
+
+`[ref: docs/interrupt-handling.md §8.1 — full enabling sequence]`
+`[ref: docs/interrupt-handling.md §4 — handler install procedure]`
+
+### 10.2 Complete per-driver opt-in sequence (Q001.1 / 1.c + Q001.4 / 4.b)
+
+Every VBL-dependent driver executes this sequence after HAL_time_init and
+before entering any loop that depends on VBL timing:
+
+```asm
+* VBL opt-in: unmask IRQ so the handler installed by HAL_time_init can fire.
+* Preconditions:
+*   HAL_sys_init complete (MMU programmed; $FF90=$4C initially; CC.I=1)
+*   HAL_time_init complete (counter zeroed; handler at $010C; $FF90=$6C;
+*     $FF92=$08; CC.I still 1 — HAL_time_init does not unmask)
+*   All driver state initialized (handler may fire immediately after unmask)
+*
+* [ref: docs/interrupt-handling.md §8.1 — canonical config]
+* [ref: docs/interrupt-handling.md §9 — handler skeleton]
+
+        andcc   #$EF            ; clear CC.I — unmask IRQ; handler now fires
+```
+
+Drivers that omit this step remain masked and use FRAME-COUNTER STUB
+behavior (counter advances only when HAL_time_vbl_wait is called).
+Existing test drivers are in this category intentionally.
+
+**Opt-in checklist for VBL-dependent drivers:**
+1. Call `HAL_sys_init` (all drivers)
+2. Call `HAL_time_init` (installs handler + configures GIME post-R-vbl)
+3. Complete all driver-specific init before step 4
+4. `andcc #$EF` — the opt-in step; easy to forget, symptom is silent failure
+5. (Test harness step) Verify handler is firing at expected rate — see §10.3
+   for the MAME Lua verification pattern.
+
+**Silent-failure mode:** if step 4 is omitted, the handler is installed and
+GIME is configured but IRQ never reaches the CPU. The counter does not
+advance. No assertion fires. Detection: §10.3.
+
+### 10.3 Verification pattern — silent-failure detection (Q001.2 / 2.a)
+
+`[ref: docs/open-questions.md Q001 — Q001.2 counter-rate verification]`
+
+After opt-in, verify the handler is firing at the correct rate by reading
+`hal_frame_lo` (DP `$11`, CPU address `$0011`) in the MAME Lua harness.
+
+```lua
+-- Pseudocode (integrate into frame notifier; verify against project
+-- harness pattern in tests/scripted/*.lua for exact implementation):
+local start = mem:read_u8(0x0011)
+-- <let N MAME frames elapse via screen:frame_number() or elapsed counter>
+local finish = mem:read_u8(0x0011)
+local delta = (finish - start) & 0xFF
+-- Expected (interrupt-driven): delta ~= N
+-- Failing (opt-in step 4 missing or handler not firing): delta near 0
+```
+
+**Three failure modes distinguished by delta:**
+- `delta ~= N` — interrupt-driven, correct
+- `delta` proportional to HAL_time_vbl_wait call rate — IRQ masked
+  (opt-in step 4 missing)
+- `delta == 0` — counter not advancing — HAL_time_init post-R-vbl
+  extension not yet applied, or handler install failed
+
+### 10.4 HAL_time_frame_count race fix (EXTRA-2 / E2.a, Option A)
+
+`[ref: docs/open-questions.md Q001 EXTRA-2 — race issue and resolution]`
+
+When the counter is interrupt-driven, a VBL IRQ firing between the two load
+instructions in `HAL_time_frame_count` produces a torn 16-bit read.
+
+**Fix — save/restore CC around masked read:**
+
+```asm
+HAL_time_frame_count:
+        pshs    cc              ; save caller's CC (preserves their mask state)
+        orcc    #$10            ; mask IRQ (CC.I=1) — no handler fire during read
+        lda     <hal_frame_hi   ; D hi = frame counter high byte (atomic pair start)
+        ldb     <hal_frame_lo   ; D lo = frame counter low byte (atomic pair end)
+        puls    cc              ; restore caller's CC exactly
+        rts                     ; D = 16-bit frame count
+```
+
+**Invariant:** HAL functions do not change caller's CC beyond documented
+return values. `andcc #$EF` (without save/restore) would silently unmask a
+caller that entered with IRQ masked. `pshs cc` / `puls cc` preserves
+whatever mask state the caller had.
+
+**Overhead:** ~14 cycles. HAL_time_frame_count is not called in inner loops;
+this is negligible.
+
+**Future work (M3):** A named `HAL_int_vbl_enable` function wrapping
+`andcc #$EF` could reduce driver boilerplate and make missing opt-in
+visible at the HAL boundary. Not required for R-vbl; flagged as potential
+P3.1 API hardening.
+
+`[ref: docs/interrupt-handling.md §9 — handler skeleton]`
+`[ref: docs/interrupt-handling.md §8 — ack mechanism, enable sequence]`
