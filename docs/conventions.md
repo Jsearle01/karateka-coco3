@@ -650,8 +650,15 @@ Expected: P3.1, when VBL interrupt drives `HAL_time_vbl_wait`.
    a context where interrupts are already masked (production boot), the
    internal `orcc #$50` is redundant but harmless. If it's called with
    interrupts enabled, the mask is required during transition.
-4. **Enable VBL source**: write $FF93 to enable GIME VBORD interrupt, or
-   configure PIA0 for VBL; verify with Sockmaster-GIME and CC3-TR.
+4. **Enable VBL source**: write `$FF92` (IRQENR) to enable GIME VBORD
+   interrupt on IRQ. (`$FF93` is FIRQENR — the FIRQ enable register; for
+   the IRQ path, `$FF92` is correct.) See `docs/interrupt-handling.md §8`
+   for the full enabling sequence (canonical: `$FF90=$6C`, `$FF92=$08`,
+   `$FF93=$00`) and §9 for the reference handler skeleton.
+   PIA0 VBL path is the legacy CoCo 1/2 mechanism; not applicable in
+   karateka-coco3 (which uses GIME mode, `$FF90` COCO=0). See
+   `docs/interrupt-handling.md §8.2` on the `$FF03` ack register's
+   non-applicability in the default configuration.
 5. **Verify handler fires**: MAME deferred-read capture should show the
    frame counter advancing per interrupt, not per polling loop.
 
