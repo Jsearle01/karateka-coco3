@@ -45,7 +45,7 @@ deliverable. Naming uses INT-N to distinguish from karateka_dissasembly_claude's
   6 "presents" glyphs converted (INT-1 minimum met), positions proven via visible-
   extent formula, palette verified; full 30-glyph font and font-metrics regeneration
   not yet done — see project-state.md §Execution history).
-  Remaining blockers: R-p24 (scene-1 path), R-vbl (real GIME VBL / P3.1),
+  Remaining blockers: R-p24 (scene-1 path), R-vbl (real GIME VBL; first deliverable of P3.1),
   R-boot (boot-path integration). R-p23 closed 2026-05-17 per canonical P2.3
   audit (INT-1-bounded; 11 ABSORBED-HAL, 3 OUT-OF-SCOPE).
 - INT-2 — Logo → title → cliff scene sequence with transitions: NOT STARTED

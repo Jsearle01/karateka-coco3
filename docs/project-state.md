@@ -23,7 +23,7 @@ room cutscene → loop). Corresponds to integration milestone INT-3.
 INT-3 (full attract cycle) — see milestones.md for detail.
 
 **Next (canonical):** Major-work decision pending among R-p24 (canonical P2.4 /
-intro.s scene-1 path), R-vbl (real GIME VBL / P3.1), R-boot (boot-path
+intro.s scene-1 path), R-vbl (real GIME VBL; first deliverable of P3.1), R-boot (boot-path
 integration). P2.3 COMPLETE per audit 2026-05-17 (see §Execution history).
 INT-1 content-asset preconditions are substantially complete (see §Execution history).
 
@@ -131,7 +131,7 @@ SUBSTANTIAL (3 UNPORTED-DEFERRED); INT-1-bounded returns COMPLETE. Jay's
 INT-1 ("first scene displays correctly") is NOT closed by the above work.
 Three remaining requirements:
 - R-p24: canonical intro.s scene-1 path (P2.4) — not started
-- R-vbl: real GIME VBL implementation (P3.1) — not started
+- R-vbl: real GIME VBL implementation (first deliverable of P3.1) — not started
 - R-boot: boot-path integration (scene runs at karateka.bin boot) — not started
 R-p23 (canonical blit/graphics engine port) CLOSED 2026-05-17 per canonical
 P2.3 audit (INT-1-bounded; 11 ABSORBED-HAL, 3 OUT-OF-SCOPE; see
