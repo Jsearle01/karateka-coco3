@@ -269,6 +269,38 @@ capture successive `hal_frame_lo` reads to verify rate vs the polling stub.
 
 ---
 
+### 8.4 GIME Register Read-Back Behavior
+
+`[ref: commit d687e01 — R-vbl execution; $FF90 read-back observed during verification]`
+
+**Observed fact:** Reading `$FF90` (GIME INIT0) returns hardware status, not
+the last-written value. During R-vbl verification (X6), `HAL_time_init` writes
+`$FF90=$6C` (IEN=1); reading `$FF90` immediately after returns `$1B`. The
+same `$1B` is observed before any HAL_time_* code runs (confirmed by
+gfx_init_precheck), establishing that this is a pre-existing hardware
+characteristic in MAME's CoCo3 emulation, not a write failure.
+
+**Verification implication:** Writes to `$FF90` cannot be confirmed via
+post-write read-back. Use transitive inference from observable downstream
+behavior instead. In R-vbl: counter advancing at ~60 Hz in a polling-free
+spin loop proves IEN=1 was written — VBL fires at the correct rate, which
+requires IEN=1 to have taken effect.
+
+**Treat GIME configuration registers as write-only by default.** Whether
+this read-back limitation applies to `$FF92`, `$FF93`, or other GIME
+configuration registers is not yet confirmed for this project. When designing
+verification steps for any GIME register write: do not rely on post-write
+read-back as primary evidence. Verify via observable consequences —
+interrupt behavior or counter rates. If read-back is required as a
+verification step, first confirm empirically (via a dedicated harness read
+before any writes) that the specific register returns the written value
+rather than hardware status.
+
+`[ref: docs/SockmasterGime.md — $FF90 register definition]`
+`[ref: docs/interrupt-handling.md §8.1 — VBL enabling sequence]`
+
+---
+
 ## 9. Reference IRQ Handler Skeleton
 
 Reference body for the R-vbl VBL handler. Not deployed code — see §4 for
