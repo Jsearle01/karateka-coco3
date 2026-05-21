@@ -121,8 +121,27 @@ HAL_gfx_init:
 *     → palette LAST.
 *     [ref: GFXMODE3.ASM lines 48-64 — mode-before-palette ordering]
 *
-        lda     #$4C
-        sta     $FF90                   ; INIT0: COCO=0,MMUEN=1,MC3=1,MC2=1
+*   IEN PRESERVATION NOTE (HAL_gfx_init IEN fix, 2026-05-20):
+*     Value written is $6C, not $4C. $6C = $4C | $20 (adds IEN=1, bit 5).
+*     GFXMODE3.ASM used $4C (IEN=0) which is sufficient for a standalone
+*     demo without interrupts. karateka-coco3 requires IEN=1 because
+*     HAL_time_init (init order step 2) writes $FF90=$6C to enable GIME VBL
+*     interrupts; HAL_gfx_init at step 3 must not clobber that bit.
+*
+*     $FF90 is write-only (reads return hardware status, not last-written
+*     value; [ref: docs/interrupt-handling.md §8.4]). Read-modify-write is
+*     impossible. All bits this function requires are preserved in $6C:
+*     COCO=0, MMUEN=1, IEN=1, FEN=0, MC3=1, MC2=1, MC1=0, MC0=0.
+*
+*     Coupling: this value assumes IEN=1 is the correct state after
+*     HAL_time_init. Safe for standalone drivers that omit HAL_time_init:
+*     such drivers keep CC.I=1 throughout (per Q001.4/4.c — never opt in
+*     to real-VBL). CPU never services IRQ regardless of GIME assertion
+*     state, so IEN=1 is harmless in this configuration.
+*     [ref: src/hal.inc INIT ORDER — time init (step 2) before gfx (step 3)]
+*
+        lda     #$6C
+        sta     $FF90                   ; INIT0: COCO=0,MMUEN=1,IEN=1,MC3=1,MC2=1
 
 * --- Step 2: Clear Frame A ($8000-$BBFF, 15,360 bytes) ---
 * [ref: GFXMODE3.ASM lines 39-45 — clear pattern]

@@ -141,10 +141,33 @@ boot:
         lda     #PAGE_A_TOKEN           ; $20 = buffer A is draw target (back)
         sta     <page_register
 
-* Enter attract-loop per-frame dispatcher.
-*   per_frame_main_loop loops indefinitely calling HAL_input_poll,
-*   scene_transition_check, and per_frame_continuation stubs.
-*   [ref: src/engine/kernel_per_frame.s]
-        lbra    per_frame_main_loop     ; long branch — per_frame_main_loop is
-                                        ; in kernel_per_frame.s, >127 bytes away
+* INT-1: Brøderbund splash scene (R-boot)
+*
+* Late VBL opt-in (D4.b): andcc #$EF here, right before rendering.
+* HAL_time_init (step 2) already installed handler + configured GIME.
+* Frame counter now interrupt-driven; HAL_time_delay uses real-VBL timing.
+* [ref: docs/interrupt-handling.md §10.2 — opt-in sequence]
+        andcc   #$EF                    ; unmask IRQ — VBL handler now fires
+
+* Render scene: Logo 1, Logo 2, "presents" → present to screen.
+* [ref: src/engine/broderbund_scene.s]
+        jsr     broderbund_scene
+
+* 160-frame hold: scene visible on screen.
+* [ref: Apple II outer_caller_b77c stub_b823 — 160-frame static display hold]
+        lda     #160
+        jsr     HAL_time_delay
+
+* Scene clear: blank the back buffer and present.
+        jsr     HAL_gfx_clear
+        jsr     HAL_gfx_present
+
+* 80-frame transition: blank screen.
+        lda     #80
+        jsr     HAL_time_delay
+
+* Halt. R-p24 (intro.s scene-1 path) will replace this with scene-2 hand-off.
+* [ref: docs/project-state.md — R-p24 next INT-1 blocker after R-boot]
+boot_halt:
+        bra     boot_halt
 * NOTE: exec address set by `end boot` in last assembled file (src/hal/coco3-dsk/mem.s)

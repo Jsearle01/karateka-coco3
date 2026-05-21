@@ -101,6 +101,9 @@
 *       $FExx locked by MC3=1; ROM unmapped from $8000-$FEFF)
 *   - FFA0-FFA7=$38-$3F: MMU task 0 mapped to P1.6 layout
 *       ($0000-$1FFF=physical $70000, ..., $C000-$FFFF=physical $7C000+)
+*   - PIA0 and PIA1 IRQ enable bits cleared: PIA will not assert IRQ.
+*       Future phases that require keyboard input (R-p24+) must
+*       re-enable PIA IRQ selectively at that time.
 *   - HAL_sys_init does NOT install interrupt vectors. Dispatch block
 *       RTI stubs at $0100-$010F are loaded by DECB. BASIC's $FExx
 *       secondary vectors remain in effect (MC3=1 locks them).
@@ -134,16 +137,56 @@ HAL_sys_init:
 * [ref: docs/conventions.md — interrupt mask policy]
         orcc    #$50                    ; set CC.I (IRQ mask) and CC.F (FIRQ mask)
 
-* Step 2: Enable all-RAM mode + MMU.
+* Step 2: Disable PIA0 and PIA1 IRQ enables.
+*
+* ROOT CAUSE FIX (R-boot, 2026-05-21):
+*   CoCo3 BASIC leaves PIA0's keyboard interrupt enabled. PIA0 and PIA1
+*   assert the 6809 IRQ line independently of GIME's IRQENR register —
+*   the PIA IRQ lines OR directly onto the CPU's IRQ pin, bypassing GIME.
+*   When boot.s later executes andcc #$EF (unmask IRQ before the first
+*   rendered frame), a pending PIA keyboard interrupt fires before the
+*   jsr broderbund_scene at $0226 can execute. Reading $FF92 (GIME ACK)
+*   in the handler does not dismiss PIA's IRQ; the CPU is trapped in an
+*   infinite interrupt loop at $0226, 833,172 times per 30 seconds in
+*   MAME. The jsr broderbund_scene never executed.
+*
+*   Fix: clear bits 0,1 of each PIA control register here, while IRQ is
+*   still masked. This disables CA1/CA2 (and CB1/CB2) IRQ generation on
+*   both PIAs. The PIA pins and data registers are unaffected; only the
+*   IRQ assertion to the CPU is suppressed.
+*
+* PIA register map (always accessible; $FFxx hardware page):
+*   PIA0 $FF01 = CRA: bits 0=CA1-IRQ-enable, 1=CA2-IRQ-enable
+*   PIA0 $FF03 = CRB: bits 0=CB1-IRQ-enable, 1=CB2-IRQ-enable
+*   PIA1 $FF21 = CRA: bits 0=CA1-IRQ-enable, 1=CA2-IRQ-enable
+*   PIA1 $FF23 = CRB: bits 0=CB1-IRQ-enable, 1=CB2-IRQ-enable
+*   Mask $FC = %11111100 clears bits 0,1; preserves all other CR state.
+*
+* [ref: docs/interrupt-handling.md — PIA IRQ bypass of GIME IRQENR]
+* [ref: R-boot trace 2026-05-21 — root-cause investigation]
+        lda     $FF01
+        anda    #$FC
+        sta     $FF01                   ; PIA0 CRA: disable CA1+CA2 IRQ
+        lda     $FF03
+        anda    #$FC
+        sta     $FF03                   ; PIA0 CRB: disable CB1+CB2 IRQ
+        lda     $FF21
+        anda    #$FC
+        sta     $FF21                   ; PIA1 CRA: disable CA1+CA2 IRQ
+        lda     $FF23
+        anda    #$FC
+        sta     $FF23                   ; PIA1 CRB: disable CB1+CB2 IRQ
+
+* Step 3: Enable all-RAM mode + MMU.
 * MC3=1 locks $FExx secondary vectors; they retain BASIC's routing to
 * $01xx dispatch block. MC2=1 = standard SCS. MMUEN=1 enables MMU.
 * COCO=0 switches from SAM-mode to GIME-mode address translation.
 * [ref: docs/SockmasterGime.md — $FF90 bit definitions]
 * [ref: refs/GFXMODE3.ASM line 53-54 — empirical provenance]
         lda     #$4C
-        sta     $FF90                   ; INIT0: COCO=0,MMUEN=1,MC3=1,MC2=1
+        sta     $FF90                   ; INIT0: COCO=0,MMUEN=1,IEN=0,MC3=1,MC2=1
 
-* Step 3: Program MMU task 0 slots to P1.6 physical page layout.
+* Step 4: Program MMU task 0 slots to P1.6 physical page layout.
 * Must be written AFTER $FF90=$4C (MMUEN bit enables MMU programming).
 * [ref: docs/memory-map.md §3.2]
 * [ref: docs/SockmasterGime.md — MMU task register layout]

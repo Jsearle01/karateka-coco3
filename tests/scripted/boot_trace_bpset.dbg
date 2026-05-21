@@ -1,0 +1,6 @@
+bpset 0224,1,{trace tools\instrtrace.log,maincpu,{noloop};go}
+bpset 0226,1,{tracelog ">>> 0226 S=%04X\n",s;go}
+bpset 06dd,1,{tracelog ">>> 06DD S=%04X\n",s;go}
+bpset 0239,1,{trace off;quit}
+bpset 0a00,1,{trace off;quit}
+go

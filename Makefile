@@ -27,6 +27,7 @@ PROD_SRCS := \
     src/engine/kernel_dispatch.s \
     src/engine/kernel_per_frame.s \
     src/engine/timer_framesync.s \
+    src/engine/broderbund_scene.s \
     src/hal/coco3-dsk/sys.s \
     src/hal/coco3-dsk/irq_vbl.s \
     src/hal/coco3-dsk/gfx.s \
@@ -47,7 +48,13 @@ all: $(BUILDDIR)/karateka.bin tests
 # ---------------------------------------------------------------
 # Production binary
 # ---------------------------------------------------------------
-$(BUILDDIR)/karateka.bin: $(PROD_SRCS) | $(BUILDDIR)
+$(BUILDDIR)/karateka.bin: $(PROD_SRCS) \
+    content/broderbund_logo_sprite_1/converted.s \
+    content/broderbund_logo_sprite_2/converted.s \
+    content/glyph_p/converted.s content/glyph_r/converted.s \
+    content/glyph_e/converted.s content/glyph_s/converted.s \
+    content/glyph_n/converted.s content/glyph_t/converted.s \
+    | $(BUILDDIR)
 	$(LWASM) --decb -o $@ $(PROD_SRCS)
 	@echo "Production binary: $@ ($$(wc -c < $@) bytes)"
 
