@@ -38,25 +38,28 @@ bootable CoCo3 disk running the complete intro/attract sequence (INT-3).
 Convergence checkpoints where P2.x + P3.x + content conversion combine into a running
 deliverable. Naming uses INT-N to distinguish from karateka_dissasembly_claude's M1/M2/M3/M4.
 
-- INT-1 — First scene displays correctly: NOT STARTED
+- INT-1 — First scene displays correctly: IN PROGRESS
   Requires: scene management, display setup, palette, blit/graphics engine ports +
   real HAL; first-scene assets converted (Brøderbund logo + palette).
   Content-asset preconditions: SUBSTANTIALLY COMPLETE (2026-05-17 — logos converted,
   6 "presents" glyphs converted (INT-1 minimum met), positions proven via visible-
   extent formula, palette verified; full 30-glyph font and font-metrics regeneration
   not yet done — see project-state.md §Execution history).
-  Remaining blockers: R-p24 (scene-1 path), R-vbl (real GIME VBL; first deliverable of P3.1),
-  R-boot (boot-path integration). R-p23 closed 2026-05-17 per canonical P2.3
-  audit (INT-1-bounded; 11 ABSORBED-HAL, 3 OUT-OF-SCOPE).
+  CLOSED blockers: R-vbl (CONFIRMED 2026-05-21, commit d687e01),
+  R-boot (CONFIRMED 2026-05-21, commit ee3fa08). R-p23 closed 2026-05-17.
+  Remaining blocker: R-p24 (canonical intro.s scene-1 path, P2.4) — not started.
 - INT-2 — Logo → title → cliff scene sequence with transitions: NOT STARTED
   Adds: scene-transition machinery; additional scenes' content assets.
 - INT-3 — Full attract cycle including sound, cutscenes: NOT STARTED
   Adds: sound HAL, tone-record interpreter, cutscene machinery, Akuma throne room.
   = P2 target deliverable: bootable disk looping the complete attract sequence.
 
-## P3 — HAL implementations
+## P3 — HAL implementations (P3.1 COMPLETE)
 
-Status: NOT STARTED (begins interleaving after P2.2 lands)
+Status: P3.1 COMPLETE (2026-05-21)
+- R-vbl — real GIME VBL IRQ handler: COMPLETE (2026-05-21, commit d687e01)
+- R-boot — Brøderbund splash boot integration: COMPLETE (2026-05-21, commit ee3fa08)
+- P3.2+: not started
 
 ## P4 — Integration + content
 

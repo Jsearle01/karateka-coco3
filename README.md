@@ -4,7 +4,7 @@ Karateka (Jordan Mechner, 1984, Apple IIe) port to the Tandy Color
 Computer 3. Native 6809/6309 assembly. Faithful gameplay
 reproduction.
 
-Status: P1.0 (repository setup) in progress.
+Status: P2 IN PROGRESS — P3.1 COMPLETE (R-vbl + R-boot); INT-1 in progress (R-p24 remaining).
 
 ## Reference oracle
 
@@ -31,9 +31,7 @@ Project follows Claude-Orchestrated Development Methodology v0.2.
 
 ## Building
 
-Build infrastructure: see Phase 1 documentation (in development).
-Currently P1.0 — repository structure only; no buildable artifacts
-yet.
+Build: `make` from repo root. Produces `build/karateka.bin`. See `docs/milestones.md` for phase status.
 
 ## Repository structure
 

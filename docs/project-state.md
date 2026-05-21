@@ -3,9 +3,9 @@
 ## Current state
 
 - Methodology version: Claude-Orchestrated Development Methodology v0.2
-- Project phase: P2 IN PROGRESS (P2.3 COMPLETE per audit 2026-05-17;
-  canonical P2.4 not started — see §Execution history)
-- Last update: 2026-05-19
+- Project phase: P2 IN PROGRESS; P3.1 COMPLETE (2026-05-21)
+  P2.3 COMPLETE per audit 2026-05-17; P2.4 not started — see §Execution history
+- Last update: 2026-05-21
 
 ## P2 trajectory
 
@@ -22,9 +22,9 @@ room cutscene → loop). Corresponds to integration milestone INT-3.
 **Integration milestones:** INT-1 (first scene), INT-2 (logo→title→cliff sequence),
 INT-3 (full attract cycle) — see milestones.md for detail.
 
-**Next (canonical):** Major-work decision pending among R-p24 (canonical P2.4 /
-intro.s scene-1 path), R-vbl (real GIME VBL; first deliverable of P3.1), R-boot (boot-path
-integration). P2.3 COMPLETE per audit 2026-05-17 (see §Execution history).
+**Next (canonical):** R-p24 — canonical intro.s scene-1 path (P2.4 engine port).
+Sole remaining INT-1 blocker. R-vbl and R-boot are CONFIRMED CLOSED (2026-05-21).
+P2.3 COMPLETE per audit 2026-05-17 (see §Execution history).
 INT-1 content-asset preconditions are substantially complete (see §Execution history).
 
 ## Phase status
@@ -47,6 +47,7 @@ INT-1 content-asset preconditions are substantially complete (see §Execution hi
 - P2.3 (canonical blit/graphics engine port, INT-1 scope): COMPLETE per audit 2026-05-17
   (3 deferred routines: routine_1c5b, routine_1c64, L0A03 — combat-path, not INT-1 scope)
 - P2.4 (canonical intro.s scene-1 path): not started
+- P3.1 (R-vbl + R-boot): COMPLETE (2026-05-21; commits d687e01, ee3fa08)
 - P2.5-P5: not started
 
 ## Execution history (informal session sub-numbering, 2026-05-17)
@@ -128,14 +129,54 @@ SUBSTANTIAL (3 UNPORTED-DEFERRED); INT-1-bounded returns COMPLETE. Jay's
 
 ### INT-1 distance
 
-INT-1 ("first scene displays correctly") is NOT closed by the above work.
-Three remaining requirements:
+INT-1 ("first scene displays correctly") is NOT closed. One remaining requirement:
 - R-p24: canonical intro.s scene-1 path (P2.4) — not started
-- R-vbl: real GIME VBL implementation (first deliverable of P3.1) — not started
-- R-boot: boot-path integration (scene runs at karateka.bin boot) — not started
-R-p23 (canonical blit/graphics engine port) CLOSED 2026-05-17 per canonical
-P2.3 audit (INT-1-bounded; 11 ABSORBED-HAL, 3 OUT-OF-SCOPE; see
-§Canonical P2.3 scope audit above).
+
+CLOSED requirements:
+- R-p23: CLOSED 2026-05-17 per canonical P2.3 audit (INT-1-bounded;
+  11 ABSORBED-HAL, 3 OUT-OF-SCOPE; see §Canonical P2.3 scope audit above).
+- R-vbl: CLOSED 2026-05-21 (commit d687e01) — real GIME VBL IRQ handler installed,
+  frame counter interrupt-driven at ~60 Hz, CC.I opt-in via andcc #$EF verified.
+- R-boot: CLOSED 2026-05-21 (commit ee3fa08) — Brøderbund splash scene boots from
+  karateka.bin with 160-frame hold + 80-frame blank; Jay's visual gate PASSED.
+  Two architectural fixes bundled: HAL_gfx_init IEN preservation (gfx.s $FF90 $4C→$6C)
+  and HAL_sys_init PIA IRQ disable (sys.s, new Step 2).
+
+### R-vbl execution (CONFIRMED 2026-05-21; commit d687e01)
+
+R-vbl = real GIME VBL IRQ implementation (first deliverable of P3.1).
+
+- hal_vbl_handler installed at $010C dispatch slot via HAL_time_init patch.
+- GIME VBL configured: $FF90=$6C (IEN=1), $FF92=$08 (VBORD only), $FF93=$00.
+- Real-VBL spin in HAL_time_vbl_wait: cmpb <hal_frame_lo / beq spin.
+- N3=β synthetic fallback for masked callers (CC.I=1): HAL_time_vbl_wait
+  detects CC.I and increments counter without spinning.
+- HAL_time_frame_count race fix: pshs cc / orcc #$10 around dual load / puls cc.
+- Verification: V-counter-rate confirmed ~60 Hz advance in interrupt-driven mode
+  vs polling stub.
+- Q001 (interrupt discipline migration) CLOSED 2026-05-19; decisions per §Q001.1–4
+  and EXTRA-1/EXTRA-2/EXTRA-3 filed to docs/interrupt-handling.md §10.
+
+### R-boot execution (CONFIRMED 2026-05-21; commit ee3fa08)
+
+R-boot = Brøderbund splash scene integrated at boot entry point.
+
+- boot.s extended: andcc #$EF → jsr broderbund_scene → HAL_time_delay(160) →
+  clear + present → HAL_time_delay(80) → boot_halt.
+- Root cause identified via MAME 0.281 -debug instruction-level trace: CoCo3 BASIC
+  leaves PIA0 keyboard IRQ enabled; PIA IRQ lines OR directly onto 6809 IRQ pin
+  bypassing GIME IRQENR; 833,172 non-VBORD IRQ iterations in 30 seconds trapped
+  the CPU at $0226 (jsr broderbund_scene never executed).
+- Fix 1 (HAL_gfx_init IEN, gfx.s): $FF90 value changed $4C→$6C to preserve IEN=1
+  written by HAL_time_init. Applies whenever HAL_time_init + HAL_gfx_init are
+  both called.
+- Fix 2 (HAL_sys_init PIA IRQ, sys.s): added Step 2 — read-modify-write with mask
+  $FC on $FF01, $FF03, $FF21, $FF23 disables CA1/CA2/CB1/CB2 IRQ generation on
+  PIA0 and PIA1. Future keyboard input (R-p24+) must re-enable selectively.
+- Investigation: 9 rounds of static/dynamic hypothesis-test before instruction-
+  level trace revealed PIA trap. See methodology lessons P3/P5/P7.
+- V-regression: all 5 drivers PASS post-fix. Visual gate: Jay confirmed
+  Brøderbund scene visible ~2.67s, blank ~1.33s, held blank.
 
 ---
 
@@ -182,6 +223,54 @@ capture a sync-point commit per design doc Section 11.6.
   ABSORBED-HAL / 0 UNPORTED; the "not started" label persisted because the
   implementation path was HAL-mediated rather than literal source translation. Watch
   for this when recording future phase-status entries.
+
+### R-boot investigation patterns (2026-05-21)
+
+Filed from the R-boot root-cause investigation. These augment the earlier Task C patterns.
+
+- P1. **Gate discipline applies to diffs, not summaries.** Reviewer approval requires
+  a verbatim diff, not a directional description. "D1.a confirmed — proceed" authorizes
+  the approach but is not diff approval. Separating directional from diff approval caught
+  precision issues multiple times this session.
+
+- P2. **Verdict stability: more data before a verdict.** When evidence is ambiguous
+  (multiple readings consistent with observations), the correct move is to request
+  additional data that discriminates between hypotheses, not to pick the most plausible
+  reading and proceed. Cycling a verdict after new data arrives is correct; committing
+  to a reading with insufficient evidence is not.
+
+- P3. **Per-frame sampling cannot observe sub-frame execution.** A per-frame Lua
+  notifier sampling the 6809 PC once per MAME frame (60 Hz) cannot detect code that
+  executes and completes within a single frame interval. The "CPU at $0226 for 101
+  frames" observation was real but misleading — it showed where the CPU was at each
+  frame boundary, not that the CPU was stuck. For sub-frame diagnosis, instruction-level
+  tracing is required.
+
+- P4. **Reporting format must be specified by the requester.** When a reviewer prompt
+  asks Clyde for information without specifying output structure, the answer is
+  unstructured and harder to act on. Prompts specifying §SectionN headings and
+  verbatim-vs-summary requirements produced directly usable outputs. Apply this to
+  all prompts requesting multi-part answers.
+
+- P5. **Instruction-level tracing is the correct next move after static exhaustion.**
+  When 9 rounds of hypothesis-test-analysis eliminate all statically-checkable
+  suspects without convergence, the remaining bug class is dynamic: between-instruction
+  state changes, timing dependencies, interrupt interactions. MAME's -debug
+  -debugscript instruction-level tracer resolves these definitively. Don't extend
+  static analysis past the point of diminishing returns.
+
+- P6. **Transitive inference for write-only registers.** GIME registers $FF90, $FF92,
+  and (inferred) $FF9D behave as write-only at the program-space read level — reads
+  return hardware status, not the last-written value. Verify writes via observable
+  downstream consequences (interrupt rate, display mode, etc.), not post-write
+  read-back. See docs/interrupt-handling.md §8.4.
+
+- P7. **V-counter-rate is necessary but not sufficient for real-VBL verification.**
+  During the R-boot PIA trap, `hal_frame_lo` advanced at ~60 Hz (occasional VBL
+  interleaved with 833,172 PIA-driven non-VBL IRQs). Counter rate alone cannot
+  distinguish "VBL is the dominant IRQ source" from "VBL fires occasionally among
+  many other IRQs." When real-VBL must be the mechanism, verify VBORD=1 in the
+  handler (instruction-level trace or explicit register log), not just counter rate.
 
 ## Open questions (will accumulate)
 

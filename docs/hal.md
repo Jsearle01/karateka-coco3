@@ -209,6 +209,16 @@ Initialize GIME for 320×192×4 mode with double buffering.
 | Clobbers | A, B, X, CC |
 | Init order | 3 |
 
+**IEN coupling note:** `HAL_gfx_init` writes `$FF90=$6C` (INIT0). This value
+preserves IEN=1 (bit 5) that `HAL_time_init` previously set. If called without
+a prior `HAL_time_init`, or if $FF90 is changed between the two inits, IEN
+may be clobbered. The coupling is intentional and required: callers following
+the canonical init order (HAL_time_init at step 2, HAL_gfx_init at step 3)
+are safe. Standalone drivers that omit HAL_time_init are also safe: IEN=1
+is harmless when CC.I=1 throughout.
+`[ref: src/hal/coco3-dsk/gfx.s — IEN preservation note; commit ee3fa08]`
+`[ref: docs/interrupt-handling.md §8.1 — IEN bit in $FF90]`
+
 `[no-ref: GIME 320×192×4 mode setup (CRES/HRES bit values) —
 resolve during P2 from GIME-RM; confirm with CC3-TR §graphics]`
 
@@ -335,6 +345,15 @@ Configure VBL source and start frame counter.
 | Preserves | U, Y |
 | Clobbers | A, B, X, CC |
 | Init order | 2 |
+
+Post-R-vbl, `HAL_time_init` patches the $010C IRQ dispatch slot with
+`JMP hal_vbl_handler`, writes $FF90=$6C (IEN=1), $FF92=$08 (VBORD on IRQ),
+$FF93=$00 (no FIRQ). Does NOT unmask the CPU — caller must execute
+`andcc #$EF` explicitly.
+**HAL_gfx_init coupling:** `HAL_time_init` must be called before
+`HAL_gfx_init` so that `HAL_gfx_init`'s $FF90 write ($6C) correctly
+preserves IEN=1. Reversing the order clobbers IEN.
+`[ref: docs/interrupt-handling.md §10.1 — HAL_time_init post-R-vbl detail]`
 
 `[no-ref: VBL detection mechanism (poll $FF03 vs interrupt vs
 GIME vsync bit) — resolve during P2 from CC3-TR interrupt section
@@ -507,14 +526,50 @@ seek needed). Single open/load/close per asset.
 
 ### 5.7 System
 
-Skeleton. Detailed design during P2.
-
 **HAL_sys_cpu** — return 0 (6809) or 1 (6309). Cached from boot.
 
 **HAL_sys_target** — return 0 (coco3-dsk). v1.0 has one target.
 
 **HAL_sys_panic** — display message, halt. Args: X = message ptr
 (or 0). Does not return.
+
+#### HAL_sys_init
+
+CoCo3 bare-metal transition. Must be the first HAL function called.
+
+| | |
+|---|---|
+| Args | none |
+| Returns | CC.C clear; CC.I=1, CC.F=1 (interrupts remain masked) |
+| Preserves | U, Y |
+| Clobbers | A, X, CC |
+| Init order | 1 (before all other HAL functions) |
+
+**Postconditions:**
+- Interrupts masked: CC.I=1, CC.F=1
+- `$FF90=$4C`: COCO=0, MMUEN=1, IEN=0, MC3=1, MC2=1 (GIME all-RAM mode;
+  ROM unmapped from $8000-$FEFF; $FExx locked)
+- `FFA0-FFA7=$38-$3F`: MMU task 0 mapped to P1.6 physical layout
+- **PIA0 and PIA1 IRQ disabled:** bits 0,1 of $FF01, $FF03, $FF21, $FF23
+  cleared via read-modify-write (mask $FC). CA1/CA2/CB1/CB2 interrupt
+  generation suppressed on both PIAs. Peripheral data and DDR state
+  preserved.
+
+**Why PIA IRQ must be disabled here:** CoCo3 BASIC leaves PIA0 keyboard
+interrupt enabled. PIA0/PIA1 IRQ lines OR directly onto the 6809 IRQ pin,
+bypassing GIME's IRQENR register. If PIA IRQ is not disabled before any
+driver executes `andcc #$EF`, a pending PIA keyboard interrupt will trap
+the CPU in an infinite IRQ loop (reading $FF92 does not dismiss PIA IRQ).
+This was the root cause of the R-boot failure (commit ee3fa08: 833,172
+non-VBORD IRQ iterations in 30 seconds before fix).
+
+**Future keyboard input (R-p24+):** HAL_input_init should selectively
+re-enable PIA IRQ when keyboard input is required. Do not re-enable PIA
+IRQ without installing a PIA handler first.
+
+`[ref: src/hal/coco3-dsk/sys.s — HAL_sys_init implementation; Step 2]`
+`[ref: docs/interrupt-handling.md §11 — PIA IRQ bypass architecture]`
+`[ref: commit ee3fa08 — R-boot; PIA IRQ disable root-cause fix]`
 
 ---
 
