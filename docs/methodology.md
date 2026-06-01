@@ -184,5 +184,62 @@ reference:
 
 ---
 
-*Last updated: P2.3a.7 (2026-05-17). Append new patterns as they are
+## Candidate pool capture (convention clause)
+
+This is a standing executor instruction, active for all tasks going forward.
+Karateka is a live feeder to the cross-project methodology candidate pool
+(`methodology-candidate-pool`).
+
+**Candidate capture (pool write-through).** When a methodology candidate is
+identified during a task — a recurring practice, convention, correction, or
+observation that might generalize — capture it to the cross-project candidate
+pool in the same motion as noting it locally:
+
+1. Write a fresh single-instance entry to
+   `seeds/karateka/live/<iso8601>-<slug>.md` in the pool clone
+   (`/mnt/c/Projects/methodology-candidate-pool`), conforming to the pool's
+   `SCHEMA.md` (`source: live`, `status: open`, one `instance_history` element
+   with `initiator` set faithfully — `unknown` if not determinable, `n/a` if
+   who-initiated is irrelevant; never guessed). karateka's historical notes
+   don't record initiator, so `unknown` is the honest default for past-style
+   observations — that's correct, not a gap to fill.
+2. Commit and **push fire-and-forget**: the push is non-blocking. If it fails,
+   the task is **not** blocked and the verdict is **not** gated — the local note
+   is the durable record; the pool catches up later.
+3. Do **not** read or edit existing pool entries during a task. Always write a
+   new `live/` row. Folding live rows with prior entries is the reconciler's
+   read-time job. The count-to-3 trigger is advisory only — promotion is the
+   reconciler's cross-project job, not the project's.
+
+Capture at first instance (losslessness over cleanliness). If unsure whether a
+finding generalizes, capture it with `scope_judgment: unsure` and let the
+reconciler decide.
+
+Full mechanism and schema: see `convention-clause.md` and `ONBOARDING.md` in
+the pool repo.
+
+**Report line (mandatory in all task reports).**
+
+Every Form A and Form B report must include:
+
+> **Candidate(s) captured this task:** bulleted list of pool slug(s) written to
+> `seeds/karateka/live/` this task, or **"None."**
+
+Karateka has no separate report template file; Form A/B structure follows
+methodology v0.7 (`docs/claude-orchestrated-methodology-v0_7.md`). This line is
+a karateka-specific addition to both forms, making captured candidates visible at
+verdict time so an omission is caught.
+
+**Who-initiated linkage (for faithful initiator field going forward).**
+
+When a task involves a strategy shift — scope decision, investigation direction,
+approach change — the report's "User interaction during task" section should state
+who initiated it (executor-originated vs orchestrator-prompted). This is the
+source for setting `initiator` faithfully in pool entries rather than defaulting
+to `unknown`. karateka's history doesn't record initiator; `unknown` remains
+correct for observations without a clear initiator record.
+
+---
+
+*Last updated: KAR-WIRE-CLAUSE (2026-05-31). Append new patterns as they are
 identified; do not delete confirmed patterns.*
