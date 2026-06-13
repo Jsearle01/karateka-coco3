@@ -1046,3 +1046,22 @@ Conventions in §20, §21, §22 are empirically grounded:
 - §20.3 Rounding rule: P2.3a.11-followup-3 closure + Apple II
   render_string trace
 - §19 Border offset: P2.3a.11 plan establishment
+
+## 24. Input acquisition/consume frame ordering
+
+Within any per-frame loop that consumes input (attract holds, scene
+controllers, combat), the input poll (`HAL_input_poll`) must occur in
+the **same frame iteration as — and before — the logic that consumes
+its result.** Poll-then-consume within one iteration.
+
+**Rationale:** the polled input model's acquisition latency is one
+frame *only if* poll and consume sit adjacent in the same iteration. A
+poll at the top of frame N whose result is consumed at the bottom of
+frame N+1 becomes **two** frames of latency, silently degrading input
+feel with no visible code smell. This matches the oracle's per-frame
+input cadence (`routine_b7f5` runs inside the frame loop, consumed the
+same frame).
+
+**Applies to:** R-p24 (enforced as AC-11) and every subsequent
+input-consuming loop. Load-bearing for the polled model's one-frame
+best case; directly relevant to the `Q-input-model` latency gate.

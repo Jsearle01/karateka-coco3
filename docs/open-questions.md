@@ -107,3 +107,32 @@ prior mask state. ~14-cycle overhead; not in inner loops.
 **EXTRA-3 — Multi-source future readiness: single-source per §9 (E3.a).**
 §9 multi-source-extension constraint note covers what to watch for when
 a second GIME IRQ source is enabled.
+
+---
+
+## Q-input-model — Polled vs interrupt-driven input; latency revisit (combat-path-gated)
+
+**Status:** Deferred to combat-path work (`fight_engine.s` port). Not
+load-bearing for R-p24 or attract-mode scenes.
+
+**Decision in force:** input is polled-per-frame within the GIME VBL
+IRQ cadence (R-p24). The CoCo3 keyboard interrupt (PIA0 CA1/CB1) is the
+considered-and-deferred alternative.
+
+**Why deferred:** (1) interrupt-driven saves only acquisition latency
+(≤1 frame, ~8 ms avg); consume/render stay frame-quantized, capping the
+feel improvement at one frame. (2) Re-enabling the PIA keyboard IRQ
+reintroduces the CPU-trap mode R-boot's `HAL_sys_init` engineered out.
+(3) Promotes single-source GIME IRQ to multi-source, pulling the
+deferred handler restructure (dispatch on full `$FF92` read) into scope.
+
+**Reopen trigger (measurable):** when combat-path work lands, measure
+the oracle's defensive/offensive windows in frames from the combat
+tables (`$6000-$63FF`). If a defensive window is ≤ ~3 frames,
+~8–16 ms acquisition latency is a meaningful fraction — evaluate
+interrupt-driven acquisition vs the multi-source GIME restructure cost.
+Else polling stands. Decision criterion = measured frame count, not a
+guess.
+
+**Cross-refs:** `interrupt-handling.md` (multi-source GIME note);
+`sys.s` (R-boot PIA disable); `conventions.md` §24.
