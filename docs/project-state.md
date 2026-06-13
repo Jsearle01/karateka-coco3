@@ -381,6 +381,28 @@ so the VOFFSET reset is pixel-identical. Max row ~395 ($FB30) — clears $FF00.
 - Cycle count (AC-2): copy = 2 rows/step = 40 words/row * 2 = ~1740 cyc, once
   per K=3-frame step => <6% of one 60Hz frame. Amortized; no single-frame stall.
 
+### R-p26 gate iteration -> Option B (lower-bank pre-render; 2026-06-13)
+
+At Jay's visual gate the copy/wrap (v3) read as choppy + "smeared"; a no-copy
+display-buffer rewrite (v4, pure VOFFSET over a pre-rendered 398-row buffer)
+was smooth and clean but NOT faithful (couldn't fit content+window+travel, so
+it started/ended with text parked on screen — Jay rejected that trade-off).
+Resolution: **Option B** (Jay's call) — render the full 636-row scroll (entry
+192 + content 252 + exit 192) into the LOWER BANK (physical $60000, real RAM on
+128K), then scroll with PURE VOFFSET ($C000 + 10*top). Pure-VOFFSET runtime is
+the v4-proven smooth path; faithful because the lower bank holds the full
+travel. Probe confirmed the GIME displays the lower bank (VOFFSET=$C000).
+- Build (once): clear lower bank via the $4000 MMU window; render 18 lines in
+  the display region (blit); bulk-copy (MMU-window chunks, byte-aligned) to
+  lower-bank row 192. Sidesteps the 8KB-page vs 80-byte-row misalignment.
+- Scroll: VOFFSET = $C000 + 10*top, top 0..444. Faithful (scrolls in from
+  bottom, off the top), smooth (no per-frame render). Jay CONFIRMED scrolling.
+- METHODOLOGY: MAME -nothrottle screen:snapshot() proved UNRELIABLE here
+  (mistimed captures showed phantom "smear"/"stuck" frames absent from the live
+  view) — the perceived smear/choppy were largely capture/motion artifacts.
+  Trust the live gate, not nothrottle snapshots, for scroll QA. Stock 128K
+  (lower bank borrowed during the intro; not 512K).
+
 ---
 
 ## Calibration phase tracking

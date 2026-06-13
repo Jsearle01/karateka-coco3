@@ -1,85 +1,73 @@
 * src/engine/scene4_scroll.s
 *
-* R-p26 (v3): scene-4 scrolling-narrative port — GIME VOFFSET sliding-window
-* scroll with AMORTIZED memmove-on-wrap (Jay's option-1 ruling; 6809 only).
-* Fits stock 128 KB.
+* R-p26 (B): scene-4 scrolling-narrative port — full FAITHFUL scroll via a
+* tall pre-rendered buffer in the LOWER MEMORY BANK + pure GIME VOFFSET scroll.
+* 6809; stock 128 KB.
 *
 * ORIGIN: Apple II routine_b833 (intro.s) — scroll of the 18 narrative
-*   line-slots (text_strings.s idx 4..21; 16 text + 2 blank paragraph
-*   breaks). Recon parameters (UNCHANGED): VOFFSET += 20/step (= 2
-*   scanlines; 10 units/scanline), 14-scanline line spacing, VSCROL=0.
+*   line-slots (text_strings.s idx 4..21; 16 text + 2 blank paragraph breaks).
 *
-* MECHANISM (single-zone buffer + continuous copy-down — replaces v2's
-* duplicate-zone ring, which needed ~2L and collided with the $FF00 GIME
-* I/O ceiling):
-*   Buffer region $8000-$FBFF+ (physical $78000+), row p at $8000+p*80,
-*   VOFFSET(p) = $F000 + 10*p. The window (W=192) scrolls DOWN by raising
-*   VOFFSET top 0 -> SHIFT(=192); lines render just below the window as they
-*   approach (s4_base = logical row of buffer row 0). When top reaches
-*   SHIFT the displayed strip [SHIFT, SHIFT+W) has ALREADY been copied to
-*   [0, W) — done incrementally, 2 rows per step into the just-scrolled-off
-*   region [0, top) (never touching displayed rows) — so resetting top->0
-*   (base += SHIFT) is pixel-identical and seamless. Max row touched ~395
-*   ($FB30) — clears the $FF00 ceiling.
-*   Copy cost: 2 rows = 160 bytes ~= 880 cycles/step (<5% of a frame). No
-*   single-frame stall (the v2 HS-1 requirement).
+* WHY (after v1-v4): the faithful scroll (line scrolls IN from the bottom,
+*   OFF the top) needs ~636 contiguous rows (entry 192 + content 252 + exit
+*   192) — more than the ~398-row display buffers. The lower bank ($60000-
+*   $6FFFF, 64 KB, real RAM on 128 K) holds it. The GIME displays it via
+*   VOFFSET=$C000 (verified by probe). Runtime is pure VOFFSET = perfectly
+*   smooth (v4-proven). The CoCo3 8 KB-page vs 80-byte-row misalignment is
+*   sidestepped: render lines in the display region (blit works there), then
+*   BULK-COPY into the lower bank in MMU-window chunks (byte-aligned).
 *
-* REFILL: a line-slot is due when its logical top <= base + top + W; it is
-*   cleared+rendered at buffer row (logical_top - base). T0 places slot 0 at
-*   the window bottom at start (enters from below). Blank slots / the tail
-*   are just cleared.
+* BUILD (once, at scene-4 entry):
+*   1. clear the lower-bank buffer ($60000-$6DFFF) via the $4000 MMU window.
+*   2. render the 18 lines into the display region (rows 0..251) with the blit.
+*   3. bulk-copy those 252 rows (20160 B) to lower-bank row 192 ($63C00),
+*      chunked across MMU pages via the $4000 window.
+*   => lower bank = blank[0,191] + content[192,443] + blank[444,635].
+* SCROLL: VOFFSET = $C000 + 10*top, top 0..444, K frames/step, poll input.
 *
-* [ref: docs/conventions.md §19 coord map; §22.4b extents/xstep]
-* [ref: docs/project-state.md §R-p26 — v2 hard-stop + this v3 design]
-* [ref: src/hal/coco3-dsk/gfx.s HAL_gfx_blit_scroll — full-region blit]
-* [ref: src/engine/scene4_text.s — GENERATED per-line glyph tables]
+* [ref: docs/conventions.md §19; §22.4b]  [ref: gfx.s HAL_gfx_blit_scroll]
+* [ref: docs/memory-map.md §3 — 128K MMU / lower bank pages $30-$37]
 * ---------------------------------------------------------------
 
         setdp   0
 
-* --- scroll constants ---
+* --- constants ---
 S4_LINE_H       equ     14              ; line spacing (scanlines)
-S4_WINDOW       equ     192             ; visible window height (rows)
-S4_SHIFT        equ     192             ; wrap shift = window (top range 0..SHIFT)
-S4_T0           equ     178             ; logical top of slot 0 (enters at window bottom)
-S4_SMAX         equ     400             ; scroll-complete logical pos (base+top); tunable @ gate
-S4_KFRAMES      equ     3               ; VBL frames per 2px step (scroll rate; tunable)
-S4_VOFF_BASE    equ     $F000           ; VOFFSET for buffer row 0 ($78000/8)
-S4_SRC_OFF      equ     $3C00           ; copy source offset = SHIFT*80 = 192*80 bytes
+S4_WINDOW       equ     192             ; visible window height
+S4_ENTRY        equ     192             ; blank rows above content (scroll-in margin)
+S4_SMAX         equ     444             ; final VOFFSET top row (content fully off top)
+S4_STEP         equ     1               ; scanlines per step (1 = smooth)
+S4_KFRAMES      equ     3               ; VBL frames per step (scroll rate; tunable)
+S4_LB_VOFF      equ     $C000           ; VOFFSET for lower-bank row 0 ($60000/8)
 
-* s4_scroll_s ($62/$63) is reused as s4_top (the VOFFSET display row, 0..SHIFT).
-s4_top          equ     s4_scroll_s
+* lower-bank scroll buffer geometry
+S4_COPY_LEN     equ     20160           ; 252 content rows * 80 bytes
+S4_COPY_PAGE    equ     $31             ; dest start page ($62000); $63C00 = page $31 + $1C00
+S4_COPY_OFF     equ     $1C00           ; dest start offset within page $31
+
+* MMU default page values (128K task 0) for restore
+MMU_HAL_PAGE    equ     $3A             ; FFA2 default ($4000-$5FFF = HAL)
+
+* DP scratch (build-time; free during the pure-VOFFSET scroll which uses only s4_top)
+s4_top          equ     s4_scroll_s     ; $62/$63 — VOFFSET display row
+s4_cpage        equ     s4_ctmp         ; $6E      — copy dest page (8-bit)
+s4_coff         equ     s4_base         ; $6C/$6D  — copy dest offset within window
+s4_clen         equ     s4_copy_i       ; $6A/$6B  — copy bytes remaining
+s4_chunk        equ     s4_next_top      ; $64/$65 — copy chunk size
 
 * ===============================================================
-* scene4_scroll — scene-4 narrative scroll (amortized memmove-on-wrap).
-* Returns: CC.C set  = input detected (caller -> pressed early-break);
-*          CC.C clear = scroll completed (caller -> scene-4->5 cut halt).
-* Clobbers: A,B,X,Y,U,CC and the s4_* DP scratch.
+* scene4_scroll — build the lower-bank buffer, then VOFFSET-scroll it.
+* Returns: CC.C set = input (caller -> pressed); CC.C clear = completed.
 * ===============================================================
 scene4_scroll:
-        ; --- clear the whole buffer region $8000-$FC00 ---
-        ldx     #$8000
+        jsr     s4_clear_lb             ; clear lower-bank buffer
+        jsr     s4_render_content       ; render 18 lines into display rows 0..251
+        jsr     s4_copy_lb              ; bulk-copy content -> lower bank row 192
+
         ldd     #$0000
-s4_clr:
-        std     ,x++
-        cmpx    #$FC00
-        blo     s4_clr
+        std     <s4_top
+        ldd     #S4_LB_VOFF
+        std     $FF9D                   ; VOFFSET = lower-bank row 0 (entry blank)
 
-        ; --- init state ---
-        ldd     #$0000
-        std     <s4_top                 ; top = 0
-        std     <s4_base                ; base = 0
-        std     <s4_copy_i              ; copy_i = 0
-        ldd     #S4_T0
-        std     <s4_next_top            ; next line logical top = T0
-        clr     <s4_next_slot           ; next slot = 0
-
-        ldd     #S4_VOFF_BASE
-        std     $FF9D                   ; VOFFSET = row 0
-
-        jsr     s4_refill               ; pre-render the slot(s) due at start
-
-* --- main scroll loop ---
 s4_loop:
         lda     #S4_KFRAMES
         sta     <s4_kcount
@@ -90,204 +78,171 @@ s4_frame:
         dec     <s4_kcount
         bne     s4_frame
 
-        ; advance: top += 2
         ldd     <s4_top
-        addd    #2
+        addd    #S4_STEP
         std     <s4_top
-
-        ; wrap? top reached SHIFT -> strip already copied; rebase
-        cmpd    #S4_SHIFT
-        blo     s4_no_wrap
-        jsr     s4_finish_copy          ; ensure copy_i == SHIFT (strip relocated)
-        ldd     <s4_top
-        subd    #S4_SHIFT
-        std     <s4_top                 ; top -= SHIFT (-> 0)
-        ldd     <s4_base
-        addd    #S4_SHIFT
-        std     <s4_base                ; base += SHIFT
-        ldd     #$0000
-        std     <s4_copy_i              ; restart copy for the new cycle
-s4_no_wrap:
-
-        ; done? base + top >= SMAX
-        ldd     <s4_base
-        addd    <s4_top
         cmpd    #S4_SMAX
         bhs     s4_done
 
-        jsr     s4_set_voffset          ; VOFFSET = base_off + 10*top
-        jsr     s4_refill               ; render newly-due lines below the window
-        jsr     s4_copy_step            ; copy-down freed rows (catch copy_i up to top)
+        jsr     s4_set_voffset_lb
         bra     s4_loop
 
 s4_done:
-        andcc   #$FE                    ; CC.C clear = completed
+        andcc   #$FE
         rts
 s4_input:
-        orcc    #$01                    ; CC.C set = input during scroll
+        orcc    #$01
         rts
 
 * ===============================================================
-* s4_refill — render every line-slot now due (logical top <= base+top+W),
-*   at buffer row (logical_top - base). Past the 18 slots, clears tail bands.
+* s4_clear_lb — zero lower-bank pages $30..$36 ($60000-$6DFFF) via the
+*   $4000-$5FFF MMU window (8 KB at a time; below $FF00, fully writable).
 * ===============================================================
-s4_refill:
-s4_rf_loop:
-        ; stop if next_top > SMAX + W
-        ldd     <s4_next_top
-        cmpd    #(S4_SMAX+S4_WINDOW)
-        bhi     s4_rf_done
-        ; due test: next_top <= base + top + W
-        ldd     <s4_base
-        addd    <s4_top
-        addd    #S4_WINDOW              ; D = base+top+W (threshold)
-        cmpd    <s4_next_top
-        blo     s4_rf_done              ; threshold < next_top -> not due
-        ; buffer row = next_top - base
-        ldd     <s4_next_top
-        subd    <s4_base
-        std     <s4_dest_row            ; buffer row for this line
-        jsr     s4_render_band
-        ldd     <s4_next_top
-        addd    #S4_LINE_H
-        std     <s4_next_top
-        inc     <s4_next_slot
-        bra     s4_rf_loop
-s4_rf_done:
+s4_clear_lb:
+        lda     #$30                    ; first lower-bank page
+s4_clb_page:
+        sta     $FFA2                   ; map $4000-$5FFF -> this page
+        pshs    a
+        ldx     #$4000
+        ldd     #$0000
+s4_clb_fill:
+        std     ,x++
+        cmpx    #$6000
+        blo     s4_clb_fill
+        puls    a
+        inca
+        cmpa    #$37                    ; pages $30..$36
+        bls     s4_clb_page
+        lda     #MMU_HAL_PAGE
+        sta     $FFA2                   ; restore HAL window
         rts
 
 * ===============================================================
-* s4_render_band — clear the 14-row band at s4_dest_row, then (if next_slot
-*   is a real text slot) blit that slot's glyph line there.
+* s4_render_content — clear display region, render all 18 line-slots into
+*   display rows slot*14 (0..238) via the blit (display region; blit works).
 * ===============================================================
-s4_render_band:
-        jsr     s4_clear_band           ; clear 14 rows at s4_dest_row
-        lda     <s4_next_slot
-        cmpa    #S4_SLOT_COUNT          ; 18
-        bhs     s4_band_done            ; tail -> blank only
+s4_render_content:
+        ; clear display $8000-$FE00 (render scratch)
+        ldx     #$8000
+        ldd     #$0000
+s4_rc_clr:
+        std     ,x++
+        cmpx    #$FE00
+        blo     s4_rc_clr
+        ; render each text slot at display row slot*14
+        clr     <s4_next_slot
+s4_rc_loop:
+        ldb     <s4_next_slot
+        lda     #S4_LINE_H
+        mul                             ; D = slot*14 = display row
+        std     <s4_dest_row
         ldb     <s4_next_slot
         lda     #3
-        mul                             ; D = slot*3
+        mul                             ; slot*3
         ldx     #s4_slots
-        leax    d,x                     ; X -> {fdb ptr; fcb count}
-        ldb     2,x                     ; B = count
-        beq     s4_band_done            ; blank paragraph-break slot
-        ldu     ,x                      ; U = line table ptr
-        jsr     s4_blit_line            ; renders at s4_dest_row
-s4_band_done:
+        leax    d,x
+        ldb     2,x                     ; count
+        beq     s4_rc_next              ; blank slot
+        ldu     ,x
+        jsr     s4_blit_line
+s4_rc_next:
+        inc     <s4_next_slot
+        lda     <s4_next_slot
+        cmpa    #S4_SLOT_COUNT
+        blo     s4_rc_loop
         rts
 
 * ===============================================================
-* s4_blit_line — blit a packed line table at row s4_dest_row.
+* s4_copy_lb — bulk-copy S4_COPY_LEN bytes from display $8000 to the lower
+*   bank starting at page S4_COPY_PAGE offset S4_COPY_OFF, chunked across
+*   8 KB MMU pages via the $4000-$5FFF window. Byte copy (page/row-agnostic).
+*   Source (display) stays mapped via FFA4-FFA7 (untouched); dest via FFA2.
+* ===============================================================
+s4_copy_lb:
+        ldx     #$8000                  ; X = source (display), persists across chunks
+        lda     #S4_COPY_PAGE
+        sta     <s4_cpage
+        ldd     #S4_COPY_OFF
+        std     <s4_coff
+        ldd     #S4_COPY_LEN
+        std     <s4_clen
+s4_cl_loop:
+        ldd     <s4_clen
+        beq     s4_cl_done
+        ; chunk = min(clen, $2000 - coff)
+        ldd     #$2000
+        subd    <s4_coff                ; D = space remaining in this page
+        ; if clen < D, chunk = clen else chunk = D
+        cmpd    <s4_clen
+        bls     s4_cl_havechunk         ; D <= clen -> chunk = D
+        ldd     <s4_clen                ; else chunk = clen
+s4_cl_havechunk:
+        std     <s4_chunk
+        ; map FFA2 = cpage ; dest window addr = $4000 + coff -> Y
+        lda     <s4_cpage
+        sta     $FFA2
+        ldy     #$4000
+        ldd     <s4_coff
+        leay    d,y                     ; Y = $4000 + coff (dest in window)
+        ; copy s4_chunk bytes from X (src) to Y (dest)
+        ldd     <s4_chunk
+s4_cl_copy:
+        ; copy one byte (chunk may be odd; byte-granular)
+        pshs    d
+        lda     ,x+
+        sta     ,y+
+        puls    d
+        subd    #1
+        bne     s4_cl_copy
+        ; advance: clen -= chunk ; cpage++ ; coff = 0 (next page starts at 0)
+        ldd     <s4_clen
+        subd    <s4_chunk
+        std     <s4_clen
+        inc     <s4_cpage
+        ldd     #$0000
+        std     <s4_coff
+        bra     s4_cl_loop
+s4_cl_done:
+        lda     #MMU_HAL_PAGE
+        sta     $FFA2                   ; restore HAL window
+        rts
+
+* ===============================================================
+* s4_blit_line — blit a packed line table at row s4_dest_row (display region).
 *   U = table {fdb addr; fcb byte_col, subbyte} ; B = glyph count.
 * ===============================================================
 s4_blit_line:
 s4_bl_loop:
         pshs    b
-        ldx     ,u++                    ; glyph addr
-        lda     ,u+                     ; byte column
-        ldb     ,u+                     ; sub-byte
+        ldx     ,u++
+        lda     ,u+
+        ldb     ,u+
         stb     <blit_subbyte
-        jsr     HAL_gfx_blit_scroll     ; X=addr A=col, dest=s4_dest_row; preserves U
+        jsr     HAL_gfx_blit_scroll     ; X=addr A=col dest=s4_dest_row; preserves U
         puls    b
         decb
         bne     s4_bl_loop
         rts
 
 * ===============================================================
-* s4_clear_band — zero S4_LINE_H (14) rows * 80 bytes at s4_dest_row.
+* s4_set_voffset_lb — VOFFSET = $C000 + 10 * top.
 * ===============================================================
-s4_clear_band:
-        lda     #80
-        ldb     <s4_dest_row+1
-        mul                             ; D = row_lo * 80
-        ldx     <s4_dest_row
-        cmpx    #256
-        blo     s4_cb_base
-        addd    #$5000                  ; row_hi(=1) * 80 << 8
-s4_cb_base:
-        addd    #$8000
-        tfr     d,x
-        ldy     #(S4_LINE_H*80/2)       ; 560 word stores = 14 rows
-        ldd     #$0000
-s4_cb_loop:
-        std     ,x++
-        leay    -1,y
-        bne     s4_cb_loop
-        rts
-
-* ===============================================================
-* s4_copy_step — copy freed rows down: while copy_i < top, copy buffer row
-*   (SHIFT+copy_i) -> row (copy_i). Each row is 80 bytes; src = dst+SHIFT*80.
-*   Rows [0,top) are scrolled off (above the window) so writing them is
-*   invisible; the source rows are rendered+stable. Amortized (2 rows/step).
-* ===============================================================
-s4_copy_step:
-s4_cs_loop:
-        ldd     <s4_copy_i
-        cmpd    <s4_top
-        bhs     s4_cs_done              ; copy_i >= top -> caught up
-        jsr     s4_copy_one_row
-        ldd     <s4_copy_i
-        addd    #1
-        std     <s4_copy_i
-        bra     s4_cs_loop
-s4_cs_done:
-        rts
-
-* s4_finish_copy — copy any remaining rows up to SHIFT (called at wrap).
-s4_finish_copy:
-s4_fc_loop:
-        ldd     <s4_copy_i
-        cmpd    #S4_SHIFT
-        bhs     s4_fc_done
-        jsr     s4_copy_one_row
-        ldd     <s4_copy_i
-        addd    #1
-        std     <s4_copy_i
-        bra     s4_fc_loop
-s4_fc_done:
-        rts
-
-* s4_copy_one_row — copy row s4_copy_i: dst=$8000+copy_i*80, src=dst+SHIFT*80.
-* copy_i <= SHIFT (192) < 256, so copy_i*80 via 8x8 mul. 80 bytes = 40 words.
-s4_copy_one_row:
-        lda     #80
-        ldb     <s4_copy_i+1            ; copy_i low byte (copy_i < 256)
-        mul                             ; D = copy_i * 80
-        addd    #$8000
-        tfr     d,x                     ; X = dst row addr
-        leay    S4_SRC_OFF,x            ; Y = src = dst + 192*80
-        lda     #40                     ; 40 words = 80 bytes
-        sta     <s4_ctmp                ; count in MEMORY — ldd ,y++ clobbers B
-s4_cor_loop:
-        ldd     ,y++
-        std     ,x++
-        dec     <s4_ctmp
-        bne     s4_cor_loop
-        rts
-
-* ===============================================================
-* s4_set_voffset — VOFFSET = $F000 + 10 * top  (top = 0..SHIFT).
-* ===============================================================
-s4_set_voffset:
-        ldd     <s4_top                 ; top (0..192)
-        ; D*10 = D*2 + D*8
+s4_set_voffset_lb:
+        ldd     <s4_top
         lslb
         rola                            ; top*2
         pshs    d
         lslb
-        rola                            ; top*4
+        rola
         lslb
         rola                            ; top*8
         addd    ,s++                    ; + top*2 = top*10
-        addd    #S4_VOFF_BASE
+        addd    #S4_LB_VOFF
         std     $FF9D
         rts
 
 * ---------------------------------------------------------------
 * Scene-4 text tables (GENERATED) + Wave-3 glyph content includes.
-* (Other 16 letters included by broderbund_scene.s / intro_scenes.s.)
 * ---------------------------------------------------------------
         include "scene4_text.s"
 
