@@ -362,10 +362,18 @@ so the VOFFSET reset is pixel-identical. Max row ~395 ($FB30) — clears $FF00.
   their upper rows (e.g. slot 3 @ buffer row 220: rows 221-222,224-225 = random,
   row 223 blank), STABLE across consecutive frames (real framebuffer content,
   not a capture artifact). The slot's glyph table is valid; garbage = non-glyph
-  random (distinct=32/36), so a row band is left uncleared OR written by a
-  bad-pointer blit. NOT root-caused by inspection (the v2 trap). Next pass:
-  MAME debugger write-watchpoint on $C4D0-ish to catch the writer, or bisect
-  which slots/glyphs garble.
+  random (distinct=32/36). Focused debug pass (2026-06-13) RULED OUT: (a) the
+  copy-down — reliable reads show top/copy_i stay small + bounded (e.g. top=72,
+  copy_i<=72), so the copy only writes low rows, never the garbage band; (b)
+  table-count overrun — s4_slots counts match the per-line fdb counts exactly
+  (only slot17 has a benign 13-vs-12 that drops nothing visible). So the
+  garbage originates in the blit/refill path for certain line bands — yet the
+  blit logic and glyph tables both inspect as correct. MAME's Lua
+  install_write_tap proved UNRELIABLE here (reported writes with copy_i=18
+  landing at $C510, which the address math forbids — it fires for out-of-range
+  writes), so it could not pin the writer. NEXT PASS must use the MAME
+  interactive debugger (-debug + wpset hardware watchpoint), not Lua taps, to
+  catch the exact writer PC; or bisect by disabling the copy/refill stages.
 - Committed ACTIVE (boot.s calls scene4_scroll; halts at $B7DB) so the next
   debug pass can iterate directly. Build clean (karateka.bin ~7.3KB); 7/7
   automated tests PASS. NOT yet Jay-gated (the band must be fixed first).
