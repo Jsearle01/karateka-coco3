@@ -265,9 +265,18 @@ by a shared "pressed" debug screen.
 - Verification: AC-0..AC-S3-2, AC-D3-1, AC-G-1/2 [E] (build clean, karateka.bin
   2251→5011 B, 7/7 tests PASS). AC-G-2 trace: no-input reached boot_halt @ frame
   939 with flags clear; inject reached boot_halt @ 56 with $60/$61=$01 (pressed
-  path). VISUAL gates AC-S2-3/S3-3/D3-2 [H] PENDING Jay (vs scene2_mechner_ref /
-  scene3_title_ref; scene-1 re-gate for "pressed"). copyright position uncertain
-  (routine_b8f3 $05/$06→col not fully pinned) — confirm at gate.
+  path). VISUAL gates AC-S2-3/S3-3/D3-2 [H] **PASSED** (Jay, 2026-06-13).
+- Visual-gate fixes (applied during the gate):
+  * Scene-2 spacing re-baked from oracle font_glyph_xstep_* metrics (commit
+    f6b9ab0): word space 7px (was the §2-F 16px guess, ~2× too wide).
+  * Scene-3 copyright flash fixed: rendering is single-buffered (page_register
+    never toggles; HAL_gfx_present only sets the GIME display offset), so pass-2
+    must NOT clear/re-render the title (that blanked+redrew the visible title) —
+    only draw the copyright onto buffer A and present.
+  * Title spacing: the converter strips leading blank bytes (title_k, title_t =
+    1 byte) but blit positions were a uniform §19 +20, skewing spacing. Added
+    per-sprite leading-strip compensation (k slots 3,4 + t slot 7: +7px).
+  * k-flourish dialed to +3px (4px left of each k) via Jay's visual nudges.
 - Deferred: scene 4 (R-p26+); real game-start consumer (P3+).
 
 ---

@@ -212,9 +212,12 @@ boot:
         jsr     scene1_hold_poll
         bcs     scene1_input_break
 
-* Scene 3 pass 2 — title + copyright (= $B7BC: b8e6 / b8f3 / hold160):
-        jsr     HAL_gfx_clear
-        jsr     scene3_title_render
+* Scene 3 pass 2 — add copyright BELOW the held title (= $B7BC: b8f3).
+* No clear, no title re-render: rendering is single-buffered (page_register
+* stays on buffer A; HAL_gfx_present only sets the GIME display offset, it
+* does not flip), so the title is already on the displayed buffer — clearing
+* or re-rendering it blanked + redrew the visible title (the flash). Just
+* draw the copyright onto A and present.
         jsr     scene3_copyright
         jsr     HAL_gfx_present
         lda     #160

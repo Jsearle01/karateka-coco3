@@ -178,16 +178,16 @@ scene3_title_tbl:
         fcb     31,3,79
         fdb     title_a_coco3              ; slot 2  a  apple241  -> px261 byte65 sub1
         fcb     65,1,79
-        fdb     title_k_coco3              ; slot 3  k  apple0    -> px20  byte5  sub0
-        fcb     5,0,80
-        fdb     title_k_coco3              ; slot 4  k  apple206  -> px226 byte56 sub2
-        fcb     56,2,80
-        fdb     title_k_flourish_coco3     ; slot 5  k-flourish apple0   -> byte5  sub0
-        fcb     5,0,69
-        fdb     title_k_flourish_coco3     ; slot 6  k-flourish apple206 -> byte56 sub2
-        fcb     56,2,69
-        fdb     title_t_coco3              ; slot 7  t  apple133  -> px153 byte38 sub1
-        fcb     38,1,75
+        fdb     title_k_coco3              ; slot 3  k  apple0 +7 lead-comp -> byte6 sub3
+        fcb     6,3,80
+        fdb     title_k_coco3              ; slot 4  k  apple206 +7 lead-comp -> byte58 sub1
+        fcb     58,1,80
+        fdb     title_k_flourish_coco3     ; slot 5  k-flourish +3px (sits 4px left of k)
+        fcb     5,3,69
+        fdb     title_k_flourish_coco3     ; slot 6  k-flourish +3px
+        fcb     57,1,69
+        fdb     title_t_coco3              ; slot 7  t  apple133 +7 lead-comp -> byte40 sub0
+        fcb     40,0,75
         fdb     title_e_coco3              ; slot 8  e  apple168  -> px188 byte47 sub0
         fcb     47,0,79
         fdb     title_r_coco3              ; slot 9  r  apple69   -> px89  byte22 sub1
