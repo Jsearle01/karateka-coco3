@@ -258,11 +258,12 @@ s4_copy_one_row:
         addd    #$8000
         tfr     d,x                     ; X = dst row addr
         leay    S4_SRC_OFF,x            ; Y = src = dst + 192*80
-        ldb     #40                     ; 40 words = 80 bytes
+        lda     #40                     ; 40 words = 80 bytes
+        sta     <s4_ctmp                ; count in MEMORY — ldd ,y++ clobbers B
 s4_cor_loop:
         ldd     ,y++
         std     ,x++
-        decb
+        dec     <s4_ctmp
         bne     s4_cor_loop
         rts
 

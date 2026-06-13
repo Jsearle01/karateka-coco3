@@ -362,18 +362,19 @@ so the VOFFSET reset is pixel-identical. Max row ~395 ($FB30) — clears $FF00.
   their upper rows (e.g. slot 3 @ buffer row 220: rows 221-222,224-225 = random,
   row 223 blank), STABLE across consecutive frames (real framebuffer content,
   not a capture artifact). The slot's glyph table is valid; garbage = non-glyph
-  random (distinct=32/36). Focused debug pass (2026-06-13) RULED OUT: (a) the
-  copy-down — reliable reads show top/copy_i stay small + bounded (e.g. top=72,
-  copy_i<=72), so the copy only writes low rows, never the garbage band; (b)
-  table-count overrun — s4_slots counts match the per-line fdb counts exactly
-  (only slot17 has a benign 13-vs-12 that drops nothing visible). So the
-  garbage originates in the blit/refill path for certain line bands — yet the
-  blit logic and glyph tables both inspect as correct. MAME's Lua
-  install_write_tap proved UNRELIABLE here (reported writes with copy_i=18
-  landing at $C510, which the address math forbids — it fires for out-of-range
-  writes), so it could not pin the writer. NEXT PASS must use the MAME
-  interactive debugger (-debug + wpset hardware watchpoint), not Lua taps, to
-  catch the exact writer PC; or bisect by disabling the copy/refill stages.
+  random (distinct=32/36). ROOT-CAUSED + FIXED (2026-06-13, debugger pass):
+  the copy-down's row-copy loop used `ldb #40` as the counter, but `ldd ,y++`
+  (load source word) CLOBBERS B every iteration, so `decb`/`bne` ran on copied
+  data — the loop ran an unbounded, data-dependent count. X (dest) and Y (src)
+  marched past the 80-byte row; Y climbed into the GIME I/O near $FFFF and
+  wrapped to low RAM, writing register/garbage bytes onto the screen. Found via
+  bisect (disable copy -> garbage gone) + Jay's "activity near $FFFF shouldn't
+  happen" (= runaway pointer). The guards failed and the watchpoint looked
+  contradictory because the controlling quantity wasn't copy_i — it was the
+  clobbered counter. FIX: count in a DP byte (s4_ctmp) that `ldd` doesn't touch.
+  MAME-verified CLEAN: full scroll, all wraps seamless, text legible, no
+  garbage band; 7/7 tests; scroll completes. (= seed
+  ldd-clobbers-loop-counter-runaway-pointer.) Now READY for Jay's AC-6 gate.
 - Committed ACTIVE (boot.s calls scene4_scroll; halts at $B7DB) so the next
   debug pass can iterate directly. Build clean (karateka.bin ~7.3KB); 7/7
   automated tests PASS. NOT yet Jay-gated (the band must be fixed first).

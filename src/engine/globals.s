@@ -99,6 +99,7 @@ s4_next_slot        equ $68     ; 8-bit:  next slot index to refill (0..)
 s4_kcount           equ $69     ; 8-bit:  VBL-cadence down-counter (frames/step)
 s4_copy_i           equ $6A     ; 16-bit: incremental copy-down row index (0..SHIFT) — $6A/$6B
 s4_base             equ $6C     ; 16-bit: logical row of buffer row 0 (rebase accumulator) — $6C/$6D
+s4_ctmp             equ $6E     ; 8-bit:  copy-loop word counter (ldd clobbers B, so count in mem)
 
 * ---------------------------------------------------------------
 * Shared constants (used by both engine and HAL)
