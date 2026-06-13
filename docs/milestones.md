@@ -47,7 +47,11 @@ deliverable. Naming uses INT-N to distinguish from karateka_dissasembly_claude's
   not yet done — see project-state.md §Execution history).
   CLOSED blockers: R-vbl (CONFIRMED 2026-05-21, commit d687e01),
   R-boot (CONFIRMED 2026-05-21, commit ee3fa08). R-p23 closed 2026-05-17.
-  Remaining blocker: R-p24 (canonical intro.s scene-1 path, P2.4) — not started.
+  Remaining blocker: R-p24 (canonical intro.s scene-1 path, P2.4) — controller
+  CONFIRMED on agent-verifiable criteria (2026-06-13); INT-1 close pending Jay's
+  MAME visual gate (AC-10). R-p24 ports the linear scene-1 controller +
+  per-frame polled-input hold runner; halts at the scene-1→scene-2 cut ($B798).
+  jmptable_b760 continuation + intro_prelude_b769 prelude deferred (beyond cut).
 - INT-2 — Logo → title → cliff scene sequence with transitions: NOT STARTED
   Adds: scene-transition machinery; additional scenes' content assets.
 - INT-3 — Full attract cycle including sound, cutscenes: NOT STARTED

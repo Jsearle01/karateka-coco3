@@ -75,9 +75,18 @@ frame_sync_dc       equ $54     ; frame sync state flag ($DC analog; P2.2)
 * ---------------------------------------------------------------
 * Engine working / combat bands $20-$4F, $60-$7F
 * [ref: docs/conventions.md §2 — engine-owned; allocated during P2]
-* Currently unallocated; specific allocations added to this file
-* when assigned during P2 engine porting.
+* Specific allocations added to this file when assigned during P2
+* engine porting.
 * ---------------------------------------------------------------
+
+* --- Engine intro / scene-1 state ($60-$61) — R-p24 ---
+* Game-start signal flags set by scene-1 input detection. Apple II
+* analogs: $86 ("input received") and $4F (companion); both set to $01
+* by LB7DE on key/button press. The game-start consumer is STUBBED
+* until R-p25 (scene 2). Cleared at scene-1 controller entry (boot.s).
+* [ref: karateka_dissasembly_claude/src/intro.s LB7DE — $86/$4F=$01]
+intro_input_flag    equ $60     ; $86 analog: input-received signal
+intro_inputaux_flag equ $61     ; $4F analog: companion flag
 
 * ---------------------------------------------------------------
 * Shared constants (used by both engine and HAL)

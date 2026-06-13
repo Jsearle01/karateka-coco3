@@ -563,9 +563,14 @@ the CPU in an infinite IRQ loop (reading $FF92 does not dismiss PIA IRQ).
 This was the root cause of the R-boot failure (commit ee3fa08: 833,172
 non-VBORD IRQ iterations in 30 seconds before fix).
 
-**Future keyboard input (R-p24+):** HAL_input_init should selectively
-re-enable PIA IRQ when keyboard input is required. Do not re-enable PIA
-IRQ without installing a PIA handler first.
+**Keyboard input (R-p24, implemented — polled):** input is **polled**, not
+interrupt-driven. HAL_input_poll reads the PIA0 data registers directly
+($FF02 column strobe / $FF00 row sense); clearing the CA/CB IRQ-enable bits
+above suppresses only IRQ *assertion*, not data-register access, so polling
+works with the R-boot config untouched. HAL_input_init asserts CR bit 2 = 1
+(data mode) but does NOT re-enable PIA IRQ — doing so would reintroduce the
+R-boot keyboard-IRQ trap. (Earlier guidance here recommended re-enabling PIA
+IRQ for keyboard; that is **superseded** by the R-p24 polled approach.)
 
 `[ref: src/hal/coco3-dsk/sys.s — HAL_sys_init implementation; Step 2]`
 `[ref: docs/interrupt-handling.md §11 — PIA IRQ bypass architecture]`

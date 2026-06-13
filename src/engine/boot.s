@@ -149,25 +149,93 @@ boot:
 * [ref: docs/interrupt-handling.md §10.2 — opt-in sequence]
         andcc   #$EF                    ; unmask IRQ — VBL handler now fires
 
-* Render scene: Logo 1, Logo 2, "presents" → present to screen.
+* ===============================================================
+* INT-1 / R-p24: Canonical scene-1 controller
+*
+* Ports Apple II outer_caller_b77c ($B77C-$B797) as a linear controller:
+*   scene-1 render → 160-frame hold → 1→2 transition → 80-frame blank →
+*   halt at the scene-1→scene-2 cut ($B798). Replaces R-boot's blocking
+*   HAL_time_delay holds with per-frame VBL-counted holds that POLL input
+*   every frame (= stub_b823 outer loop + routine_b7f5 per-frame poll;
+*   the Apple II $80/$D2 inner-count is replaced by real VBL).
+*
+* Input during a hold sets the canonical game-start flags (= LB7DE:
+*   $86/$4F = $01) and breaks the hold early. The game-start CONSUMER is
+*   STUBBED until R-p25 (scene 2) — detection only here.
+*
+* Scene-1 input is POLLED (HAL_input_poll); NO PIA CA/CB re-enable
+*   (R-boot IRQ config untouched — verified against sys.s).
+*
+* NOT ported here (deferred — beyond the scene-1→scene-2 cut, §2b):
+*   jmptable_b760 per-frame continuation + intro_prelude_b769 prelude +
+*   the attract loop-back. Adding the prelude would also diverge from the
+*   R-boot visual baseline (AC-10). See report scope-deviation note.
+*
+* [ref: karateka_dissasembly_claude/src/intro.s outer_caller_b77c,
+*       stub_b823, routine_b7f5, LB7DE]
+* [ref: docs/project-state.md — R-p24]
+* ===============================================================
+        clr     <intro_input_flag       ; clear game-start flags ($86 analog)
+        clr     <intro_inputaux_flag    ; ($4F analog)
+
+* Scene 1 — Brøderbund presents (= $B77C: L1900 / b898 / b8c2 / L0783).
+* broderbund_scene renders Logo 1, Logo 2, "presents" and presents.
 * [ref: src/engine/broderbund_scene.s]
         jsr     broderbund_scene
 
-* 160-frame hold: scene visible on screen.
-* [ref: Apple II outer_caller_b77c stub_b823 — 160-frame static display hold]
+* 160-frame hold-with-poll (= stub_b823 X=$A0 + routine_b7f5 per frame):
         lda     #160
-        jsr     HAL_time_delay
+        jsr     scene1_hold_poll
+        bcs     scene1_input_break      ; input during hold → early break
 
-* Scene clear: blank the back buffer and present.
-        jsr     HAL_gfx_clear
-        jsr     HAL_gfx_present
-
-* 80-frame transition: blank screen.
+* Transition 1→2 (= $B78D: L1900 / L0783 + 80-frame blank):
+        jsr     HAL_gfx_clear           ; blank back buffer
+        jsr     HAL_gfx_present         ; present (flip + VBL sync)
         lda     #80
-        jsr     HAL_time_delay
+        jsr     scene1_hold_poll        ; 80-frame blank-with-poll (X=$50)
+        bcs     scene1_input_break
 
-* Halt. R-p24 (intro.s scene-1 path) will replace this with scene-2 hand-off.
-* [ref: docs/project-state.md — R-p24 next INT-1 blocker after R-boot]
+* Reached the scene-1 → scene-2 cut ($B798). Scene 2 = R-p25.
+        bra     boot_halt
+
+* Input detected during a hold (= LB7DE): set the game-start flags.
+* Downstream game-start consumer is STUBBED until R-p25.
+scene1_input_break:
+        lda     #$01
+        sta     <intro_input_flag       ; $86 = $01 ("input received")
+        sta     <intro_inputaux_flag    ; $4F = $01 (companion)
+                                        ; falls through to halt (consumer stubbed)
+
 boot_halt:
         bra     boot_halt
+
+* ---------------------------------------------------------------
+* scene1_hold_poll  [R-p24]
+*
+* Hold for A frames under real VBL, polling input each frame.
+* = Apple II stub_b823 outer loop (X frames) with routine_b7f5 per-frame
+*   poll; the $80/$D2 inner-count is replaced by real VBL — one
+*   HAL_time_vbl_wait per iteration. Mirrors HAL_time_delay's
+*   pshs/puls/deca idiom (time.s) so A=0 ⇒ 256 frames.
+*
+* Args:    A = frame count (0 ⇒ 256).
+* Returns: CC.C set  = input detected this hold (early break);
+*          CC.C clear = full count elapsed, no input.
+* Clobbers: A, B, CC.  Preserves X, Y, U.
+* ---------------------------------------------------------------
+scene1_hold_poll:
+hold_poll_loop:
+        pshs    a                       ; save remaining frame count
+        jsr     HAL_time_vbl_wait       ; wait 1 real-VBL frame (clobbers A,B)
+        jsr     HAL_input_poll          ; poll keyboard/buttons (CC.C = input)
+        bcs     hold_poll_input         ; input this frame → early break
+        puls    a                       ; restore remaining count
+        deca
+        bne     hold_poll_loop
+        andcc   #$FE                    ; full count elapsed: CC.C clear
+        rts
+hold_poll_input:
+        leas    1,s                     ; discard saved count (early break)
+        orcc    #$01                    ; CC.C set = input detected
+        rts
 * NOTE: exec address set by `end boot` in last assembled file (src/hal/coco3-dsk/mem.s)

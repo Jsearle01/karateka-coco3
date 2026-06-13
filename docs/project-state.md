@@ -46,7 +46,10 @@ INT-1 content-asset preconditions are substantially complete (see §Execution hi
 - P2.2: complete (2026-05-15; this commit)
 - P2.3 (canonical blit/graphics engine port, INT-1 scope): COMPLETE per audit 2026-05-17
   (3 deferred routines: routine_1c5b, routine_1c64, L0A03 — combat-path, not INT-1 scope)
-- P2.4 (canonical intro.s scene-1 path): not started
+- P2.4 (canonical intro.s scene-1 path / R-p24): CONFIRMED on agent-verifiable
+  criteria (2026-06-13); INT-1 close pending Jay MAME visual gate. Linear
+  scene-1 controller + real polled HAL_input_poll; halts at scene-1→scene-2 cut.
+  jmptable_b760 continuation + intro_prelude_b769 prelude deferred (beyond cut).
 - P3.1 (R-vbl + R-boot): COMPLETE (2026-05-21; commits d687e01, ee3fa08)
 - P2.5-P5: not started
 
@@ -129,8 +132,12 @@ SUBSTANTIAL (3 UNPORTED-DEFERRED); INT-1-bounded returns COMPLETE. Jay's
 
 ### INT-1 distance
 
-INT-1 ("first scene displays correctly") is NOT closed. One remaining requirement:
-- R-p24: canonical intro.s scene-1 path (P2.4) — not started
+INT-1 ("first scene displays correctly") is NOT yet closed, but its sole
+remaining requirement is CONFIRMED on agent-verifiable criteria pending Jay's
+visual gate:
+- R-p24: canonical intro.s scene-1 path (P2.4) — controller CONFIRMED
+  2026-06-13 (AC-1..AC-9 [E]/[T] all pass); INT-1 close awaits AC-10 (Jay MAME
+  visual no-regression gate). See §R-p24 execution.
 
 CLOSED requirements:
 - R-p23: CLOSED 2026-05-17 per canonical P2.3 audit (INT-1-bounded;
@@ -177,6 +184,37 @@ R-boot = Brøderbund splash scene integrated at boot entry point.
   level trace revealed PIA trap. See methodology lessons P3/P5/P7.
 - V-regression: all 5 drivers PASS post-fix. Visual gate: Jay confirmed
   Brøderbund scene visible ~2.67s, blank ~1.33s, held blank.
+
+### R-p24 execution (CONFIRMED agent-verifiable 2026-06-13; INT-1 close pending Jay)
+
+R-p24 = canonical intro.s scene-1 controller port (last INT-1 blocker).
+
+- Replaced boot.s's hardcoded splash (blocking HAL_time_delay holds) with a
+  linear scene-1 controller mirroring Apple II outer_caller_b77c $B77C-$B797:
+  broderbund_scene → 160-frame hold-with-poll → 1→2 transition (gfx_clear +
+  present) → 80-frame blank-with-poll → halt at the scene-1→scene-2 cut ($B798).
+- scene1_hold_poll (boot.s): per-frame VBL-counted hold (= stub_b823 +
+  routine_b7f5); each iteration HAL_time_vbl_wait + HAL_input_poll. The Apple II
+  $80/$D2 inner-count is replaced by the real VBL frame (R-vbl).
+- Real HAL_input_poll (input.s): polled CoCo3 keyboard-matrix + joystick-button
+  scan (drive $FF02=$00, read $FF00, mask PA7, complement → pressed mask).
+  HAL_input_init asserts CR bit 2 = 1 (data mode), keeps CA/CB IRQ disabled.
+  NO PIA re-enable — polled data-register reads work under the R-boot CR config
+  (source-confirmed in sys.s; DDR-persistence sweep found no $FF00-$FF03 DDR
+  write in the boot path).
+- Input detection (= LB7DE): a press sets intro_input_flag/$aux ($60/$61 = $01,
+  $86/$4F analogs) and early-breaks the hold. Game-start consumer STUBBED (R-p25).
+- Verification: AC-1..AC-6 [E] (structure + clean build + all 7 automated tests
+  PASS; karateka.bin 2171→2251 B). AC-7 [T]: MAME read-tap on $0A86 counted
+  ~1 poll/frame, total 241 ≈ 240 (=160+80). AC-8 [T]: $FF00 row-0 injection
+  detected at next frame, flags set $01/$01, early break (44 polls). AC-9 [T]:
+  160-then-80 frame split confirmed. AC-10 [H]: PENDING Jay MAME visual.
+- Deferred (beyond the cut, §2b): jmptable_b760 per-frame continuation +
+  intro_prelude_b769 prelude + attract loop-back. Prelude omission also
+  preserves the R-boot visual baseline (AC-10 no-regression).
+- Doc tension corrected: hal.md previously suggested HAL_input_init re-enable
+  PIA IRQ for keyboard — superseded (would reintroduce the R-boot trap); polled
+  input is the confirmed approach.
 
 ---
 
