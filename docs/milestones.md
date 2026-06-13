@@ -65,8 +65,9 @@ deliverable. Naming uses INT-N to distinguish from karateka_dissasembly_claude's
   Content Wave 3 COMPLETE (2026-06-13): the 11 scene-4 scroll glyphs converted
   (7 letters f,i,k,l,u,v,w + 4 punctuation period,comma,colon,hyphen), extents
   generated (§22.4b), 11 PNG previews. Scene-4 scroll references captured
-  (scene4_scroll_a/b). R-p26 (scene-4 scroll port) is the next task. Per-asset
-  Wave-3 visual gate pending Jay (AC-6).
+  (scene4_scroll_a/b). Per-asset Wave-3 visual gate PASSED (Jay, 2026-06-13 —
+  glyph fidelity confirmed; positioning evaluated at render time in R-p26).
+  R-p26 (scene-4 scroll port) is the next task.
 - INT-3 — Full attract cycle including sound, cutscenes: NOT STARTED
   Adds: sound HAL, tone-record interpreter, cutscene machinery, Akuma throne room.
   = P2 target deliverable: bootable disk looping the complete attract sequence.

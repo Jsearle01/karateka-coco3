@@ -302,8 +302,9 @@ unconverted scene-4 narrative glyphs:
 - 11 PNG previews → `content/wave3-previews/scene4/` (gitignored).
 - Verification: build clean (karateka.bin 5005 B, byte-identical — glyphs not
   yet `include`d; R-p26 adds them); 11/11 lwasm syntax-check standalone; 7/7
-  automated tests PASS. Per-asset VISUAL GATE pending (Jay, AC-6) — gated
-  against the established scene-4 references (scene4_scroll_a/b).
+  automated tests PASS. Per-asset VISUAL GATE PASSED (Jay, 2026-06-13, AC-6) —
+  glyph fidelity confirmed against scene4_scroll_a/b; positioning deferred to
+  render time in R-p26.
 - No reference gap this wave: the scene-4 scroll references were captured
   proactively (the tiling set) before this conversion.
 
