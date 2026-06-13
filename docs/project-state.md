@@ -216,6 +216,31 @@ R-p24 = canonical intro.s scene-1 controller port (last INT-1 blocker).
   PIA IRQ for keyboard — superseded (would reintroduce the R-boot trap); polled
   input is the confirmed approach.
 
+### Content Wave 2 — scene-2/3 asset conversion (2026-06-13; render port = R-p25)
+
+Asset half of the R-p25 split. Ran the calibrated Wave-1 pipeline
+(tools/sprite_convert.py) over the 18 unconverted scene-2/3 assets:
+
+- Scene 2 (Mechner credit): 10 font glyphs from oracle sprite_data_0400.s
+  (a,b,c,d,g,h,j,m,o,y; address-form labels sprite_0400/0416/042c/0442/
+  0488/04a2/0632/04f2/051e/060c), start_col=119 uniform per Wave-1
+  convention (display position/parity handled at blit via blit_subbyte).
+  e,n,r reused; p,s,t untouched.
+- Scene 3 (karateka title): 7 title sprites from sprite_data_logo.s
+  (sprite_logo_a/k/k_flourish/t/e/r/ra_connector, $BBEC-$BFE7) at slot
+  pixel_x 35/0/0/133/168/69/104 (each sprite's multi-uses share parity)
+  + copyright sprite_1f09 (sprite_data_1E00.s, 9×24).
+- All 18 → content/<name>/converted.s (Wave-1 format: fcb H,W + pixels);
+  18 PNG previews → content/wave2-previews/{scene2,scene3}/ (gitignored).
+- Verification: 18 assets lwasm syntax-check standalone; build clean
+  (karateka.bin 2251 B, unchanged — not yet referenced); 7/7 tests PASS.
+  Per-asset VISUAL GATE pending (R-p25 / Jay).
+- REFERENCE GAP (HS-2): no authoritative MAME apple2e capture confirmed
+  for scene 2 or scene 3 (snap 0083 is the scene-1 chroma reference only).
+  Jay must capture scene-2/3 Apple II references before the visual gate;
+  assets NOT validated against a substitute. copyright start_col uncertain
+  (column not cleanly derived) — re-convert if parity is off at the gate.
+
 ---
 
 ## Calibration phase tracking

@@ -52,8 +52,12 @@ deliverable. Naming uses INT-N to distinguish from karateka_dissasembly_claude's
   MAME visual gate (AC-10). R-p24 ports the linear scene-1 controller +
   per-frame polled-input hold runner; halts at the scene-1→scene-2 cut ($B798).
   jmptable_b760 continuation + intro_prelude_b769 prelude deferred (beyond cut).
-- INT-2 — Logo → title → cliff scene sequence with transitions: NOT STARTED
+- INT-2 — Logo → title → cliff scene sequence with transitions: IN PROGRESS
   Adds: scene-transition machinery; additional scenes' content assets.
+  Content Wave 2 COMPLETE (2026-06-13): scene-2 (Mechner credit, 10 font
+  glyphs) + scene-3 (karateka title, 7 sprites + copyright) assets converted
+  to CoCo3 format. Scene-2/3 RENDER PORT = R-p25 (pending). Per-asset visual
+  gate pending authoritative scene-2/3 Apple II reference captures (HS-2 gap).
 - INT-3 — Full attract cycle including sound, cutscenes: NOT STARTED
   Adds: sound HAL, tone-record interpreter, cutscene machinery, Akuma throne room.
   = P2 target deliverable: bootable disk looping the complete attract sequence.

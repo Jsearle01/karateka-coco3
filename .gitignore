@@ -42,3 +42,6 @@ captures/*
 
 # MAME test log artifacts (regenerable)
 build/kdtest*.log
+
+# Content Wave 2 PNG previews (review scratch; intentionally untracked)
+content/wave2-previews/
