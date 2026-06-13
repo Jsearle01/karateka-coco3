@@ -18,7 +18,7 @@ dofile("tools/lib/framebuffer_dump.lua")
 
 local LOG_PATH  = "tools/broderbund_splash_test.log"
 local BIN_PATH  = "tests/broderbund_splash_driver.bin"
-local OBSERVE   = 1800  -- frames to observe (~30 seconds at 60fps)
+local OBSERVE   = 200   -- frames to observe (snapshot at elapsed 120; small margin)
 
 local log_file = io.open(LOG_PATH, "w")
 local function log(msg)

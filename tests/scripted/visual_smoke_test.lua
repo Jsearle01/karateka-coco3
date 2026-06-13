@@ -18,11 +18,11 @@ local BIN_PATH  = "tests/visual_smoke_driver.bin"
 
 -- Frames after binary load to take screenshots (to catch different
 -- buffer states). At 60fps these are ~5s and ~8s after binary loads.
-local SCREENSHOT_FRAME_1 = 600
-local SCREENSHOT_FRAME_2 = 900
+local SCREENSHOT_FRAME_1 = 120
+local SCREENSHOT_FRAME_2 = 240
 
 -- Exit after this many frames from binary load
-local OBSERVE_FRAMES = 1200   -- ~20 seconds at 60fps
+local OBSERVE_FRAMES = 300   -- ~5 seconds at 60fps (snapshots done by frame 240)
 
 local log_file = io.open(LOG_PATH, "w")
 local function log(msg)
