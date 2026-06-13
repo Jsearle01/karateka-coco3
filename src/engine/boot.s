@@ -231,9 +231,14 @@ boot:
         jsr     scene1_hold_poll
         bcs     scene1_input_break
 
-* Reached the scene-3 → scene-4 cut ($B7D5). Scene 4 = R-p26 (HELD —
-* see scene4_scroll.s: the option-2 ring does not fit 128K combined
-* buffers; awaiting orchestrator ruling on the buffer architecture).
+* Scene 4 — scrolling narrative (= $B7D5: routine_b833). GIME VOFFSET
+* scroll with amortized memmove-on-wrap (R-p26 v3). Polls input each frame;
+* a press early-breaks to "pressed" (shared with scenes 1-3).
+* [ref: src/engine/scene4_scroll.s; conventions §19/§22.4b]
+        jsr     scene4_scroll
+        bcs     scene1_input_break      ; press during scroll → "pressed" early break
+
+* Reached the scene-4 → scene-5 cut ($B7DB). Scene 5 = R-p27+.
         bra     boot_halt
 
 * Input detected during any hold (= LB7DE): set the game-start flags, then

@@ -343,6 +343,35 @@ Substantial implementation; HALTED before shipping on a geometric fit finding.
 - Deferred with the port: the §3 doc deliverables (INT-2 boundary ruling;
   the 512K Q/disk-load-catalog records) ride with the chosen architecture.
 
+### R-p26 v3 — memmove-on-wrap scroll (2026-06-13; wrap SOLVED, residual band bug)
+
+Jay ruled option-1 (amortized memmove-on-wrap). Rebuilt scene4_scroll.s as a
+single-zone buffer with continuous incremental copy-down (no duplicate zone):
+window scrolls 0->SHIFT(192); as rows scroll off the top they are copied back
+(2 rows/step, ~1740 cyc, <6% of a frame — amortized, no stall, HS-1 satisfied),
+so the VOFFSET reset is pixel-identical. Max row ~395 ($FB30) — clears $FF00.
+
+- WRAP MECHANISM SOLVED: no crash; the scroll runs end-to-end through multiple
+  wraps and COMPLETES (returns to the controller halt at $028F). The v2
+  duplicate-zone fit blocker is gone.
+- RENDERING MOSTLY CLEAN (MAME-verified): the copied region (buffer rows 2-81
+  at one sample) is all clean, correct text; post-wrap frames render the full
+  paragraph cleanly (legible, 14px spacing, paragraph breaks, punctuation
+  incl. "karate:"). Confirms bake + blit + copy + wrap all work.
+- RESIDUAL BUG (not gate-ready): some line bands show RANDOM-byte garbage in
+  their upper rows (e.g. slot 3 @ buffer row 220: rows 221-222,224-225 = random,
+  row 223 blank), STABLE across consecutive frames (real framebuffer content,
+  not a capture artifact). The slot's glyph table is valid; garbage = non-glyph
+  random (distinct=32/36), so a row band is left uncleared OR written by a
+  bad-pointer blit. NOT root-caused by inspection (the v2 trap). Next pass:
+  MAME debugger write-watchpoint on $C4D0-ish to catch the writer, or bisect
+  which slots/glyphs garble.
+- Committed ACTIVE (boot.s calls scene4_scroll; halts at $B7DB) so the next
+  debug pass can iterate directly. Build clean (karateka.bin ~7.3KB); 7/7
+  automated tests PASS. NOT yet Jay-gated (the band must be fixed first).
+- Cycle count (AC-2): copy = 2 rows/step = 40 words/row * 2 = ~1740 cyc, once
+  per K=3-frame step => <6% of one 60Hz frame. Amortized; no single-frame stall.
+
 ---
 
 ## Calibration phase tracking

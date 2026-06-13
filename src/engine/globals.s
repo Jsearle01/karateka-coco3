@@ -97,7 +97,8 @@ s4_next_top         equ $64     ; 16-bit: next line-slot logical top row    — 
 s4_dest_row         equ $66     ; 16-bit: scroll-blit dest physical row      — $66/$67
 s4_next_slot        equ $68     ; 8-bit:  next slot index to refill (0..)
 s4_kcount           equ $69     ; 8-bit:  VBL-cadence down-counter (frames/step)
-s4_phys             equ $6A     ; 16-bit: scratch — phys row (next_top mod ring) — $6A/$6B
+s4_copy_i           equ $6A     ; 16-bit: incremental copy-down row index (0..SHIFT) — $6A/$6B
+s4_base             equ $6C     ; 16-bit: logical row of buffer row 0 (rebase accumulator) — $6C/$6D
 
 * ---------------------------------------------------------------
 * Shared constants (used by both engine and HAL)
