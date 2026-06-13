@@ -182,29 +182,65 @@ boot:
 * broderbund_scene renders Logo 1, Logo 2, "presents" and presents.
 * [ref: src/engine/broderbund_scene.s]
         jsr     broderbund_scene
-
-* 160-frame hold-with-poll (= stub_b823 X=$A0 + routine_b7f5 per frame):
-        lda     #160
+        lda     #160                    ; 160-frame hold (= stub_b823 X=$A0)
         jsr     scene1_hold_poll
-        bcs     scene1_input_break      ; input during hold → early break
+        bcs     scene1_input_break      ; input during hold → "pressed" early break
 
-* Transition 1→2 (= $B78D: L1900 / L0783 + 80-frame blank):
-        jsr     HAL_gfx_clear           ; blank back buffer
-        jsr     HAL_gfx_present         ; present (flip + VBL sync)
+* Transition 1→2 (= $B78D: 80-frame blank):
+        jsr     HAL_gfx_clear
+        jsr     HAL_gfx_present
         lda     #80
-        jsr     scene1_hold_poll        ; 80-frame blank-with-poll (X=$50)
+        jsr     scene1_hold_poll
         bcs     scene1_input_break
 
-* Reached the scene-1 → scene-2 cut ($B798). Scene 2 = R-p25.
+* Scene 2 — Mechner credit (= $B79B: L1900 / b8ce / holds).
+* Oracle's 160+80 holds show the credit continuously; merged to one
+* 240-frame hold (no mid-scene re-present — avoids the CoCo3 Option-I
+* flip to a stale back buffer). [ref: src/engine/intro_scenes.s]
+        jsr     HAL_gfx_clear           ; = L1900
+        jsr     scene2_render           ; "a game by" + "jordan mechner"
+        jsr     HAL_gfx_present         ; = L0783
+        lda     #240                    ; 160 + 80, credit held continuously
+        jsr     scene1_hold_poll
+        bcs     scene1_input_break
+
+* Scene 3 pass 1 — karateka title (= $B7AE: L1900 / b8e6 / hold160):
+        jsr     HAL_gfx_clear
+        jsr     scene3_title_render
+        jsr     HAL_gfx_present
+        lda     #160
+        jsr     scene1_hold_poll
+        bcs     scene1_input_break
+
+* Scene 3 pass 2 — title + copyright (= $B7BC: b8e6 / b8f3 / hold160):
+        jsr     HAL_gfx_clear
+        jsr     scene3_title_render
+        jsr     scene3_copyright
+        jsr     HAL_gfx_present
+        lda     #160
+        jsr     scene1_hold_poll
+        bcs     scene1_input_break
+
+* Transition 3→4 (= $B7D2: 80-frame blank):
+        jsr     HAL_gfx_clear
+        jsr     HAL_gfx_present
+        lda     #80
+        jsr     scene1_hold_poll
+        bcs     scene1_input_break
+
+* Reached the scene-3 → scene-4 cut ($B7D5). Scene 4 = R-p26+.
         bra     boot_halt
 
-* Input detected during a hold (= LB7DE): set the game-start flags.
-* Downstream game-start consumer is STUBBED until R-p25.
+* Input detected during any hold (= LB7DE): set the game-start flags, then
+* show the shared "pressed" screen. The real game-start consumer is STUBBED
+* (P3+); "pressed" is a DEBUG PLACEHOLDER (the intended R-p25+N replacement).
+* [ref: src/engine/intro_scenes.s pressed_screen]
 scene1_input_break:
         lda     #$01
         sta     <intro_input_flag       ; $86 = $01 ("input received")
         sta     <intro_inputaux_flag    ; $4F = $01 (companion)
-                                        ; falls through to halt (consumer stubbed)
+        jsr     pressed_screen          ; clear → "pressed" → present (debug placeholder)
+        bra     boot_halt
 
 boot_halt:
         bra     boot_halt

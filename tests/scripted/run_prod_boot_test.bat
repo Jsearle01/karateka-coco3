@@ -12,7 +12,7 @@ echo --- Step 1: BUILD ---
 lwasm --decb -o build/karateka.bin ^
     src/engine/boot.s src/engine/globals.s src/engine/kernel_dispatch.s ^
     src/engine/kernel_per_frame.s src/engine/timer_framesync.s ^
-    src/engine/broderbund_scene.s ^
+    src/engine/broderbund_scene.s src/engine/intro_scenes.s ^
     src/hal/coco3-dsk/sys.s src/hal/coco3-dsk/irq_vbl.s src/hal/coco3-dsk/gfx.s ^
     src/hal/coco3-dsk/time.s src/hal/coco3-dsk/input.s src/hal/coco3-dsk/sound.s ^
     src/hal/coco3-dsk/file.s src/hal/coco3-dsk/mem.s

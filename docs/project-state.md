@@ -241,6 +241,35 @@ Asset half of the R-p25 split. Ran the calibrated Wave-1 pipeline
   assets NOT validated against a substitute. copyright start_col uncertain
   (column not cleanly derived) — re-convert if parity is off at the gate.
 
+### R-p25 — scene-2/3 render port + "pressed" early-break (2026-06-13; visual gate pending Jay)
+
+Extended the linear controller scene-1 → 2 → 3, halting at the scene-3→4 cut
+($B7D5 equiv). New `src/engine/intro_scenes.s` (render routines + tables +
+new content includes); boot.s controller extended; early-break freeze replaced
+by a shared "pressed" debug screen.
+
+- HS-2 fix (first attempt halted on missing extents): generated wlead/trail for
+  the 10 new glyphs via `tools/glyph_extent.py` (validated against §22.4's
+  p,r,e,s,n,t exactly); recorded in §22.4a. Inter-word gap = glyph-m width = 16px.
+- Scene 2 (Mechner credit): positions baked offline via §22 (route i,
+  `tools/bake_text.py`), centered@160, rows 85/99 (§19 1:1 from Apple $55/$63).
+- Scene 3 (karateka title): Apple II $B926-$B95C slot positions converted via
+  §19 (coco3_px = apple_px+20) into a packed table; the title_render 11-slot loop
+  ported as the shared `render_glyph_run`; copyright (sprite_1f09) rendered.
+- "pressed" (D3): shared early-break screen (clear → blit "pressed" → present),
+  fired from scene1_input_break in ANY scene (re-gates scene 1). DEBUG
+  PLACEHOLDER for the still-stubbed game-start consumer (P3+); $60/$61 still set.
+- CoCo3 deviation: scene-2's oracle 160+80 holds merged to one 240-frame hold
+  (no mid-scene re-present — avoids the Option-I flip to a stale back buffer);
+  each scene render preceded by a clear. Visual progression unchanged.
+- Verification: AC-0..AC-S3-2, AC-D3-1, AC-G-1/2 [E] (build clean, karateka.bin
+  2251→5011 B, 7/7 tests PASS). AC-G-2 trace: no-input reached boot_halt @ frame
+  939 with flags clear; inject reached boot_halt @ 56 with $60/$61=$01 (pressed
+  path). VISUAL gates AC-S2-3/S3-3/D3-2 [H] PENDING Jay (vs scene2_mechner_ref /
+  scene3_title_ref; scene-1 re-gate for "pressed"). copyright position uncertain
+  (routine_b8f3 $05/$06→col not fully pinned) — confirm at gate.
+- Deferred: scene 4 (R-p26+); real game-start consumer (P3+).
+
 ---
 
 ## Calibration phase tracking

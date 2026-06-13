@@ -56,8 +56,11 @@ deliverable. Naming uses INT-N to distinguish from karateka_dissasembly_claude's
   Adds: scene-transition machinery; additional scenes' content assets.
   Content Wave 2 COMPLETE (2026-06-13): scene-2 (Mechner credit, 10 font
   glyphs) + scene-3 (karateka title, 7 sprites + copyright) assets converted
-  to CoCo3 format. Scene-2/3 RENDER PORT = R-p25 (pending). Per-asset visual
-  gate pending authoritative scene-2/3 Apple II reference captures (HS-2 gap).
+  to CoCo3 format. Reference captures done (scene2_mechner_ref / scene3_title_ref).
+  R-p25 RENDER PORT COMPLETE on agent-verifiable criteria (2026-06-13): scenes
+  1→2→3 render controllers + shared "pressed" early-break; halts at scene-3→4
+  cut. Per-scene VISUAL gates [H] pending Jay (vs the references). Scene 4
+  (cliff) closes INT-2 later (R-p26+).
 - INT-3 — Full attract cycle including sound, cutscenes: NOT STARTED
   Adds: sound HAL, tone-record interpreter, cutscene machinery, Akuma throne room.
   = P2 target deliverable: bootable disk looping the complete attract sequence.

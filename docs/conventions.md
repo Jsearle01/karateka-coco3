@@ -1016,7 +1016,32 @@ Empirically verified constants for the 6 letters in the "presents" splash text:
 | n | 9 | 1 | 10 |
 | t | 9 | 1 | 10 |
 
-Source: `content/glyph_{letter}/converted.s`. Measurement: per-glyph
+### 22.4a Per-glyph constants for scene-2 / "pressed" (R-p25)
+
+Computed from the converted bitmaps by `tools/glyph_extent.py` (first-white
+column = wlead, last-non-black column = trail), **validated** by reproducing
+§22.4's hand-measured p,r,e,s,n,t exactly. (visible_width here = trail−wlead+1,
+the tool's consistent definition; may differ ±1 from §22.4's hand values — the
+formula uses trail/wlead, which match.)
+
+| Letter | trail | wlead | visible_width |
+|--------|-------|-------|----------------|
+| a | 8 | 1 | 8 |
+| b | 9 | 1 | 9 |
+| c | 8 | 1 | 8 |
+| d | 8 | 1 | 8 |
+| g | 8 | 1 | 8 |
+| h | 9 | 1 | 9 |
+| j | 5 | 1 | 5 |
+| m | 13 | 1 | 13 |
+| o | 9 | 1 | 9 |
+| y | 10 | 1 | 10 |
+
+**Inter-word gap (§2-F):** 16 CoCo3 pixels = glyph-`m` data width (`fcb 10,4`
+→ 4 bytes × 4 px). Applied between words in scene-2 strings; inter-letter gap
+stays DESIRED_GAP=1 (§22.3). Bake tool: `tools/bake_text.py` (route i).
+
+Source: `content/glyph_{letter}/converted.s`. Original 6 (above): per-glyph
 per-subbyte inspection traced through HAL shift logic (2026-05-17).
 Anchor: 'p' at nominal pixel 135 (byte 33, subbyte 3).
 

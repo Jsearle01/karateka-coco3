@@ -28,6 +28,7 @@ PROD_SRCS := \
     src/engine/kernel_per_frame.s \
     src/engine/timer_framesync.s \
     src/engine/broderbund_scene.s \
+    src/engine/intro_scenes.s \
     src/hal/coco3-dsk/sys.s \
     src/hal/coco3-dsk/irq_vbl.s \
     src/hal/coco3-dsk/gfx.s \
