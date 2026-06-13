@@ -79,6 +79,27 @@ frame_sync_dc       equ $54     ; frame sync state flag ($DC analog; P2.2)
 * engine porting.
 * ---------------------------------------------------------------
 
+* ---------------------------------------------------------------
+* Sprite/animation engine state block ($30-$3A) — R-engine.
+* ONE generic data-driven animation core (src/engine/sprite_engine.s);
+* characters are DATA (an animation table + a sprite set). This block is
+* one character's runtime state; it scales to a per-character struct array
+* for multi-character scenes (scene 6 / combat, INT-3).
+* Allocated in the engine working band (away from HAL $00-$13, frame-coherent
+* $50-$5F, intro $60-$61, scene-4 scroll $62-$6E).
+* [ref: src/engine/sprite_engine.s — eng_anim_init / eng_tick / eng_render]
+* ---------------------------------------------------------------
+eng_tbl             equ $30     ; 16-bit: active animation-table pointer — $30/$31
+eng_idx             equ $32     ; 8-bit:  current frame index (0..count-1)
+eng_cnt             equ $33     ; 8-bit:  frame count (cycle length)
+eng_cad             equ $34     ; 8-bit:  cadence reload (VBL frames per anim frame)
+eng_cadctr          equ $35     ; 8-bit:  cadence down-counter
+eng_clrw            equ $36     ; 8-bit:  clear-box width  (bytes)
+eng_clrh            equ $37     ; 8-bit:  clear-box height (rows)
+eng_col             equ $38     ; 8-bit:  current frame byte column (scratch from table)
+eng_sub             equ $39     ; 8-bit:  current frame sub-byte offset (0-3)
+eng_row             equ $3A     ; 8-bit:  current frame pixel row
+
 * --- Engine intro / scene-1 state ($60-$61) — R-p24 ---
 * Game-start signal flags set by scene-1 input detection. Apple II
 * analogs: $86 ("input received") and $4F (companion); both set to $01

@@ -32,6 +32,26 @@ bootable CoCo3 disk running the complete intro/attract sequence (INT-3).
 - P2.2 — Kernel/dispatch engine subsystem port: COMPLETE (2026-05-15)
 - P2.3 — Blit/graphics engine port (INT-1 scope): COMPLETE per audit 2026-05-17
 - P2.4+ — Remaining subsystems per scoping survey trajectory
+- P2.5 — Sprite/animation engine core (R-engine): CONFIRMED (2026-06-13, Jay live
+  P4 gate). Single-source, data-driven animation core (src/engine/sprite_engine.s):
+  render leaf delegates to HAL_gfx_blit_sprite (its transparency blit = oracle
+  routine_1927 blend — no SMC port), frame sequencer (cadence + wrap), state block
+  ($30-$3A), proven Option-I A/B page-flip. Characters = DATA (anim table + sprite
+  set); engine is generic (combat LAYER = INT-3, additive). Sandbox harness
+  (tests/scripted/sprite_engine_sandbox_driver.s) includes the real engine+HAL
+  verbatim (single source), boot-excluded. Proven on the Akuma 9-frame set.
+  Gates: P2 (static render clean), P3 (cadence=8 VBL exact / idx cycles 0..8 wrap /
+  page toggles each advance), HS-1 (worst-case render+flip ~4430cy ≈ 15% of a VBL,
+  ~6x headroom), P4 (Jay live: motion + single-step CONFIRMED). See
+  docs/verification-plan_engine-core.md.
+  CONVERTER COLOR-CELL FIX (same gate): the P4 gate surfaced vertical color/black
+  striping on Akuma's solid orange/blue fills — Apple II solid color is an
+  alternating-dot pattern, so the naive 1:1 dot map left the in-cell gaps black.
+  tools/sprite_convert.py now fills a Black dot flanked by the same chroma both
+  sides (color-cell fill); Akuma re-converted, striping gone (Jay confirmed). White
+  runs / isolated thin color features untouched; gated color content (scene-3 title)
+  is unchanged on disk (old converter output) — re-converting it through the
+  improved model is an available follow-up.
 
 ### Integration milestones (INT-N)
 

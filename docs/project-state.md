@@ -5,7 +5,8 @@
 - Methodology version: Claude-Orchestrated Development Methodology v0.2
 - Project phase: P2 IN PROGRESS; P3.1 COMPLETE (2026-05-21)
   P2.3 COMPLETE per audit 2026-05-17; P2.4 not started — see §Execution history
-- Last update: 2026-06-13 (R-p26 scene-4 scroll CONFIRMED + scene-2 port credit;
+- Last update: 2026-06-13 (R-engine sprite/animation engine core CONFIRMED +
+  converter color-cell fix; R-p26 scene-4 scroll CONFIRMED + scene-2 port credit;
   INT-2 boundary ruling recorded; 512KB Q + disk-load-catalog filed)
 
 ## P2 trajectory
@@ -418,6 +419,57 @@ travel. Probe confirmed the GIME displays the lower bank (VOFFSET=$C000).
   at the cliff-APPROACH, still in progress); Q-512kb-architecture + empty
   disk-load-catalog.md (open-questions.md). R-p24 "scene 4 = combat" record
   corrected earlier (scene 4 = the text scroll; combat = a later scene).
+
+### R-engine — sprite/animation engine core + sandbox (2026-06-13; CONFIRMED)
+
+Built the single-source, data-driven animation engine and proved it on the
+Akuma 9-frame set. The engine is the foundation for scene-5+, the demo combat,
+and gameplay; the combat LAYER (hit detection / round manager / two-combatant
+interaction) is INT-3, additive on top.
+
+- ENGINE (src/engine/sprite_engine.s): render leaf delegates to the real
+  HAL_gfx_blit_sprite (C-13 decision — its transparency blit IS the oracle
+  routine_1927 mask/eor/AND/OR blend; NO self-modifying blend ported, "port
+  the visual not the Apple mechanism"); frame sequencer (cadence countdown ->
+  advance + wrap -> render); state block ZP $30-$3A (verified free); region-
+  clear of a set-union bbox per buffer; proven Option-I A/B page-flip
+  (draw hidden -> HAL_gfx_present -> toggle page_register). Characters are
+  DATA: an animation table (count, cadence, clear_w/h, then per-frame
+  fdb sprite ; fcb col,sub,row) + a sprite set. One engine drives all.
+- SANDBOX (tests/scripted/sprite_engine_sandbox_driver.s + _trace_driver.s,
+  *.lua, run_*.bat/.sh): INCLUDES the real engine+HAL+globals verbatim (single
+  source, never a copy); boot-excluded (boot.s never refs it; prod link list
+  unchanged, builds 7359 B). Interactive driver: PAUSED on frame 0, tap=single-
+  step (edge), hold=free-run at cadence (~3fps); trace driver free-runs for the
+  automated P2/P3 read without input injection.
+- AKUMA conversion (AC-0): the 9 frames (oracle sprite_data.s labels
+  sprite_9879/988b/989d/98af/98c1/98d3/9908/9956/9a62, start_col 120) ->
+  content/akuma_frame_0..8 (untracked per content rule).
+- GATES: P2 (static render clean at anchor, no garbage) PASS; P3 (memory trace:
+  cadence delta=8 VBL exact, eng_idx cycles 0..8 wrapping, page_register toggles
+  $20<->$40 each advance) PASS; HS-1 (worst-case render+flip ~4430 cy ~= 15% of
+  one VBL period, ~6x headroom; scaling baseline ~6 simultaneous worst-case
+  redraws/frame) PASS by static analysis; P4 (Jay live, real-time) CONFIRMED
+  (motion + single-step both work).
+- CONVERTER COLOR-CELL FIX (P4-surfaced): the live gate showed vertical
+  color/black striping on Akuma's solid orange/blue fills. ROOT CAUSE
+  (tools/sprite_convert.py): Apple II solid color = an alternating-dot pattern
+  (1010), and the 1:1 dot map classified each lit dot as run_len==1 "isolated"
+  -> colored at its col, leaving the in-cell dark dots Black -> stripes. FIX:
+  after per-dot classification, fill any Black dot flanked by the SAME chroma
+  (Orange/Blue) on both sides (color-cell fill). Re-converted all 9 frames +
+  regenerated previews; Jay confirmed striping gone. White runs / isolated thin
+  color features untouched. Gated color content (scene-3 title) is UNCHANGED on
+  disk (old converter output, no regression) — re-converting through the
+  improved model is an available follow-up. Cadence is NOT oracle-extractable
+  (un-disassembled) -> tunable default, Jay-gated.
+- Sequencing (Jay-gated, §22.5): on the P4 striping finding, Jay chose "fix
+  converter first, then commit together" (engine + converter fix one commit);
+  and "leave content/ untracked" (converter fix is the durable correction;
+  converted.s + previews regenerable, stay untracked per standing rule).
+- TUNING NOTE: sandbox loads the Brøderbund palette (descriptor 0) so Akuma
+  HUES are not throne-room-accurate; the striping fix is palette-independent.
+  A throne-room palette is downstream (scene 5+).
 
 ---
 

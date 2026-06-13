@@ -1,4 +1,4 @@
-"""
+r"""
 sprite_convert.py — Apple II hi-res sprite → CoCo3 4-color packed bytes.
 
 Reads a karateka_dissasembly_claude src/*.s file, extracts the sprite
@@ -33,6 +33,14 @@ Color model — empirically derived from MAME Apple II ground truth:
 
   gap_before threshold: 113/113 gap=1 → chroma; 120/120 gap>=2 → White. Binary cutoff.
   Simplification accepted: uniform gap==1 rule; sparse sprites naturally show less chroma.
+
+  COLOR-CELL FILL (P4 engine-sandbox gate, 2026-06-13): a SOLID color region
+  is an alternating-dot pattern (1010...) on the Apple II — the dark dot
+  between two same-chroma dots is part of the color cell (NTSC merges them
+  into a solid bar), NOT background. After per-dot classification, any Black
+  dot flanked by the SAME chroma (Orange/Blue) on both sides is filled with
+  that chroma. Without this, solid fills render as color/black vertical
+  stripes. White runs and isolated thin color features are untouched.
 
   Screen-col parity: (start_col + local_col) % 2. Not local-col parity alone.
   Karateka: Logo 1 start_col=119, Logo 2 start_col=84.
@@ -181,6 +189,23 @@ def convert_sprite_to_coco3(apple_ii_bytes, height, apple_width_bytes, start_col
                     row_indices[col] = 3  # White (interior/trailing/leading gap>=2)
             # OFF pixel: remains 0 (Black, already set)
 
+        # Color-cell fill (Apple II artifact color): a SOLID color region is
+        # drawn as an alternating-dot pattern (1010...), so the OFF dot between
+        # two same-color ON dots is part of the color cell, not background —
+        # the NTSC display merges them into a solid color bar. The naive 1:1
+        # dot map leaves those gaps Black, producing vertical color/black
+        # striping on solid fills (P4 engine-sandbox gate, 2026-06-13: Akuma
+        # orange/blue bodies). Fill any Black dot flanked by the SAME chroma
+        # (Orange=1 / Blue=2) on both sides. White (3) runs and isolated thin
+        # color features (a lone dot with no same-color neighbor two cells out)
+        # are left untouched.
+        src_indices = list(row_indices)
+        for c in range(1, width_pixels - 1):
+            if src_indices[c] == 0:
+                left = src_indices[c - 1]
+                if left in (1, 2) and left == src_indices[c + 1]:
+                    row_indices[c] = left
+
         for byte_idx in range(coco3_width):
             packed = 0
             for pix_idx in range(4):
@@ -202,7 +227,8 @@ def write_s_file(output_path, label, height, coco3_width, coco3_bitmap,
         f"*",
         f"* ORIGIN: {source_ref}",
         f"*         Apple II label: {apple_label}",
-        f"* Color model: adjacency + screen-col parity (MAME-verified, TASK 1/2 gate 2026-05-16).",
+        f"* Color model: adjacency + screen-col parity + color-cell fill (MAME-verified",
+        f"*   TASK 1/2 gate 2026-05-16; color-cell fill P4 gate 2026-06-13).",
         f"*   0=Black 1=Orange(odd screen col) 2=Blue(even screen col) 3=White",
         f"*   start_col={start_col}",
         f"* [ref: karateka-coco3 docs/karateka-coco3-design-v0.1.md §6.7]",
