@@ -1,67 +1,61 @@
 #!/usr/bin/env python3
-"""bake_text.py — offline §22 position bake (route i) for CoCo3 text.
+"""bake_text.py — offline text position bake from the ORACLE font metrics.
 
-Applies the §22.2 formula:
-    nominal(N+1) = nominal(N) + trail(N) + 1 + GAP - wlead(N+1)
-with inter-letter GAP=1 (§22.3) and inter-word GAP=16 (glyph-m width, §2-F),
-then centers the string's visible extent at a target CoCo3 pixel column and
-emits per-glyph (byte_col, subbyte) via §20.3 (byte=px//4, subbyte=px%4).
+Oracle-faithful proportional pen model (text_render.s / font_metrics.s):
+each character advances the pen by its own per-glyph X-advance
+    xstep_px = font_glyph_xstep_byte*7 + font_glyph_xstep_subbyte   (Apple px)
+The space ('`' = glyph 0) is drawn-skipped but still advances (1,0 = 7px).
+Apple px == CoCo3 px (§19 is a +20 border offset, 1:1 scale), so the
+advances carry over unchanged.
 
-Extents (wlead, trail) — validated against §22.4 for p,r,e,s,n,t.
+Pen model:  draw glyph at pen; pen += xstep(glyph). For a space, advance
+only. The visible run is then centered at a target CoCo3 pixel column,
+and each drawn glyph emitted as (byte_col, subbyte) = (px//4, px%4).
+
+This supersedes the prior §22 visible-extent bake + the §2-F 16px word-gap:
+the oracle word space is 7px, and ALL inter-glyph spacing is the oracle
+xstep — not the §22 packing. (wlead/trail are used only to center.)
 """
-# wlead, trail per glyph (validated; new glyphs from glyph_extent.py)
+# Oracle X-advance in pixels (font_glyph_xstep_byte*7 + subbyte), font_metrics.s
+XSTEP = {
+    ' ': 7, 'a': 8, 'b': 10, 'c': 9, 'd': 9, 'e': 9, 'f': 7, 'g': 9, 'h': 10,
+    'i': 4, 'j': 6, 'k': 9, 'l': 7, 'm': 14, 'n': 10, 'o': 10, 'p': 11,
+    'q': 11, 'r': 11, 's': 8, 't': 10, 'u': 10, 'v': 11, 'w': 17, 'x': 10,
+    'y': 10, 'z': 10, '.': 7, ',': 3, ':': 7, '-': 7,
+}
+# wlead / trail (validated, §22.4 + §22.4a) — used only for centering bounds
 EXT = {
     'a': (1, 8), 'b': (1, 9), 'c': (1, 8), 'd': (1, 8), 'e': (1, 8),
     'g': (1, 8), 'h': (1, 9), 'j': (1, 5), 'm': (1, 13), 'n': (1, 9),
     'o': (1, 9), 'p': (1, 10), 'r': (1, 10), 's': (2, 7), 't': (1, 9),
     'y': (1, 10),
 }
-LETTER_GAP = 1
-WORD_GAP = 16     # = glyph-m pixel width (§2-F)
-CENTER = 160      # CoCo3 screen-center pixel (320px wide)
+CENTER = 160
 
 
 def bake(text, center=CENTER):
-    glyphs = [c for c in text if c != ' ']
-    # nominal positions, anchor first glyph at 0
-    nominals = [0]
-    prev = None
-    pending_gap = LETTER_GAP
-    out_order = []
-    i = 0
-    nom = 0
-    first = True
+    pen = 0
+    drawn = []                       # (char, left_pixel)
     for ch in text:
-        if ch == ' ':
-            pending_gap = WORD_GAP
-            continue
-        if first:
-            nom = 0
-            first = False
-        else:
-            ptrail = EXT[prev][1]
-            wlead = EXT[ch][0]
-            nom = nom + ptrail + 1 + pending_gap - wlead
-            pending_gap = LETTER_GAP
-        out_order.append((ch, nom))
-        prev = ch
-    # visible extent
-    vis_left = out_order[0][1] + EXT[out_order[0][0]][0]
-    last_ch, last_nom = out_order[-1]
-    vis_right = last_nom + EXT[last_ch][1]
+        if ch != ' ':
+            drawn.append((ch, pen))
+        pen += XSTEP[ch]
+    vis_left = drawn[0][1] + EXT[drawn[0][0]][0]
+    last_ch, last_pos = drawn[-1]
+    vis_right = last_pos + EXT[last_ch][1]
     vis_w = vis_right - vis_left + 1
     shift = round(center - (vis_left + vis_w / 2.0))
-    result = []
-    for ch, nom in out_order:
-        px = nom + shift
-        result.append((ch, px, px // 4, px % 4))
-    return result, vis_w
+    out = []
+    for ch, pos in drawn:
+        px = pos + shift
+        out.append((ch, px, px // 4, px % 4))
+    return out, vis_w
 
 
 if __name__ == '__main__':
     import sys
     for text in sys.argv[1:]:
         res, vw = bake(text)
-        print(f'"{text}"  visible_width={vw}px  centered@{CENTER}')
+        print(f'"{text}"  visible_width={vw}px  centered@{CENTER}  (oracle xstep model)')
         for ch, px, byte, sub in res:
             print(f'   {ch}  px={px:3d}  byte={byte:2d} sub={sub}')

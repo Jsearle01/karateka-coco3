@@ -1037,9 +1037,17 @@ formula uses trail/wlead, which match.)
 | o | 9 | 1 | 9 |
 | y | 10 | 1 | 10 |
 
-**Inter-word gap (§2-F):** 16 CoCo3 pixels = glyph-`m` data width (`fcb 10,4`
-→ 4 bytes × 4 px). Applied between words in scene-2 strings; inter-letter gap
-stays DESIRED_GAP=1 (§22.3). Bake tool: `tools/bake_text.py` (route i).
+**Scene-2 spacing — oracle metrics (supersedes §2-F):** scene-2 text is baked
+from the oracle's proportional **per-glyph X-advance** (`font_glyph_xstep_byte`
+×7 + `font_glyph_xstep_subbyte`, from `karateka_dissasembly_claude/font_metrics.s`),
+NOT the §22 visible-extent packing or the §2-F 16px word-gap. The renderer is a
+pen model: draw glyph at pen, then `pen += xstep(glyph)`. The **inter-word space**
+is the space glyph (index 0) advance = `(1,0)` = **7 px** (one hires byte) — the
+oracle's actual word gap, where §2-F's 16px was ~2× too wide. Bake tool:
+`tools/bake_text.py` (XSTEP table; wlead/trail used only to center@160). §22's
+visible-extent formula remains the scene-1 "presents" chroma-positioning record;
+inter-letter spacing agrees with the oracle xstep because §22 was calibrated
+against "presents".
 
 Source: `content/glyph_{letter}/converted.s`. Original 6 (above): per-glyph
 per-subbyte inspection traced through HAL shift logic (2026-05-17).

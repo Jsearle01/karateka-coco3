@@ -123,51 +123,51 @@ pressed_screen:
 * Packed render tables (fdb addr ; fcb byte, subbyte, row)
 * ---------------------------------------------------------------
 
-* "a game by" — baked §22, centered@160, row 85
+* "a game by" — oracle xstep metrics, centered@160, row 85
 scene2_str1_tbl:
         fdb     glyph_a_coco3
-        fcb     27,1,85
+        fcb     29,2,85
         fdb     glyph_g_coco3
         fcb     33,1,85
         fdb     glyph_a_coco3
         fcb     35,2,85
         fdb     glyph_m_coco3
-        fcb     37,3,85
+        fcb     37,2,85
         fdb     glyph_e_coco3
-        fcb     41,1,85
+        fcb     41,0,85
         fdb     glyph_b_coco3
-        fcb     47,1,85
+        fcb     45,0,85
         fdb     glyph_y_coco3
-        fcb     49,3,85
+        fcb     47,2,85
 
-* "jordan mechner" — baked §22, centered@160, row 99
+* "jordan mechner" — oracle xstep metrics, centered@160, row 99
 scene2_str2_tbl:
         fdb     glyph_j_coco3
-        fcb     22,0,99
+        fcb     23,1,99
         fdb     glyph_o_coco3
-        fcb     23,2,99
+        fcb     24,3,99
         fdb     glyph_r_coco3
-        fcb     26,0,99
+        fcb     27,1,99
         fdb     glyph_d_coco3
-        fcb     28,3,99
+        fcb     30,0,99
         fdb     glyph_a_coco3
-        fcb     31,0,99
+        fcb     32,1,99
         fdb     glyph_n_coco3
-        fcb     33,1,99
+        fcb     34,1,99
         fdb     glyph_m_coco3
-        fcb     39,2,99
+        fcb     38,2,99
         fdb     glyph_e_coco3
-        fcb     43,0,99
+        fcb     42,0,99
         fdb     glyph_c_coco3
-        fcb     45,1,99
+        fcb     44,1,99
         fdb     glyph_h_coco3
-        fcb     47,2,99
+        fcb     46,2,99
         fdb     glyph_n_coco3
-        fcb     50,0,99
+        fcb     49,0,99
         fdb     glyph_e_coco3
-        fcb     52,2,99
+        fcb     51,2,99
         fdb     glyph_r_coco3
-        fcb     54,3,99
+        fcb     53,3,99
 
 * karateka title — Apple II $B926-$B95C slots, §19-converted (px+20)
 * slot order matches the oracle parallel arrays (k a r a t e k a + flourishes + accent)
@@ -195,22 +195,22 @@ scene3_title_tbl:
         fdb     title_ra_connector_coco3   ; slot 10 accent apple104 -> px124 byte31 sub0
         fcb     31,0,112
 
-* "pressed" — baked §22, centered@160, row 90 (debug placeholder)
+* "pressed" — oracle xstep metrics, centered@160, row 90 (debug placeholder)
 pressed_tbl:
         fdb     glyph_p_coco3
-        fcb     32,0,90
+        fcb     31,3,90
         fdb     glyph_r_coco3
-        fcb     34,3,90
+        fcb     34,2,90
         fdb     glyph_e_coco3
-        fcb     37,2,90
+        fcb     37,1,90
         fdb     glyph_s_coco3
         fcb     39,2,90
         fdb     glyph_s_coco3
-        fcb     41,1,90
+        fcb     41,2,90
         fdb     glyph_e_coco3
-        fcb     43,1,90
+        fcb     43,2,90
         fdb     glyph_d_coco3
-        fcb     45,2,90
+        fcb     45,3,90
 
 * ---------------------------------------------------------------
 * Content (Wave 2). New glyphs/sprites only — e,n,r,p,s,t are included
