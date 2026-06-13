@@ -136,3 +136,44 @@ guess.
 
 **Cross-refs:** `interrupt-handling.md` (multi-source GIME note);
 `sys.s` (R-boot PIA disable); `conventions.md` §24.
+
+---
+
+## Q-512kb-architecture — Stock 128 KB vs 512 KB preload architecture
+
+**Status:** Deferred. Working target is stock 128 KB (standing constraint);
+512 KB is a gated escalation.
+
+**Proposed architecture (the 512 KB option):** preload the entire game off
+disk once at startup into 512 KB, then MMU-page assets/code in as scenes need
+them — **zero disk access during play** (better than the Apple II original,
+which streams from disk). 512 KB acts as a RAM-disk; the MMU is the loader.
+
+**Load-bearing unknown:** do the original's disk loads transfer **data/graphics
+only** (→ clean MMU data-window paging; code stays resident; the easy case) or
+**executable code overlays** (→ needs an overlay manager: cross-overlay call
+trampolines, mapped-while-executing guarantees; the hard case)? If overlays:
+**how many** and at **what granularity** — coarse scene-aligned (tractable) vs
+fine interleaved (nightmare)?
+
+**Why deferred (not decidable now):** the in-game loads trigger **post-attract**
+(P3+, when game-start replaces the "pressed" placeholder), with further loads
+deeper in the game, unknown until the port reaches them. Deciding now = inferring
+the scheme from a partial, static picture. Characterize each load **in context**
+as the port reaches it, not by static inference.
+
+**Reopen trigger:** when `disk-load-catalog.md` has enough characterized real
+loads to show the actual paging pattern (data-only vs code-overlay, granularity),
+make the 512 KB decision on that evidence. Criterion: data-only → 512 KB preload
+is clean, escalation likely worth it (eliminates the original's disk I/O);
+code-overlay → needs an overlay manager, weigh zero-disk-I/O vs building it;
+coarse overlays tractable, fine interleaved much harder.
+
+**Note (R-p26, 2026-06-13):** the scene-4 scroll BORROWS the 128 KB lower bank
+($60000-$6FFFF) as a tall pre-render buffer *during the intro only* — this is
+NOT the 512 KB architecture, just transient use of free 128 K RAM. It does
+illustrate that VOFFSET can display the lower bank and the MMU window can render
+into it, which is mechanically relevant to a future 512 KB paging scheme.
+
+**Cross-refs:** `disk-load-catalog.md` (the evidence base); `memory-map.md`
+(128 KB layout); the standing 128 KB constraint.

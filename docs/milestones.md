@@ -52,7 +52,7 @@ deliverable. Naming uses INT-N to distinguish from karateka_dissasembly_claude's
   MAME visual gate (AC-10). R-p24 ports the linear scene-1 controller +
   per-frame polled-input hold runner; halts at the scene-1→scene-2 cut ($B798).
   jmptable_b760 continuation + intro_prelude_b769 prelude deferred (beyond cut).
-- INT-2 — Logo → title → cliff scene sequence with transitions: IN PROGRESS
+- INT-2 — Logo → title → cliff sequence (scroll + approach): IN PROGRESS
   Adds: scene-transition machinery; additional scenes' content assets.
   Content Wave 2 COMPLETE (2026-06-13): scene-2 (Mechner credit, 10 font
   glyphs) + scene-3 (karateka title, 7 sprites + copyright) assets converted
@@ -67,13 +67,26 @@ deliverable. Naming uses INT-N to distinguish from karateka_dissasembly_claude's
   generated (§22.4b), 11 PNG previews. Scene-4 scroll references captured
   (scene4_scroll_a/b). Per-asset Wave-3 visual gate PASSED (Jay, 2026-06-13 —
   glyph fidelity confirmed; positioning evaluated at render time in R-p26).
-  R-p26 (scene-4 scroll port) ATTEMPTED + HARD-STOPPED (2026-06-13): the
-  option-2 VOFFSET ring does not fit stock 128K (a seamless duplicate-zone
-  ring needs ~2*(window+line_height) rows, which collides with the $FF00 GIME
-  I/O — the 392-row combined buffers are ~10-14 rows short). Bake tool, text
-  tables, and the full-region blit are validated + committed; scene4_scroll.s
-  is HELD (not built). Buffer-architecture ruling pending (memmove-on-wrap /
-  lower-bank / 512K). See project-state.md §R-p26.
+  R-p26 (scene-4 scroll port) CONFIRMED (2026-06-13, Jay visual gate): the
+  cliff narrative scrolls faithfully (in from the bottom, off the top), smooth,
+  ~30s. Built as Option B — full 636-row scroll pre-rendered ONCE into the
+  LOWER BANK ($60000, real RAM on stock 128K) + pure GIME VOFFSET scroll (no
+  per-frame render). Reached after a long iteration (ring-fit hard-stop ->
+  memmove-on-wrap [garbage + smear bugs] -> no-copy display-buffer [smooth but
+  not faithful, rejected] -> Option B). Also: scene-2 CoCo3 port credit ("coco
+  port by / jay searle") added after a delay (custom, gate-approved). See
+  project-state.md §R-p26 for the full trail.
+
+  INT-2 BOUNDARY RULING (orchestrator, recorded 2026-06-13): INT-2 CLOSES at
+  the cliff-*approach* (not at the narrative scroll). The demo combat, sound,
+  and attract loop-back are INT-3 (= the P2 target deliverable). So INT-2 is
+  still IN PROGRESS: scene 4 (cliff narrative scroll) DONE; the cliff-approach
+  + the remaining INT-2 scenes (scene 5 + scene-6 opening per the R-p26 recon)
+  are still to do before INT-2 closes. NOTE: scenes 1-4 are single-buffered
+  (static images / VOFFSET pan); the animated content (cliff-approach walk,
+  demo combat, gameplay) will use TRUE double buffering via the existing
+  A/B-buffer HAL_gfx_present page-flip contract (the intro never exercises the
+  flip). See docs/open-questions.md Q-512kb-architecture.
 - INT-3 — Full attract cycle including sound, cutscenes: NOT STARTED
   Adds: sound HAL, tone-record interpreter, cutscene machinery, Akuma throne room.
   = P2 target deliverable: bootable disk looping the complete attract sequence.

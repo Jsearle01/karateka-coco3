@@ -5,7 +5,8 @@
 - Methodology version: Claude-Orchestrated Development Methodology v0.2
 - Project phase: P2 IN PROGRESS; P3.1 COMPLETE (2026-05-21)
   P2.3 COMPLETE per audit 2026-05-17; P2.4 not started — see §Execution history
-- Last update: 2026-06-13 (R-p24/R-p25 confirmed; Content Wave 3 complete)
+- Last update: 2026-06-13 (R-p26 scene-4 scroll CONFIRMED + scene-2 port credit;
+  INT-2 boundary ruling recorded; 512KB Q + disk-load-catalog filed)
 
 ## P2 trajectory
 
@@ -22,11 +23,12 @@ room cutscene → loop). Corresponds to integration milestone INT-3.
 **Integration milestones:** INT-1 (first scene), INT-2 (logo→title→cliff sequence),
 INT-3 (full attract cycle) — see milestones.md for detail.
 
-**Next (canonical):** R-p26 — scene-4 (cliff) scroll port (scroll-loop runner +
-position bake), closing INT-2. R-p24 (scene-1 controller) + R-p25 (scene-2/3
-render) CONFIRMED 2026-06-13; Content Wave 3 (scene-4 glyphs + extents) complete
-with scene-4 references captured. R-vbl/R-boot CONFIRMED CLOSED (2026-05-21);
-P2.3 COMPLETE per audit 2026-05-17 (see §Execution history).
+**Next (canonical):** the cliff-APPROACH scene (post-scroll) — closes INT-2 per
+the boundary ruling (milestones.md). R-p24 (scene-1) + R-p25 (scene-2/3) +
+R-p26 (scene-4 cliff narrative scroll, Option B lower-bank) all CONFIRMED at
+Jay's gate (2026-06-13); scene-2 CoCo3 port credit added. Content Wave 3
+complete. R-vbl/R-boot CLOSED (2026-05-21); P2.3 COMPLETE per audit 2026-05-17.
+INT-2 still IN PROGRESS (scroll done; cliff-approach + scene 5/6-opening remain).
 
 ## Phase status
 
@@ -402,6 +404,20 @@ travel. Probe confirmed the GIME displays the lower bank (VOFFSET=$C000).
   view) — the perceived smear/choppy were largely capture/motion artifacts.
   Trust the live gate, not nothrottle snapshots, for scroll QA. Stock 128K
   (lower bank borrowed during the intro; not 512K).
+- GATE FIXES (Jay): (1) the content render targeted the display buffer while it
+  was still shown -> the full pre-render page flashed before the scroll; fixed
+  by switching VOFFSET to the (blank) lower bank BEFORE rendering (render
+  off-screen). (2) scroll slowed (S4_KFRAMES 3->4, ~30s) per "a bit slower".
+- R-p26 CONFIRMED at Jay's visual gate (2026-06-13): faithful in/out, smooth,
+  speed approved, no flash. AC-6/7 [H] PASS.
+- ADDITION (scene 2): CoCo3 port credit "coco port by / jay searle" appears
+  centered below the Mechner credit after a delay (custom; gate-approved;
+  scene-3 copyright add-below pattern). Scene-2 holds 160 (mechner) + 160 (port).
+- Build clean (karateka.bin 7359 B); 7/7 automated tests PASS.
+- Held doc records filed: INT-2 boundary ruling (milestones.md — INT-2 closes
+  at the cliff-APPROACH, still in progress); Q-512kb-architecture + empty
+  disk-load-catalog.md (open-questions.md). R-p24 "scene 4 = combat" record
+  corrected earlier (scene 4 = the text scroll; combat = a later scene).
 
 ---
 
