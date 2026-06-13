@@ -89,6 +89,17 @@ intro_input_flag    equ $60     ; $86 analog: input-received signal
 intro_inputaux_flag equ $61     ; $4F analog: companion flag
 
 * ---------------------------------------------------------------
+* Scene-4 scroll engine scratch (R-p26; engine working DP band).
+* Used only during the scene-4 VOFFSET sliding-window scroll.
+* ---------------------------------------------------------------
+s4_scroll_s         equ $62     ; 16-bit: current scroll position S (rows) — $62/$63
+s4_next_top         equ $64     ; 16-bit: next line-slot logical top row    — $64/$65
+s4_dest_row         equ $66     ; 16-bit: scroll-blit dest physical row      — $66/$67
+s4_next_slot        equ $68     ; 8-bit:  next slot index to refill (0..)
+s4_kcount           equ $69     ; 8-bit:  VBL-cadence down-counter (frames/step)
+s4_phys             equ $6A     ; 16-bit: scratch — phys row (next_top mod ring) — $6A/$6B
+
+* ---------------------------------------------------------------
 * Shared constants (used by both engine and HAL)
 * ---------------------------------------------------------------
 

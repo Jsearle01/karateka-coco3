@@ -231,7 +231,9 @@ boot:
         jsr     scene1_hold_poll
         bcs     scene1_input_break
 
-* Reached the scene-3 → scene-4 cut ($B7D5). Scene 4 = R-p26+.
+* Reached the scene-3 → scene-4 cut ($B7D5). Scene 4 = R-p26 (HELD —
+* see scene4_scroll.s: the option-2 ring does not fit 128K combined
+* buffers; awaiting orchestrator ruling on the buffer architecture).
         bra     boot_halt
 
 * Input detected during any hold (= LB7DE): set the game-start flags, then

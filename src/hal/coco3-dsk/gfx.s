@@ -475,6 +475,7 @@ blit_got_base:
         ldu     #blit_trans_table_mid   ; U = transparency mask table midpoint
 
         ; Dispatch to sub-byte-specific row loop
+blit_dispatch:                          ; shared entry (HAL_gfx_blit_scroll jumps here w/ Y,U set)
         lda     <blit_subbyte
         beq     blit_do_sb0
         cmpa    #1
@@ -679,6 +680,50 @@ blit_out_of_bounds:
         orcc    #$01                    ; CC.C set = error
         puls    u
         rts
+
+* ---------------------------------------------------------------
+* HAL_gfx_blit_scroll  [R-p26 — full-region scroll blit]
+*
+* Like HAL_gfx_blit_sprite, but targets a 16-bit physical row (0-391)
+* in the COMBINED display region ($8000-$FBFF = physical $78000-$7FBFF,
+* CPU- and physically-contiguous), with NO 192-row bounds check. Used by
+* the scene-4 VOFFSET sliding-window scroll, which renders lines into a
+* ~392-row ring buffer spanning both frame buffers (legal: the display is
+* single-buffered per R-p25, so both buffers form one scroll region).
+*
+* Args:    X = sprite ptr (height,width,bitmap)
+*          A = destination byte column (0-79; 4px/byte)
+*          s4_dest_row ($66, 16-bit) = destination physical row (0-391)
+*          blit_subbyte ($0C) = sub-byte offset 0-3 (CALLER sets)
+* Returns: CC.C clear. Preserves U. Clobbers A,B,X,Y,CC,$0D/$0E.
+*
+* dest = $8000 + row*80 + col. row*80 with row<=391 ($187): row_lo*80
+* (<=20400) + (row_hi ? 80<<8 : 0). Shares the sub-byte dispatch/row-loops
+* with HAL_gfx_blit_sprite (blit_do_sb0..3 above; row stride is #80).
+* Caller guarantees row+height <= 392 and col+width(+1) <= 80.
+* ---------------------------------------------------------------
+HAL_gfx_blit_scroll:
+        pshs    u                       ; preserve U per contract
+        sta     <blit_col               ; $0A = destination byte column
+        lda     ,x+                     ; A = height
+        sta     <blit_height
+        lda     ,x+                     ; A = width
+        sta     <blit_width
+        ; Y = $8000 + s4_dest_row*80 + blit_col
+        lda     #80
+        ldb     <s4_dest_row+1          ; row low byte
+        mul                             ; D = row_lo * 80
+        ldu     <s4_dest_row            ; U = full 16-bit row (hi:lo)
+        cmpu    #256                    ; row >= 256? (hi byte set)
+        blo     blit_scroll_base
+        addd    #$5000                  ; + (1 * 80) << 8
+blit_scroll_base:
+        addd    #GFX_FB_A_BASE          ; + $8000 region base
+        tfr     d,y
+        ldb     <blit_col
+        leay    b,y                     ; Y = $8000 + row*80 + col
+        ldu     #blit_trans_table_mid   ; U = transparency table midpoint
+        lbra    blit_dispatch           ; shared sub-byte dispatch (Y,U set)
 
 * ---------------------------------------------------------------
 * blit_trans_table — 256-byte transparency mask lookup table

@@ -308,6 +308,41 @@ unconverted scene-4 narrative glyphs:
 - No reference gap this wave: the scene-4 scroll references were captured
   proactively (the tiling set) before this conversion.
 
+### R-p26 — scene-4 scroll port (2026-06-13; HARD-STOP at the option-2 fit)
+
+Attempted the scene-4 scrolling narrative as a GIME VOFFSET sliding-window
+scroll (option 2, per Jay's case-(2) ruling after the option-1 HS-1 halt).
+Substantial implementation; HALTED before shipping on a geometric fit finding.
+
+- RECORD CORRECTION (confirmed this task): scene 4 = the scrolling narrative
+  (oracle routine_b833 + text_strings.s indices 4..21 = 16 prose lines + 2
+  blank paragraph breaks; rendered via render_pass_a). The combat hot-path
+  (render_pass_b / routine_1c5b/1c64) is a LATER scene, not scene 4. Any
+  R-p24-era "scene 4 = combat" note is superseded.
+- VALIDATED + COMMITTED (reusable infra): tools/bake_scene4.py (left-aligned
+  oracle pen-model bake from the encoded strings; Apple X=0 -> CoCo3 px 20),
+  src/engine/scene4_text.s (18 per-line glyph tables, GENERATED), and
+  HAL_gfx_blit_scroll in gfx.s (full-region blit into the combined buffers,
+  16-bit dest row, no 192 bounds check, shares the sub-byte dispatch). MAME
+  confirmed the text renders legibly and scrolls (S advances, lines enter
+  from the bottom) up to the first ring wrap.
+- HARD-STOP (the fit): the duplicate-zone ring does NOT fit stock 128K.
+  Seamless ring period L >= window + line_height = 192+14 = 206 (else the
+  entering line's wrapped real-copy spills into the window top — the
+  corruption seen at S~60). The duplicate zone doubles the footprint to ~2L
+  rows, whose top band-clear must stay below the GIME I/O at $FF00 (~row
+  405). 2L <= 405 AND L >= 206 is a contradiction (412 > 405): the combined
+  display buffers (392 rows) are ~10-14 rows too small, and a larger ring
+  collides with $FF00. (= seed hardware-scroll-ring-needs-2x-window-plus-
+  line-footprint.) src/engine/scene4_scroll.s committed HELD (not in the
+  build); boot.s remains at the scene-3->4 halt (main stable, 7/7 tests).
+- DECISION PENDING (orchestrator/Jay): (i) memmove-on-wrap variant — drops
+  the duplicate zone, ~L footprint, at a per-wrap row copy; fits 128K;
+  (ii) lower-bank scroll buffer (pages $30-$37, more RAM, but content-bank
+  conflict + MMU paging); (iii) escalate to 512K (Q-512kb-architecture).
+- Deferred with the port: the §3 doc deliverables (INT-2 boundary ruling;
+  the 512K Q/disk-load-catalog records) ride with the chosen architecture.
+
 ---
 
 ## Calibration phase tracking

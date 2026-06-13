@@ -67,7 +67,13 @@ deliverable. Naming uses INT-N to distinguish from karateka_dissasembly_claude's
   generated (§22.4b), 11 PNG previews. Scene-4 scroll references captured
   (scene4_scroll_a/b). Per-asset Wave-3 visual gate PASSED (Jay, 2026-06-13 —
   glyph fidelity confirmed; positioning evaluated at render time in R-p26).
-  R-p26 (scene-4 scroll port) is the next task.
+  R-p26 (scene-4 scroll port) ATTEMPTED + HARD-STOPPED (2026-06-13): the
+  option-2 VOFFSET ring does not fit stock 128K (a seamless duplicate-zone
+  ring needs ~2*(window+line_height) rows, which collides with the $FF00 GIME
+  I/O — the 392-row combined buffers are ~10-14 rows short). Bake tool, text
+  tables, and the full-region blit are validated + committed; scene4_scroll.s
+  is HELD (not built). Buffer-architecture ruling pending (memmove-on-wrap /
+  lower-bank / 512K). See project-state.md §R-p26.
 - INT-3 — Full attract cycle including sound, cutscenes: NOT STARTED
   Adds: sound HAL, tone-record interpreter, cutscene machinery, Akuma throne room.
   = P2 target deliverable: bootable disk looping the complete attract sequence.
