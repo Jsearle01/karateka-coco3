@@ -193,14 +193,21 @@ boot:
         jsr     scene1_hold_poll
         bcs     scene1_input_break
 
-* Scene 2 — Mechner credit (= $B79B: L1900 / b8ce / holds).
-* Oracle's 160+80 holds show the credit continuously; merged to one
-* 240-frame hold (no mid-scene re-present — avoids the CoCo3 Option-I
-* flip to a stale back buffer). [ref: src/engine/intro_scenes.s]
+* Scene 2 pass 1 — Mechner credit (= $B79B: L1900 / b8ce / hold).
+* [ref: src/engine/intro_scenes.s]
         jsr     HAL_gfx_clear           ; = L1900
         jsr     scene2_render           ; "a game by" + "jordan mechner"
         jsr     HAL_gfx_present         ; = L0783
-        lda     #240                    ; 160 + 80, credit held continuously
+        lda     #160                    ; hold (delay before port credit)
+        jsr     scene1_hold_poll
+        bcs     scene1_input_break
+
+* Scene 2 pass 2 — CoCo3 port credit BELOW, after a delay (custom addition,
+* not in the oracle; same single-buffered add-below pattern as the scene-3
+* copyright — no clear, no re-render of the Mechner credit).
+        jsr     scene2_port_credit      ; "coco port by" + "jay searle"
+        jsr     HAL_gfx_present
+        lda     #160                    ; longer hold so the port credit lingers
         jsr     scene1_hold_poll
         bcs     scene1_input_break
 

@@ -72,6 +72,22 @@ scene2_render:
         rts
 
 * ===============================================================
+* scene2_port_credit — CoCo3 port credit (CUSTOM; not in the oracle):
+* "coco port by" (row 120) + "jay searle" (row 134), centered@160 via the
+* oracle xstep bake (tools/bake_text.py). Drawn BELOW the held Mechner credit
+* after a delay (boot.s scene-2 pass 2), single-buffered add-below — same
+* pattern as the scene-3 copyright. Caller does NOT clear/re-render.
+* ===============================================================
+scene2_port_credit:
+        ldb     #10
+        ldu     #scene2_str3_tbl        ; "coco port by"
+        jsr     render_glyph_run
+        ldb     #9
+        ldu     #scene2_str4_tbl        ; "jay searle"
+        jsr     render_glyph_run
+        rts
+
+* ===============================================================
 * scene3_title_render — compose the lowercase "karateka" title from the
 * 11 slot entries (= Apple II routine_b8e6 / title_render).
 * ===============================================================
@@ -168,6 +184,50 @@ scene2_str2_tbl:
         fcb     51,2,99
         fdb     glyph_r_coco3
         fcb     53,3,99
+
+* "coco port by" — oracle xstep metrics, centered@160, row 120 (port credit)
+scene2_str3_tbl:
+        fdb     glyph_c_coco3
+        fcb     25,2,120
+        fdb     glyph_o_coco3
+        fcb     27,3,120
+        fdb     glyph_c_coco3
+        fcb     30,1,120
+        fdb     glyph_o_coco3
+        fcb     32,2,120
+        fdb     glyph_p_coco3
+        fcb     36,3,120
+        fdb     glyph_o_coco3
+        fcb     39,2,120
+        fdb     glyph_r_coco3
+        fcb     42,0,120
+        fdb     glyph_t_coco3
+        fcb     44,3,120
+        fdb     glyph_b_coco3
+        fcb     49,0,120
+        fdb     glyph_y_coco3
+        fcb     51,2,120
+
+* "jay searle" — oracle xstep metrics, centered@160, row 134 (port credit)
+scene2_str4_tbl:
+        fdb     glyph_j_coco3
+        fcb     29,2,134
+        fdb     glyph_a_coco3
+        fcb     31,0,134
+        fdb     glyph_y_coco3
+        fcb     33,0,134
+        fdb     glyph_s_coco3
+        fcb     37,1,134
+        fdb     glyph_e_coco3
+        fcb     39,1,134
+        fdb     glyph_a_coco3
+        fcb     41,2,134
+        fdb     glyph_r_coco3
+        fcb     43,2,134
+        fdb     glyph_l_coco3
+        fcb     46,1,134
+        fdb     glyph_e_coco3
+        fcb     48,0,134
 
 * karateka title — Apple II $B926-$B95C slots, §19-converted (px+20)
 * slot order matches the oracle parallel arrays (k a r a t e k a + flourishes + accent)
