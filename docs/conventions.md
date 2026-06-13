@@ -1056,6 +1056,48 @@ Anchor: 'p' at nominal pixel 135 (byte 33, subbyte 3).
 Per-sprite metadata in sprite headers (deferred future converter work) will
 make these values authoritative from data rather than hand-tabulated.
 
+### 22.4b Per-glyph constants for scene-4 scroll (Content Wave 3)
+
+The 11 scene-4 narrative glyphs (7 letters + 4 punctuation), converted from
+oracle `sprite_data_0400.s` address-form labels (start_col=119, Wave-1/2
+convention). Extents computed by `tools/glyph_extent.py` (same definition as
+§22.4a). `xstep` = oracle pen-model advance (`font_glyph_xstep_byte`×7 +
+`font_glyph_xstep_subbyte`, from `karateka_dissasembly_claude/font_metrics.s`)
+— this is what R-p26's bake consumes for spacing; wlead/trail feed the §22
+visible-extent positioning. None of the 11 had a leading byte-column stripped
+(`lead_stripped=0` for all), so no per-sprite position compensation is needed.
+
+| Glyph | label | H | trail | wlead | visible_width | xstep (pen) |
+|-------|-------|---|-------|-------|---------------|-------------|
+| f | sprite_046e | 12 | 7 | 1 | 7 | 7 |
+| i | sprite_0626 | 10 | 3 | 1 | 3 | 4 |
+| k | sprite_04d0 | 10 | 9 | 1 | 9 | 9 |
+| l | sprite_04e6 | 10 | 6 | 1 | 6 | 7 |
+| u | sprite_05aa | 10 | 9 | 1 | 9 | 10 |
+| v | sprite_05c0 | 10 | 10 | 1 | 10 | 11 |
+| w | sprite_05d6 | 10 | 16 | 1 | 16 | 17 |
+| . (period) | sprite_0640 | 10 | 3 | 2 | 2 | 7 |
+| , (comma) | sprite_064c | 12 | 2 | 1 | 2 | 3 |
+| : (colon) | sprite_065a | 12 | 2 | 1 | 2 | 7 |
+| - (hyphen) | sprite_0668 | 10 | 5 | 2 | 4 | 7 |
+
+**Punctuation vertical placement** (HS-1 watch — the new glyph class; baseline
+attention for R-p26's vertical alignment). Each is 1 Apple byte wide (7px); the
+Apple bit-7 color-set bit is set on every row but is NOT a visible pixel (the
+converter reads it as `pal_bit`, so "empty" `$80` rows convert to all-black):
+
+- **period** (H=10): content only rows 8–9 (cols 2–3) — sits at the baseline (low).
+- **comma** (H=12): rows 8–11, content shifts left per row (`$86,$86,$84,$82`) —
+  a descender tail below the baseline; 2 rows taller than the H=10 letters.
+- **colon** (H=12): rows 4–5 and 7–8 with a 1-row internal gap at row 6 — two
+  stacked dots; 2 rows taller than H=10 letters.
+- **hyphen** (H=10): rows 5–6 — a mid-height bar.
+
+Baseline note for R-p26: period/hyphen are H=10 (match most letters); comma/colon
+are H=12. If the renderer blits all glyphs at a common top row, the H=12 punctuation
+extends 2 rows lower — correct for the comma descender, but the colon's intended
+vertical centering must be confirmed at Jay's gate (AC-6).
+
 ### 22.5 Generalization to all sprites
 
 Visible-extent metadata is not glyph-specific. It applies to character

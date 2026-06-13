@@ -5,7 +5,7 @@
 - Methodology version: Claude-Orchestrated Development Methodology v0.2
 - Project phase: P2 IN PROGRESS; P3.1 COMPLETE (2026-05-21)
   P2.3 COMPLETE per audit 2026-05-17; P2.4 not started — see §Execution history
-- Last update: 2026-05-21
+- Last update: 2026-06-13 (R-p24/R-p25 confirmed; Content Wave 3 complete)
 
 ## P2 trajectory
 
@@ -22,10 +22,11 @@ room cutscene → loop). Corresponds to integration milestone INT-3.
 **Integration milestones:** INT-1 (first scene), INT-2 (logo→title→cliff sequence),
 INT-3 (full attract cycle) — see milestones.md for detail.
 
-**Next (canonical):** R-p24 — canonical intro.s scene-1 path (P2.4 engine port).
-Sole remaining INT-1 blocker. R-vbl and R-boot are CONFIRMED CLOSED (2026-05-21).
+**Next (canonical):** R-p26 — scene-4 (cliff) scroll port (scroll-loop runner +
+position bake), closing INT-2. R-p24 (scene-1 controller) + R-p25 (scene-2/3
+render) CONFIRMED 2026-06-13; Content Wave 3 (scene-4 glyphs + extents) complete
+with scene-4 references captured. R-vbl/R-boot CONFIRMED CLOSED (2026-05-21);
 P2.3 COMPLETE per audit 2026-05-17 (see §Execution history).
-INT-1 content-asset preconditions are substantially complete (see §Execution history).
 
 ## Phase status
 
@@ -278,6 +279,33 @@ by a shared "pressed" debug screen.
     per-sprite leading-strip compensation (k slots 3,4 + t slot 7: +7px).
   * k-flourish dialed to +3px (4px left of each k) via Jay's visual nudges.
 - Deferred: scene 4 (R-p26+); real game-start consumer (P3+).
+
+### Content Wave 3 — scene-4 scroll glyphs (2026-06-13; render port = R-p26)
+
+Asset half of the R-p26 split. Ran the calibrated pipeline over the 11
+unconverted scene-4 narrative glyphs:
+
+- 7 letters (f,i,k,l,u,v,w) + 4 punctuation (period,comma,colon,hyphen) from
+  oracle `sprite_data_0400.s`, address-form labels (sprite_046e/0626/04d0/
+  04e6/05aa/05c0/05d6 + sprite_0640/064c/065a/0668), start_col=119 uniform per
+  the Wave-1/2 convention. → `content/glyph_<name>/converted.s` (Wave-1 format).
+- Extents (wlead/trail) generated for all 11 via `tools/glyph_extent.py`,
+  recorded in conventions §22.4b alongside each glyph's oracle pen-model xstep
+  (the R-p26 bake input) — folds the extent step into conversion so R-p26's
+  bake cannot re-hit the R-p25 HS-2 (missing-extents) gap. No leading byte
+  column stripped on any of the 11 (lead_stripped=0) → no position compensation.
+- HS-1 (punctuation class) PASSED — all 4 convert cleanly; baselines reported:
+  period rows 8–9 (low), comma rows 8–11 (left-shifting descender, H=12),
+  colon rows 4–5/7–8 (internal gap row 6, H=12), hyphen rows 5–6 (mid bar).
+  The Apple bit-7 color-set bit (set on every row) is read as pal_bit, not a
+  pixel — "empty" $80 rows convert to all-black. HS-2 (extent quality) PASSED.
+- 11 PNG previews → `content/wave3-previews/scene4/` (gitignored).
+- Verification: build clean (karateka.bin 5005 B, byte-identical — glyphs not
+  yet `include`d; R-p26 adds them); 11/11 lwasm syntax-check standalone; 7/7
+  automated tests PASS. Per-asset VISUAL GATE pending (Jay, AC-6) — gated
+  against the established scene-4 references (scene4_scroll_a/b).
+- No reference gap this wave: the scene-4 scroll references were captured
+  proactively (the tiling set) before this conversion.
 
 ---
 
