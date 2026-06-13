@@ -36,7 +36,7 @@ S4_WINDOW       equ     192             ; visible window height
 S4_ENTRY        equ     192             ; blank rows above content (scroll-in margin)
 S4_SMAX         equ     444             ; final VOFFSET top row (content fully off top)
 S4_STEP         equ     1               ; scanlines per step (1 = smooth)
-S4_KFRAMES      equ     3               ; VBL frames per step (scroll rate; tunable)
+S4_KFRAMES      equ     4               ; VBL frames per step (scroll rate; tunable) — ~30s full scroll
 S4_LB_VOFF      equ     $C000           ; VOFFSET for lower-bank row 0 ($60000/8)
 
 * lower-bank scroll buffer geometry
@@ -59,14 +59,18 @@ s4_chunk        equ     s4_next_top      ; $64/$65 — copy chunk size
 * Returns: CC.C set = input (caller -> pressed); CC.C clear = completed.
 * ===============================================================
 scene4_scroll:
-        jsr     s4_clear_lb             ; clear lower-bank buffer
-        jsr     s4_render_content       ; render 18 lines into display rows 0..251
-        jsr     s4_copy_lb              ; bulk-copy content -> lower bank row 192
-
+        jsr     s4_clear_lb             ; clear lower-bank buffer (-> blank)
+        ; Switch the display to the (blank) lower bank BEFORE rendering, so the
+        ; content render (which targets the display buffer) happens OFF-SCREEN.
+        ; Otherwise the user sees the full pre-render page flash before the
+        ; scroll. The display buffer is no longer shown once VOFFSET=$C000.
         ldd     #$0000
         std     <s4_top
         ldd     #S4_LB_VOFF
-        std     $FF9D                   ; VOFFSET = lower-bank row 0 (entry blank)
+        std     $FF9D                   ; VOFFSET = lower-bank row 0 (blank entry)
+
+        jsr     s4_render_content       ; render 18 lines into display rows 0..251 (off-screen)
+        jsr     s4_copy_lb              ; bulk-copy content -> lower bank row 192
 
 s4_loop:
         lda     #S4_KFRAMES
