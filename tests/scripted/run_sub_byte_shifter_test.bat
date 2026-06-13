@@ -38,7 +38,7 @@ pushd C:\karateka-capture
 C:\mame\mame.exe coco3 ^
     -rompath C:\mame\roms ^
     -window ^
-    -seconds_to_run 35 ^
+    -seconds_to_run 10 ^
     -autoboot_script tools\sub_byte_shifter_test.lua >"%REPO_ROOT%\build\sub_byte_shifter_mame.log" 2>&1
 popd
 

@@ -18,7 +18,7 @@ dofile("tools/lib/framebuffer_dump.lua")
 
 local LOG_PATH = "tools/sub_byte_shifter_test.log"
 local BIN_PATH = "tests/sub_byte_shifter_test_driver.bin"
-local OBSERVE  = 1800
+local OBSERVE  = 200   -- snapshot at elapsed 120; small margin (was 1800 ~30s)
 
 local log_file = io.open(LOG_PATH, "w")
 local function log(msg)
