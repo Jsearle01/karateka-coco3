@@ -1,82 +1,83 @@
-# Scene-5 cast — structural handle → identity map
+# Scene-5 cast map — found by execution trace
 
-Scene 5 = the imprisonment cutscene. Sprites converted **unlabeled by
-structural handle** (R cast scale-out); **identity attaches at Jay's sandbox
-visual ID** (AC-4) and is recorded here for the scene-5 port.
+Scene 5 = the imprisonment cutscene. The cast was located **empirically** by
+instrumenting the real Apple II program and tracing the sprite-source pointer
+(`$1B/$1C`, the saved sprite START) every frame from the imprisonment scene
+($3D=$01, ~frame 3909) to the start of the climbing scene (frame 6019 = $A3E9),
+then mapping each traced start to its oracle bank + dimensions (frame-4200
+memory dump). Tools: `tests/scripted/trace_scene5_sprites.lua` (write-tap; the
+tap returned no hits in this MAME, so polling carried it) and
+`diag_sprite_ptr.lua` (per-frame poll of `$03/$04` + `$1B/$1C` + snapshots).
 
-Found **by content** (not by label): the differential analysis pins scene-5's
-sprite-source pointer to the **$9800–$9FFF region** (d05=$9858, d06=$9980
-cell-door; `$3D`="sprite-engine active" set scene-5-onward). Jay's MAME
-observation of the real Apple II imprisonment scene: **Akuma center-bottom,
-princess walks across toward the door (middle), guard stays left/center, eagle
-on Akuma's shoulder.** That maps onto a leg+torso walk cycle + a big throne
-Akuma + eagle parts in the **$9B00 bank** (whose recon "player" label was
-tentative — corrected here by content).
+**CORRECTION (supersedes the earlier "skeleton reuse" claim, commit 455bcdd):**
+that conclusion was wrong — reasoned, not found. The princess and guard DO
+exist as their own sprite records, in banks the recon had dismissed as
+"gameplay blobs" ($11e8, $1c7a) and the $8300/$8c67 region. Jay's MAME
+observation (princess walks across toward the door, guard stationary
+left/center, Akuma center-bottom, eagle on shoulder) + the trace + Jay's
+per-sprite visual ID nailed them.
 
-Sandbox set order (tap = next set): 0 akuma_gloat · 1 walk_legs · 2 walk_torso
-· 3 akuma_throne · 4 eagle · 5 figures · 6 props.
+## PRINCESS — 14 frames ($11e8 + $1c7a), Jay-IDed
 
-| Set | Structural handle | Addr | H×W (CoCo3 px) | Frames | Identity — **Jay AC-4 (2026-06-13)** |
-|---|---|---|---|---|---|
-| 0 | akuma_frame_0..8 | $9879–$9a62 | up to 36×19 | 9 | **Akuma** gloat (heads/torso/arm) — CONFIRMED (R-engine). *Note: shoulder shouldn't animate — compositing concern, see below.* |
-| 1 | player_run_legs_9B00..9D1E | $9B00–$9D1E | up to 40×24 | 8 | **PLAYER** legs (not princess) — Jay-confirmed |
-| 2 | player_run_torso_9D68..9E92 | $9D68–$9E92 | up to 24×23 | 8 | **PLAYER** torso (not princess) — Jay-confirmed |
-| 3 | akuma_throne_room_9EB8 / akuma_feet_9F8C | $9EB8 / $9F8C | 36×42 / 44×9 | 2 | **Akuma** throne body + feet — consistent w/ "this is akuma" |
-| 4 | s5_985c_eagle_head / eagle_body_9FC4 / eagle_head_9FD8 | $985c/$9FC4/$9FD8 | ≤16×9 | 3 | **eagle** parts — Jay-confirmed |
-| 5 | s5_9a18 / s5_9a2a / s5_9858 | $9a18/$9a2a/$9858 | ≤24×18 | 3 | ambiguous figures — **unresolved** (guard candidate; Jay "not sure") |
-| 6 | s5_9980_cell_door / s5_9a74_banner | $9980 / $9a74 | 16×75 / 68×10 | 2 | **cell door + "the end" banner** (props) — Jay-confirmed |
+Converted unlabeled by address (`content/fig_XXXX/`); previews in
+`content/engine-previews/cast/princess/`.
 
-**Render correctness (AC-4/AC-5): no striping reported on any set** — the
-color-cell fix holds across the whole cast; no blit-equivalence (wrong-blend)
-failures observed.
-
-## Princess / guard — find result (all banks walked by content)
-
-**No dedicated princess or guard sprite set exists in the data.** Every
-character bank is labeled player / enemy / akuma:
-
-| Bank | Content | Princess/guard? |
+| Addr | H×W (px) | Pose (Jay ID) |
 |---|---|---|
-| $0400 | font letters | no |
-| $11e8 / $1c7a | gameplay hires bitmap blobs (bg/char, single-blob) | no (gameplay, INT-3) |
-| $1E00 | scene 1–3 per-scene sprites | no |
-| $8300 | **player** full anim (walk/punch/kick/block/side) — all player | no |
-| $8c67 | player / **enemy**(combat) / death / pillars / floor | combat enemy only (gameplay) |
-| $9800 | Akuma + eagle-head + cell-door + banner + 3 ambiguous figures | (figures = guard candidate) |
-| $9B00 | **player** walk/run (Jay-confirmed) + Akuma throne/feet + eagle | no (player) |
-| $a400 | attract **fight/climb demo** bank (climbing chain + fight-scene sprites via attract_dispatch.s) | no — different attract scene (scene 6 cast) |
+| $1530 | 43×8 | standing, facing right |
+| $1867 | 43×8 | facing right, head bowed |
+| $1611 | 43×12 | turning left, hair in air |
+| $1588 | 43×12 | facing forward, mid-turn-to-left |
+| $169A | 16×12 | facing left, torso only |
+| $1D00 | 26×8 | body |
+| $1D36 / $1D5A / $1D7E / $1DA2 | 17×8–12 | walking legs (4-frame cycle) |
+| $175E / $16CC / $17D3 | 23/36/14 | falling animation |
+| $1829 | 10×24 | on cell floor (collapsed) |
 
-**Conclusion — skeleton reuse.** Scene 5's sprite-source pointer (d05=$9858,
-d06=$9980) stays in the $9800-region, and the only walk cycle there/adjacent is
-the **player** skeleton ($9B00). The princess (Jay saw her walk across) is
-almost certainly drawn with the **shared player walk frames**, and the guard
-likewise reuses a skeleton (or is one of the $9800 ambiguous figures) —
-differentiated at runtime by **state block** (position/palette), exactly the
-data-driven engine model (characters = state-block + shared sprite sets, one
-engine). There is no separate princess/guard *sprite set* to convert; their
-identity is an **orchestration-time** distinction (which state block drives
-which shared set in scene 5), deferred to the scene-5 port.
+## GUARD — 3 frames ($8300/$8c67), Jay-IDed
 
-**Out-of-scope notes (scene-5 orchestration):**
-- "Akuma's left shoulder shouldn't animate" — the real scene overlays a STATIC
-  body + moving head/arm + a separate eagle on the shoulder; the sandbox cycles
-  raw frames in place. A compositing concern, not a conversion bug.
-- $a400 (attract fight/climb demo) is the next attract scene's cast — convert
-  in a later dispatch when that scene is ported.
+| Addr | H×W (px) | Part (Jay ID) |
+|---|---|---|
+| $8F2B | 10×12 | head (oracle mislabel "feet_shadow") |
+| $899C | 24×8 | torso / standing |
+| $8ACB | 14×8 | below-torso (lower body) |
 
-35 sprites total (9 already converted in R-engine; 26 this task). All through
-the **fixed converter** (color-cell fill — solid fills, no striping; validated
-on the throne Akuma + cell door). Converted content is **untracked** per the
-standing content rule; previews under `content/engine-previews/scene5/`
-(gitignored).
+(Composited like the player: head + torso + below-torso.)
+
+## Rest of scene-5 draws (from the trace)
+
+- **Akuma**: `sprite_98D3/9908/9956/988B` ($9800) + `akuma_throne_room_9EB8` +
+  `akuma_feet_9F8C` ($9B00) — converted (R-engine + cast scale-out).
+  **OPEN (Jay, 2026-06-13): Akuma's legs + feet still missing** from the set —
+  the per-frame poll may have missed them, or they're a separate record. TODO:
+  re-trace / walk $9B00 around $9F8C for the leg/feet sprites.
+- **Eagle**: `sprite_985C` (head) + `eagle_body_9FC4` + `eagle_head_9FD8`.
+- **Cell door**: `sprite_9980` (75×8). **Banner**: `sprite_9a74`.
+- **Floor / background**: `floor_pattern_95E4/964A/96CE/9743` ($8c67) — the big
+  $96xx/$97xx cluster is the floor, NOT characters (early mis-read corrected).
+- **Scenery** (Jay-IDed): bench-on-right-wall `$12C8` (50×40); floor texture
+  `$14BE`, `$1200`; wall structure `$18BF`.
+- **Player**: the $9B00 walk legs/torso (Jay-IDed as player, not princess) — a
+  different scene's cast; left as `player_walk`.
+- Climbing scene begins at frame 6019 ($A3E9, $a400 climb chain).
+
+## Still unidentified (Jay "not sure")
+
+`fig_18D0` (3×8), `fig_1CC4` (2×28), `fig_1CD4` (21×8), `fig_8EC1` (8×8),
+`s5_9858`, `s5_9a18`, `s5_9a2a`. Minor fragments / ambiguous; revisit at the
+scene-5 port if needed.
 
 ## Conversion recipe (reproducible; content untracked per rule)
 
-- $9800 figures/props: `sprite_convert.py --source <oracle>/src/sprite_data.s
-  --label sprite_<addr> --start-col 120` (address-form labels: 985c, 9980,
-  9a74, 9858, 9a18, 9a2a).
-- $9B00 bank: `--source <oracle>/src/sprite_data_9b00.s --label <name>
-  --start-col 0` for every label in the bank.
-- Akuma 9-frame: converted in R-engine (sprite_9879..9a62, start-col 120).
-- start_col is unverified for $9B00 (true screen positions come at scene-5
-  orchestration); affects only orange/blue parity, not the striping fix or ID.
+The $11e8/$1c7a/$8300 banks are single-label blobs, so figures were extracted
+**by address** from `dump05_imprison.bin` (H,W header + H×W bitmap) and run
+through the fixed converter (`convert_sprite_to_coco3`). start_col=0
+(unverified; parity/hue only — true positions come at scene-5 orchestration).
+Handles `fig_<addr>`; rename to semantic names at the port.
+
+## Notes
+
+- Princess + guard are **composited multi-part figures** (head/torso/legs),
+  assembled at scene-5 orchestration time (out of this dispatch's scope).
+- The walk/fall/turn frame sequencing is the engine's data-driven job; the
+  sandbox cycles them per-set for ID.

@@ -5,10 +5,10 @@
 - Methodology version: Claude-Orchestrated Development Methodology v0.2
 - Project phase: P2 IN PROGRESS; P3.1 COMPLETE (2026-05-21)
   P2.3 COMPLETE per audit 2026-05-17; P2.4 not started — see §Execution history
-- Last update: 2026-06-13 (scene-5 cast scale-out: $9800+$9B00 region converted
-  via fixed converter, 7-set sandbox, Jay ID gate — found NO separate
-  princess/guard sprite set = skeleton reuse; R-engine CONFIRMED + converter
-  color-cell fix; R-p26 scene-4 scroll CONFIRMED; INT-2 boundary ruling)
+- Last update: 2026-06-13 (scene-5 cast: princess [14 frames, $11e8/$1c7a] +
+  guard [3 frames, $8300/$8c67] FOUND EMPIRICALLY by execution trace — corrects
+  the earlier wrong "skeleton reuse" claim; previews sorted by character;
+  R-engine CONFIRMED + converter color-cell fix; R-p26 scroll CONFIRMED)
 
 ## P2 trajectory
 
@@ -495,20 +495,31 @@ converter, extend the sandbox to cycle the sets, Jay visually IDs.
   door+banner) CONFIRMED. **Sets 1/2 (the $9B00 walk cycle) = PLAYER, NOT
   princess.** Set 5 figures = unresolved (guard candidate). **No striping on any
   set** -> color-cell fix holds across the cast (AC-5 clean).
-- ESCALATION (Jay-gated): searched $8300 (all player) + $a400 (attract
-  fight/climb demo = scene-6 cast) + low banks ($0400 font, $11e8/$1c7a gameplay
-  blobs, $1E00 scenes 1-3). **No dedicated princess/guard sprite set anywhere.**
-- CONCLUSION — SKELETON REUSE: the princess (walks) reuses the shared player
-  walk frames; the guard reuses a skeleton or is a $9800 figure;
-  differentiated at runtime by state block (the data-driven engine model).
-  Princess/guard identity is an ORCHESTRATION-time distinction (which state
-  block drives which shared set), deferred to the scene-5 port. The scene-5
-  sprite ASSETS are located + converted + render-correct.
-- Out-of-scope notes recorded (docs/scene5-cast-map.md): the "Akuma shoulder
-  shouldn't animate" = compositing (static body + moving head/arm + separate
-  eagle), not a conversion bug; $a400 = next-scene cast.
-- build.bat clean (prod boot 7359 B unregressed; 10/10 drivers); sandbox
-  boot-excluded; trace driver P3 unchanged (engine untouched).
+- ESCALATION (Jay-gated): searched $8300 + $a400 + low banks by LABEL — found
+  no *labeled* princess/guard set, and I wrongly concluded "skeleton reuse."
+- **RETRACTED + CORRECTED (Jay rejected the reuse conclusion; 2026-06-13):** the
+  princess and guard DO exist as their own sprite records. Found EMPIRICALLY by
+  instrumenting the real Apple II run (tests/scripted/trace_scene5_sprites.lua,
+  diag_sprite_ptr.lua) and tracing the sprite-source pointer ($1B/$1C saved
+  START) every frame from imprisonment start ($3D=$01, ~f3909) to climbing start
+  (f6019=$A3E9), mapping each start to bank+dims via dump05_imprison.bin.
+  Result: scene 5 draws figures from the $11e8 and $1c7a banks (recon's
+  "gameplay blobs") + the $8300/$8c67 region — NOT the player walk set.
+  - PRINCESS = 14 frames ($11e8: $1530/$1867/$1611/$1588 standing+turning,
+    $169A torso, $16CC/$175E/$17D3 falling, $1829 on-floor; $1c7a: $1D00 body,
+    $1D36/$1D5A/$1D7E/$1DA2 walking legs). Jay-IDed each in the previews.
+  - GUARD = 3 frames ($8F2B head [oracle mislabel "feet_shadow"], $899C torso/
+    standing, $8ACB below-torso). Jay-IDed.
+  - The $96xx/$97xx cluster = FLOOR patterns (background), not characters.
+    Scenery (Jay-IDed): bench $12C8 (right wall), floor $14BE/$1200, wall $18BF.
+  - Both are composited multi-part figures (head/torso/legs) — assembly is
+    scene-5 orchestration (out of scope). Full map: docs/scene5-cast-map.md.
+- LESSON (reinforced): negative label-grep proves nothing; an OBSERVED-to-exist
+  asset must be found by execution trace, not inferred. Do not convert a
+  reasoned conclusion into a stated finding.
+- Figures converted by ADDRESS from dump05 (banks are single-label blobs).
+  Previews reorganized BY CHARACTER (content/engine-previews/cast/<char>/).
+  Content + previews untracked per rule; trace tooling committed.
 
 ---
 
