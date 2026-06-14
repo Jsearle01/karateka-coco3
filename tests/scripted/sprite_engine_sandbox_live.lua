@@ -8,7 +8,9 @@
 --   C:\mame\mame.exe coco3 -rompath C:\mame\roms -window \
 --       -autoboot_script tools\sprite_engine_sandbox_live.lua
 --
--- Controls: free-run by default; tap any key to single-step one frame.
+-- Controls: the current SET free-runs its frames; TAP any key to advance to
+-- the next set. Set order: 0 akuma_gloat, 1 walk_legs, 2 walk_torso,
+-- 3 akuma_throne, 4 eagle, 5 figures(guard?), 6 props(cell door/banner).
 -- [ref: tests/scripted/sprite_engine_sandbox.lua — automated P2/P3 trace variant]
 
 local BIN_PATH = "tests/sprite_engine_sandbox.bin"

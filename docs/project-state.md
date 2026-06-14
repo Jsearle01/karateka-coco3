@@ -5,9 +5,10 @@
 - Methodology version: Claude-Orchestrated Development Methodology v0.2
 - Project phase: P2 IN PROGRESS; P3.1 COMPLETE (2026-05-21)
   P2.3 COMPLETE per audit 2026-05-17; P2.4 not started — see §Execution history
-- Last update: 2026-06-13 (R-engine sprite/animation engine core CONFIRMED +
-  converter color-cell fix; R-p26 scene-4 scroll CONFIRMED + scene-2 port credit;
-  INT-2 boundary ruling recorded; 512KB Q + disk-load-catalog filed)
+- Last update: 2026-06-13 (scene-5 cast scale-out: $9800+$9B00 region converted
+  via fixed converter, 7-set sandbox, Jay ID gate — found NO separate
+  princess/guard sprite set = skeleton reuse; R-engine CONFIRMED + converter
+  color-cell fix; R-p26 scene-4 scroll CONFIRMED; INT-2 boundary ruling)
 
 ## P2 trajectory
 
@@ -470,6 +471,44 @@ interaction) is INT-3, additive on top.
 - TUNING NOTE: sandbox loads the Brøderbund palette (descriptor 0) so Akuma
   HUES are not throne-room-accurate; the striping fix is palette-independent.
   A throne-room palette is downstream (scene 5+).
+
+### Scene-5 cast scale-out (2026-06-13; find = the variance driver, as predicted)
+
+Locate the scene-5 cutscene cast by CONTENT, convert through the fixed
+converter, extend the sandbox to cycle the sets, Jay visually IDs.
+
+- FIND (HS-1 path): the dispatch premised separate animating princess + guard
+  frame sets. Walking the banks + scene-pointers by content found NO such sets.
+  HS-1 fired -> Jay chose "watch scene 5 in MAME first." Ran the real Apple II
+  Karateka (apple2e, refs disk); Jay observed: Akuma center-bottom, **princess
+  walks across toward the door**, guard left/center, **eagle on Akuma's
+  shoulder**. That re-scoped the cast to the $9800+$9B00 region (the recon's
+  "$9B00=player" label was tentative; corrected by content — but see ID below).
+- CONVERTED (35 sprites, unlabeled by handle, fixed converter): $9800 props +
+  figures (eagle-head, cell-door, banner, 9858, 9a18, 9a2a) + the full $9B00
+  bank (player walk legs×8 + torso×8, akuma throne+feet, eagle body/head).
+  Akuma 9-frame already done (R-engine). Content untracked per rule; previews
+  gitignored (content/engine-previews/).
+- SANDBOX: extended to 7-set select (tap = next set; each set free-runs its
+  frames; full-buffer clear on switch). Boot-excluded; includes the real engine.
+- JAY ID GATE (AC-4): Akuma=set0 (CONFIRMED), eagle=set4, props=set6 (cell
+  door+banner) CONFIRMED. **Sets 1/2 (the $9B00 walk cycle) = PLAYER, NOT
+  princess.** Set 5 figures = unresolved (guard candidate). **No striping on any
+  set** -> color-cell fix holds across the cast (AC-5 clean).
+- ESCALATION (Jay-gated): searched $8300 (all player) + $a400 (attract
+  fight/climb demo = scene-6 cast) + low banks ($0400 font, $11e8/$1c7a gameplay
+  blobs, $1E00 scenes 1-3). **No dedicated princess/guard sprite set anywhere.**
+- CONCLUSION — SKELETON REUSE: the princess (walks) reuses the shared player
+  walk frames; the guard reuses a skeleton or is a $9800 figure;
+  differentiated at runtime by state block (the data-driven engine model).
+  Princess/guard identity is an ORCHESTRATION-time distinction (which state
+  block drives which shared set), deferred to the scene-5 port. The scene-5
+  sprite ASSETS are located + converted + render-correct.
+- Out-of-scope notes recorded (docs/scene5-cast-map.md): the "Akuma shoulder
+  shouldn't animate" = compositing (static body + moving head/arm + separate
+  eagle), not a conversion bug; $a400 = next-scene cast.
+- build.bat clean (prod boot 7359 B unregressed; 10/10 drivers); sandbox
+  boot-excluded; trace driver P3 unchanged (engine untouched).
 
 ---
 
