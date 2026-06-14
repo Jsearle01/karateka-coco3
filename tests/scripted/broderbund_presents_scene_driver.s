@@ -17,7 +17,7 @@
 *
 * "presents" positions (P2.4.2-followup-3 visible-extent formula):
 *   trail: p=10 r=10 e=8 s=7 n=9 t=9; wlead: all=1 except s=2; GAP=1
-*   [ref: docs/conventions.md §22 — visible-extent position formula]
+*   [ref: docs/project/conventions.md §22 — visible-extent position formula]
 *
 * ORIGIN: Apple II outer_caller_b77c $B77C,
 *         karateka_dissasembly_claude/src/intro.s:268-280

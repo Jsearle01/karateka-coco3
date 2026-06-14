@@ -18,7 +18,7 @@ Tests in tests/:
 - test_sound_convert.py (4 tests)
 All 13 PASS.
 
-Documentation: docs/tools.md
+Documentation: docs/project/tools.md
 
 ## Per-scene palette decision
 

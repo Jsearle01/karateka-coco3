@@ -38,7 +38,7 @@
 *   array for multi-character scene 6 / combat):
 * [ref: src/engine/globals.s declares the eng_* equates]
 * [ref: src/hal/coco3-dsk/gfx.s HAL_gfx_blit_sprite / HAL_gfx_present]
-* [ref: docs/verification-plan_engine-core.md P2/P3/P4]
+* [ref: docs/project/verification-plan_engine-core.md P2/P3/P4]
 * ---------------------------------------------------------------
 
         setdp   0

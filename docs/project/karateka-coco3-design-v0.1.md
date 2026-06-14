@@ -86,7 +86,7 @@ Coordination protocol:
    - Re-run any karateka-coco3 work that referenced the changed source
    - Document the cross-project dependency in the affected subsystem's port log
 
-**Note on karateka_dissasembly_claude milestones:** karateka_dissasembly_claude's original M3 (CoCo3 port) is now this separate karateka-coco3 project. karateka_dissasembly_claude's docs/milestones.md will be updated to reflect its independent ongoing milestone path:
+**Note on karateka_dissasembly_claude milestones:** karateka_dissasembly_claude's original M3 (CoCo3 port) is now this separate karateka-coco3 project. karateka_dissasembly_claude's docs/project/milestones.md will be updated to reflect its independent ongoing milestone path:
 
 - **M1** — 100% intro-time territory ✓ COMPLETE (2026-05-12)
 - **M2** — Bootable Apple II disk from src/ ✓ COMPLETE (2026-05-12)
@@ -180,10 +180,10 @@ The original Karateka source was never released. karateka_dissasembly_claude src
 
 karateka_dissasembly_claude project documentation:
 
-- `docs/milestones.md` — M1/M2 status, acceptance criteria
+- `docs/project/milestones.md` — M1/M2 status, acceptance criteria
 - `docs/memory-coverage-map.md` — full address-to-content map
 - `docs/data-areas-catalog.md` — code regions, sprite banks, jump tables
-- `docs/open-questions.md` — unresolved questions, including Q016 (ZP cluster semantics), Q017 (M1 coverage), and others
+- `docs/project/open-questions.md` — unresolved questions, including Q016 (ZP cluster semantics), Q017 (M1 coverage), and others
 - `src/` tree — 38 .s files covering the full game
 
 These references are authoritative for "what the engine does." They are checked into the karateka_dissasembly_claude repository and accessible to this project.
@@ -837,7 +837,7 @@ This parallel structure means P0b doesn't block karateka-coco3 startup. The two 
 - Create karateka-coco3 repository structure per Section 11.4
 - Verify `../karateka_dissasembly_claude/` exists at sibling directory (reference oracle access)
 - Verify `../6502-6809-conversion-patterns/` and `../apple2-disasm-patterns/` exist at sibling directories (after pattern repos bootstrap per Section 11.8)
-- Establish `docs/project-state.md` (methodology state file)
+- Establish `docs/project/project-state.md` (methodology state file)
 - Initialize cross-project coordination protocol per Section 11.3
 
 **P1.1 — MAME test harness**
@@ -1075,13 +1075,13 @@ Documents produced during the project:
 
 **Phase 1:**
 - `karateka-coco3-design-v0.1.md` — this document
-- `docs/hal.md` — HAL contract companion (src/hal.inc is the syntactic form)
-- `docs/conventions.md` — engine conventions
-- `docs/memory-map.md` — final CoCo3 memory layout
+- `docs/project/hal.md` — HAL contract companion (src/hal.inc is the syntactic form)
+- `docs/project/conventions.md` — engine conventions
+- `docs/project/memory-map.md` — final CoCo3 memory layout
 - `docs/sprite-format.md` — CoCo3 sprite format specification
-- `docs/harness.md` — MAME harness implementation documentation
-- `docs/tools.md` — conversion tooling documentation
-- `docs/project-state.md` — methodology state file
+- `docs/project/harness.md` — MAME harness implementation documentation
+- `docs/project/tools.md` — conversion tooling documentation
+- `docs/project/project-state.md` — methodology state file
 - External: contributions to `6502-6809-conversion-patterns/project/karateka/`
 - External: contributions to `apple2-disasm-patterns/` (from karateka_dissasembly_claude experience)
 
@@ -1450,7 +1450,7 @@ Each bootstrap task follows the same methodology as karateka_dissasembly_claude 
 - Reference oracle (sibling path): `../karateka_dissasembly_claude/src/<file>.s`
 - Patterns (porting, external): `6502-6809-conversion-patterns/shared/<category>/<id>-<name>.md` or `6502-6809-conversion-patterns/project/karateka/<id>-<name>.md`
 - Patterns (disassembly methodology, external): `apple2-disasm-patterns/<name>.md`
-- State file: `docs/project-state.md`
+- State file: `docs/project/project-state.md`
 
 ### A.4 Cross-document references
 
@@ -1493,8 +1493,8 @@ The karateka_dissasembly_claude repository contains the reference oracle for thi
 - `docs/data-areas-catalog.md` — full address-to-content map
 - `docs/memory-coverage-map.md` — coverage tracking (per dump)
 - `docs/dump-registry.md` — list of all captured dumps with capture-state notes
-- `docs/open-questions.md` — unresolved questions
-- `docs/milestones.md` — M1/M2 acceptance status; future milestones for gameplay-state completeness
+- `docs/project/open-questions.md` — unresolved questions
+- `docs/project/milestones.md` — M1/M2 acceptance status; future milestones for gameplay-state completeness
 - `regions/dumpNN.md` — per-dump region classification
 
 **Build infrastructure:**

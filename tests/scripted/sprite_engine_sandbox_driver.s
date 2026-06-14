@@ -18,7 +18,7 @@
 *   6 eagle          7 props(cell door / banner)
 *
 * VBL-locked (real GIME VBL IRQ via andcc #$EF); true 60 fps at real-time.
-* [ref: docs/scene5-cast-map.md — handle->identity, found by trace]
+* [ref: docs/project/scene5-cast-map.md — handle->identity, found by trace]
 * ---------------------------------------------------------------
 
         org     $0100

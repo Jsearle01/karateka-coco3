@@ -14,10 +14,10 @@ referenced HAL_debug_trace_event but hal.inc didn't declare it.
 Files modified:
 - src/hal.inc — added Debug/Trace subsystem (8th); updated init
   order comment; total functions now 24
-- docs/hal.md — added §5.8 (Debug/Trace); updated §1 overview,
+- docs/project/hal.md — added §5.8 (Debug/Trace); updated §1 overview,
   §6 reference citations, §7 init order; version bumped to
   "0.1 + P1.3 follow-up"
-- docs/conventions.md — §9 DEV_MODE example updated to correct
+- docs/project/conventions.md — §9 DEV_MODE example updated to correct
   function name (HAL_debug_log, not hal_debug_log_string from
   pop-coco3); P1.3 follow-up note updated to closed/resolved
 

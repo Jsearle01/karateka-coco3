@@ -25,7 +25,7 @@
 *   RAM by DECB. BASIC's $FExx routing remains in effect (locked by
 *   MC3=1 in $FF90=$4C).
 *
-*   Per Sockmaster-GIME §1 (docs/SockmasterGime.md):
+*   Per Sockmaster-GIME §1 (docs/ground-truth/SockmasterGime.md):
 *     SWI3 → $FFF2(ROM) → $FEEE → $0100
 *     SWI2 → $FFF4(ROM) → $FEF1 → $0103
 *     SWI  → $FFFA(ROM) → $FEFA → $0106
@@ -33,7 +33,7 @@
 *     IRQ  → $FFF8(ROM) → $FEF7 → $010C
 *     FIRQ → $FFF6(ROM) → $FEF4 → $010F
 *
-*   [ref: docs/SockmasterGime.md §1 — Interrupt Vectors table]
+*   [ref: docs/ground-truth/SockmasterGime.md §1 — Interrupt Vectors table]
 *   [ref: 6502-6809-conversion-patterns/shared/G-methodology/
 *         G.3-coco3-platform-assumptions.md — G.3.3 exemplar]
 *
@@ -44,9 +44,9 @@
 *     Layer 3: Dispatch block RTI stubs (safe no-op if interrupt fires)
 *   This is acceptable while no interrupt-driven behavior exists.
 *   Migration required when real handlers land (P3.1 VBL at minimum).
-*   [ref: docs/conventions.md — "Interrupt mask policy" section]
-*   [ref: docs/open-questions.md Q001 — migration plan]
-*   [ref: docs/interrupt-handling.md — full dispatch documentation]
+*   [ref: docs/project/conventions.md — "Interrupt mask policy" section]
+*   [ref: docs/project/open-questions.md Q001 — migration plan]
+*   [ref: docs/project/interrupt-handling.md — full dispatch documentation]
 *
 * PRODUCTION BUILD NOTE:
 *   The dispatch block at .org $0100 and the HAL code (HAL_sys_init,
@@ -58,12 +58,12 @@
 *   production build wiring is deferred to post-P2.
 *
 * Reference citations:
-*   [ref: docs/SockmasterGime.md §1] — three-level interrupt dispatch
-*   [ref: docs/memory-map.md §2] — dispatch block within stack region
-*   [ref: docs/memory-map.md §3.2] — MMU task 0 page values $38-$3F
+*   [ref: docs/ground-truth/SockmasterGime.md §1] — three-level interrupt dispatch
+*   [ref: docs/project/memory-map.md §2] — dispatch block within stack region
+*   [ref: docs/project/memory-map.md §3.2] — MMU task 0 page values $38-$3F
 *   [ref: hal.inc HAL_sys_init — contract]
-*   [ref: docs/conventions.md §2 — DP $13 sys_init_cc_mask]
-*   [ref: docs/conventions.md — interrupt mask policy section]
+*   [ref: docs/project/conventions.md §2 — DP $13 sys_init_cc_mask]
+*   [ref: docs/project/conventions.md — interrupt mask policy section]
 *   [ref: KCOCO3_INIT0_COCO3 = $4C in hal.inc]
 *
 * DP allocations (HAL scratch band $00-$1F):
@@ -80,7 +80,7 @@
 *   Test drivers that need the dispatch block maintain their own
 *   inline copies (self-contained build pattern).
 *   [ref: src/engine/boot.s §Segment 1]
-*   [ref: docs/interrupt-handling.md §4 — dispatch block design]
+*   [ref: docs/project/interrupt-handling.md §4 — dispatch block design]
 
 * ---------------------------------------------------------------
 * HAL_sys_init
@@ -112,18 +112,18 @@
 *   $FF90=$4C unmaps ROM from $8000-$FEFF, invalidating ROM interrupt
 *   handlers. Masking before the write ensures no interrupt fires
 *   during the transition window when vectors point to invalidated ROM.
-*   [ref: docs/interrupt-handling.md §3]
-*   [ref: docs/conventions.md — interrupt mask policy]
+*   [ref: docs/project/interrupt-handling.md §3]
+*   [ref: docs/project/conventions.md — interrupt mask policy]
 *
 * $FF90=$4C value provenance:
 *   [ref: refs/GFXMODE3.ASM line 53-54 — LDA #$4C / STA $FF90]
 *   [ref: KCOCO3_INIT0_COCO3 in hal.inc]
-*   Bit semantics: [ref: docs/SockmasterGime.md — $FF90]
+*   Bit semantics: [ref: docs/ground-truth/SockmasterGime.md — $FF90]
 *     COCO=0, MMUEN=1, MC3=1 (FExx constant), MC2=1 (standard SCS)
 *
 * MMU slot values:
-*   [ref: docs/memory-map.md §3.2] — P1.6 task 0 page assignments
-*   [ref: docs/SockmasterGime.md] — MMU task register documentation
+*   [ref: docs/project/memory-map.md §3.2] — P1.6 task 0 page assignments
+*   [ref: docs/ground-truth/SockmasterGime.md] — MMU task register documentation
 *
 * [ref: hal.inc HAL_sys_init — contract]
 * ---------------------------------------------------------------
@@ -134,7 +134,7 @@ HAL_sys_init:
 * ROM interrupt handlers will be invalidated by $FF90 write in step 2.
 * Must not take an interrupt during transition. Belt-and-suspenders:
 * caller (test driver) should also mask before calling HAL_sys_init.
-* [ref: docs/conventions.md — interrupt mask policy]
+* [ref: docs/project/conventions.md — interrupt mask policy]
         orcc    #$50                    ; set CC.I (IRQ mask) and CC.F (FIRQ mask)
 
 * Step 2: Disable PIA0 and PIA1 IRQ enables.
@@ -162,7 +162,7 @@ HAL_sys_init:
 *   PIA1 $FF23 = CRB: bits 0=CB1-IRQ-enable, 1=CB2-IRQ-enable
 *   Mask $FC = %11111100 clears bits 0,1; preserves all other CR state.
 *
-* [ref: docs/interrupt-handling.md — PIA IRQ bypass of GIME IRQENR]
+* [ref: docs/project/interrupt-handling.md — PIA IRQ bypass of GIME IRQENR]
 * [ref: R-boot trace 2026-05-21 — root-cause investigation]
         lda     $FF01
         anda    #$FC
@@ -181,15 +181,15 @@ HAL_sys_init:
 * MC3=1 locks $FExx secondary vectors; they retain BASIC's routing to
 * $01xx dispatch block. MC2=1 = standard SCS. MMUEN=1 enables MMU.
 * COCO=0 switches from SAM-mode to GIME-mode address translation.
-* [ref: docs/SockmasterGime.md — $FF90 bit definitions]
+* [ref: docs/ground-truth/SockmasterGime.md — $FF90 bit definitions]
 * [ref: refs/GFXMODE3.ASM line 53-54 — empirical provenance]
         lda     #$4C
         sta     $FF90                   ; INIT0: COCO=0,MMUEN=1,IEN=0,MC3=1,MC2=1
 
 * Step 4: Program MMU task 0 slots to P1.6 physical page layout.
 * Must be written AFTER $FF90=$4C (MMUEN bit enables MMU programming).
-* [ref: docs/memory-map.md §3.2]
-* [ref: docs/SockmasterGime.md — MMU task register layout]
+* [ref: docs/project/memory-map.md §3.2]
+* [ref: docs/ground-truth/SockmasterGime.md — MMU task register layout]
         lda     #$38
         sta     $FFA0                   ; $0000-$1FFF → physical $70000
         lda     #$39
@@ -221,7 +221,7 @@ HAL_sys_init:
 * Returns: does not return
 *
 * [ref: hal.inc HAL_sys_panic — "Unrecoverable error handler."]
-* [ref: docs/hal.md §5.7]
+* [ref: docs/project/hal.md §5.7]
 *
 * P2.x BEHAVIOR: infinite loop (bra *). MAME harness detects as
 *   timeout-failure because PASS sentinel is never written.

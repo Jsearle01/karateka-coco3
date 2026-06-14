@@ -2,7 +2,7 @@
 
 ## What landed
 
-docs/conventions.md establishing engine code rules for karateka-coco3.
+docs/project/conventions.md establishing engine code rules for karateka-coco3.
 
 Sections: overview (inheritance audit), DP allocation, calling
 conventions, stack discipline, error handling, naming, comment

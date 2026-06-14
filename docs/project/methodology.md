@@ -226,7 +226,7 @@ Every Form A and Form B report must include:
 > `seeds/karateka/live/` this task, or **"None."**
 
 Karateka has no separate report template file; Form A/B structure follows
-methodology v0.7 (`docs/claude-orchestrated-methodology-v0_7.md`). This line is
+methodology v0.7 (`docs/project/claude-orchestrated-methodology-v0_7.md`). This line is
 a karateka-specific addition to both forms, making captured candidates visible at
 verdict time so an omission is caught.
 

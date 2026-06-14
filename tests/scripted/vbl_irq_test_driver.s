@@ -36,8 +36,8 @@ sys_init_cc_mask equ $13
 * ---------------------------------------------------------------
 * Segment 1: Interrupt dispatch block at $0100
 * RTI stubs; HAL_time_init patches $010C with JMP hal_vbl_handler.
-* [ref: docs/interrupt-handling.md §2 — three-level dispatch]
-* [ref: docs/interrupt-handling.md §4 — dispatch block design]
+* [ref: docs/project/interrupt-handling.md §2 — three-level dispatch]
+* [ref: docs/project/interrupt-handling.md §4 — dispatch block design]
 * ---------------------------------------------------------------
         org     $0100
 
@@ -87,12 +87,12 @@ test_start:
 * (Harness reads both; both should have CC.I bit set.)
 
 * === OPT-IN: unmask IRQ — handler now fires on VBL ===
-* [ref: docs/interrupt-handling.md §10.2 — opt-in sequence step 4]
+* [ref: docs/project/interrupt-handling.md §10.2 — opt-in sequence step 4]
         andcc   #$EF                    ; clear CC.I; VBL IRQ enabled
 
 * === Tight spin loop — Lua harness measures counter rate ===
 * Counter at DP $10/$11 advances via IRQ handler, not main thread.
-* [ref: docs/interrupt-handling.md §10.3 — V-counter-rate pattern]
+* [ref: docs/project/interrupt-handling.md §10.3 — V-counter-rate pattern]
 test_spin:
         bra     test_spin               ; spin forever; harness captures here
 

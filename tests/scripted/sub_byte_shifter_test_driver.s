@@ -21,7 +21,7 @@
 *   subbyte=2: row output = $0F ($FF>>4), byte11=$FF, byte12=$F0
 *   subbyte=3: row output = $03 ($FF>>6), byte11=$FF, byte12=$FC
 *
-* [ref: docs/conventions.md §2 — DP $08-$0F HAL internal scratch band]
+* [ref: docs/project/conventions.md §2 — DP $08-$0F HAL internal scratch band]
 * [ref: src/hal/coco3-dsk/gfx.s HAL_gfx_blit_sprite P2.4.1]
 *
 * Self-contained inline HAL copies. blit_subbyte ($0C) set before each blit.

@@ -44,7 +44,7 @@
 * ---------------------------------------------------------------
 * Handler dispatch block (inline copy from sys.s)
 * $0100-$0111 (18 bytes); loaded before main code block
-* [ref: docs/SockmasterGime.md §1]
+* [ref: docs/ground-truth/SockmasterGime.md §1]
 * ---------------------------------------------------------------
         org     $0100
 

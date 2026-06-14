@@ -3,7 +3,7 @@
 ## Session type
 
 Read-only survey of karateka_dissasembly_claude src/. Produces a planning artifact
-(docs/p2-scoping-survey.md) informing P2.2 subsystem selection and INT-1 content
+(docs/project/p2-scoping-survey.md) informing P2.2 subsystem selection and INT-1 content
 asset wave. No commits to karateka_dissasembly_claude.
 
 ## Timing
@@ -30,7 +30,7 @@ Reference docs consulted:
 - docs/data-areas-catalog.md (ZP pointer map)
 - docs/scene-entries.md (per-scene entry points + trace evidence)
 - docs/differential-analysis.md (per-dump state)
-- karateka-coco3 docs/hal.md (HAL subsystem reference)
+- karateka-coco3 docs/project/hal.md (HAL subsystem reference)
 
 ## P2.2 recommendation: kernel/dispatch
 
@@ -94,7 +94,7 @@ raw .byte in fight_engine.s with no sprite-record labels.
 
 **Counter stays at 12.**
 
-Reasoning: this survey produces a planning artifact — docs/p2-scoping-survey.md —
+Reasoning: this survey produces a planning artifact — docs/project/p2-scoping-survey.md —
 which is substantive research but not a port, methodology pattern, or HAL contract
 advancement. It is more substantive than pure bookkeeping (P1 closure, doc update),
 but its primary function is planning rather than capability delivery. The calibration
@@ -114,8 +114,8 @@ P2.2 will be task #13.
 
 ## Files changed (karateka-coco3 only)
 
-- `docs/p2-scoping-survey.md` — new; the survey artifact
-- `docs/project-state.md` — next-task pointer updated to P2.2 + INT-1 wave
+- `docs/project/p2-scoping-survey.md` — new; the survey artifact
+- `docs/project/project-state.md` — next-task pointer updated to P2.2 + INT-1 wave
 
 ## Next
 

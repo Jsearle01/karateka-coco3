@@ -22,7 +22,7 @@ Usage:
   python3 tools/decode_framebuffer.py <dump.bin> --region 48,0,95,79
   python3 tools/decode_framebuffer.py <dump.bin> --ascii --region 72,26,100,62
 
-[ref: docs/methodology.md §framebuffer-dump-as-canonical-input-signal]
+[ref: docs/project/methodology.md §framebuffer-dump-as-canonical-input-signal]
 [ref: P2.3a.7 — framebuffer dump harness capability]
 """
 

@@ -15,7 +15,7 @@ Oracle: karateka_dissasembly_claude (read-only; commit 396a293 and earlier)
 - `docs/scene-entries.md` — per-scene entry points and trace evidence
 - `docs/differential-analysis.md` — per-dump register/ZP state
 - `verification/mapping.json` (karateka-coco3) — confirmed P2.1 ZP mappings
-- `docs/hal.md` (karateka-coco3) — HAL subsystem reference
+- `docs/project/hal.md` (karateka-coco3) — HAL subsystem reference
 
 **What was NOT surveyed (deferred):**
 - `traces/` — raw trace files; too large; findings are already in docs/
@@ -721,7 +721,7 @@ Throughout this document:
 - `[ref: src/fight_engine.s header]` — uncharted data block $A0E7-$A305
 - `[ref: src/sprite_data_0400.s header]` — font visual confirmation
 - `[ref: src/sprite_data_logo.s header]` — scene-3 logo sprites
-- `[ref: karateka-coco3 docs/hal.md]` — HAL subsystem functions
+- `[ref: karateka-coco3 docs/project/hal.md]` — HAL subsystem functions
 - `[ref: karateka-coco3 verification/mapping.json]` — confirmed P2.1 ZP mappings
 
 **[no-ref:] items:**

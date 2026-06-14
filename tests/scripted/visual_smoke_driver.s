@@ -32,7 +32,7 @@
 * ---------------------------------------------------------------
 * Handler dispatch block (inline copy from sys.s)
 * $0100-$0111 (18 bytes) — Sockmaster-correct ordering
-* [ref: docs/SockmasterGime.md §1]
+* [ref: docs/ground-truth/SockmasterGime.md §1]
 * ---------------------------------------------------------------
         org     $0100
 
@@ -68,7 +68,7 @@ PAGE_A_TOKEN        equ $20
 PAGE_B_TOKEN        equ $40
 
 * Square base addresses (pre-computed)
-* [ref: docs/memory-map.md §4.8-4.9] frame buffer CPU bases
+* [ref: docs/project/memory-map.md §4.8-4.9] frame buffer CPU bases
 * Square A: $8000 + (72*80) + 34 = $96A2
 SQUARE_A_BASE       equ $96A2
 * Square B: $C000 + (88*80) + 38 = $DBA6

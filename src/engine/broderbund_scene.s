@@ -12,10 +12,10 @@
 * [ref: tests/scripted/broderbund_presents_scene_driver.s —
 *       proof-of-concept; WB1 confirmed behavior-equivalent to
 *       inline driver copy (2026-05-20)]
-* [ref: docs/conventions.md §19 — DOCUMENTED TRANSFORM coordinates]
-* [ref: docs/conventions.md §20 — sub-byte rendering]
-* [ref: docs/conventions.md §21 — transparency semantics]
-* [ref: docs/conventions.md §22 — visible-extent position formula]
+* [ref: docs/project/conventions.md §19 — DOCUMENTED TRANSFORM coordinates]
+* [ref: docs/project/conventions.md §20 — sub-byte rendering]
+* [ref: docs/project/conventions.md §21 — transparency semantics]
+* [ref: docs/project/conventions.md §22 — visible-extent position formula]
 * ---------------------------------------------------------------
 
         setdp   0
@@ -139,7 +139,7 @@ broderbund_scene:
 
 * ---------------------------------------------------------------
 * Sprite data (INT-1 content conversion wave 1)
-* [ref: docs/p2-scoping-survey.md §5 — INT-1 content asset list]
+* [ref: docs/project/p2-scoping-survey.md §5 — INT-1 content asset list]
 * ---------------------------------------------------------------
         include "../../content/broderbund/broderbund_logo_sprite_2/converted.s"
         include "../../content/broderbund/broderbund_logo_sprite_1/converted.s"

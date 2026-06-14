@@ -21,7 +21,7 @@ Real handler installed at IRQ dispatch slot ($010C) per Sockmaster routing.
 The CoCo3 uses a three-level interrupt dispatch chain. This is a CoCo3-
 specific hardware design, not present in bare 6809 systems.
 
-`[ref: docs/SockmasterGime.md §1 — Interrupt Vectors table]`
+`[ref: docs/ground-truth/SockmasterGime.md §1 — Interrupt Vectors table]`
 
 ```
 CPU reads     ROM points to   Secondary points to   Handler stub
@@ -49,7 +49,7 @@ its own handlers here during boot.
 **MC3=1 in $FF90=$4C locks $FExx as "constant"** — after this write, $FExx
 cannot be overwritten. BASIC's handler routing is preserved.
 
-`[ref: docs/SockmasterGime.md — $FF90 bit 3 MC3]`
+`[ref: docs/ground-truth/SockmasterGime.md — $FF90 bit 3 MC3]`
 
 ### Level 3 — $01xx (handler dispatch block, RAM, writable)
 
@@ -118,7 +118,7 @@ stx     $010D
 The 3-byte slot ($010C–$010E) fits exactly one JMP instruction.
 
 `[ref: src/hal/coco3-dsk/sys.s — dispatch block definition]`
-`[ref: docs/open-questions.md Q001 — interrupt discipline migration plan]`
+`[ref: docs/project/open-questions.md Q001 — interrupt discipline migration plan]`
 
 ---
 
@@ -138,7 +138,7 @@ CoCo3 ROM dispatch table. Do NOT infer handler addresses from sequential
 assignment (SWI3/SWI2/FIRQ/IRQ/SWI/NMI in that order) — that ordering
 produces wrong $01xx slots for FIRQ, IRQ, SWI, and NMI.
 
-`[ref: docs/SockmasterGime.md §1 — Interrupt Vectors table]`
+`[ref: docs/ground-truth/SockmasterGime.md §1 — Interrupt Vectors table]`
 `[ref: 6502-6809-conversion-patterns/shared/G-methodology/G.3-coco3-platform-assumptions.md — G.3.3 exemplar]`
 
 ---
@@ -159,30 +159,30 @@ configuration: `$FF92=$08`, `$FF93=$00`, `$FF90` IEN=1. See §8 for the full
 enabling sequence, acknowledgement mechanism, and MAME verification approach.
 See §9 for the reference handler skeleton.
 
-`[ref: docs/open-questions.md Q001 — full migration question]`
-`[ref: docs/conventions.md — interrupt mask policy section]`
+`[ref: docs/project/open-questions.md Q001 — full migration question]`
+`[ref: docs/project/conventions.md — interrupt mask policy section]`
 
 ---
 
 ## 7. Cross-References
 
 - `src/hal/coco3-dsk/sys.s` — HAL_sys_init implementation; dispatch block
-- `docs/conventions.md §2` — DP $13 sys_init_cc_mask allocation
-- `docs/conventions.md §16` — Interrupt mask policy section
-- `docs/memory-map.md §2` — Dispatch block within stack region
-- `docs/open-questions.md Q001` — Interrupt discipline migration
-- `docs/SockmasterGime.md §1` — Authoritative $01xx address table
-- `docs/SockmasterGime.md lines 52-67` — $FF92/$FF93 bit layout; ack mechanism
+- `docs/project/conventions.md §2` — DP $13 sys_init_cc_mask allocation
+- `docs/project/conventions.md §16` — Interrupt mask policy section
+- `docs/project/memory-map.md §2` — Dispatch block within stack region
+- `docs/project/open-questions.md Q001` — Interrupt discipline migration
+- `docs/ground-truth/SockmasterGime.md §1` — Authoritative $01xx address table
+- `docs/ground-truth/SockmasterGime.md lines 52-67` — $FF92/$FF93 bit layout; ack mechanism
 - `6502-6809-conversion-patterns/shared/G-methodology/G.3-coco3-platform-assumptions.md`
   — G.3.3 exemplar (incident report for this issue class)
-- `docs/conventions.md §16 line 653` — note: references $FF93 for enable;
+- `docs/project/conventions.md §16 line 653` — note: references $FF93 for enable;
   correct register is $FF92 (IRQENR); §8 of this document is authoritative
 
 ---
 
 ## 8. GIME VBL Interrupt: Hardware Specifics
 
-**Source:** `docs/SockmasterGime.md`. The Tandy CC3 Technical Reference Manual
+**Source:** `docs/ground-truth/SockmasterGime.md`. The Tandy CC3 Technical Reference Manual
 would corroborate these findings; PDF extraction was not available at X3
 research time. Findings here are single-source from the project's designated
 authoritative GIME reference.
@@ -194,16 +194,16 @@ before unmasking the 6809 CPU.
 
 **Step 1 — Enable GIME IRQ globally ($FF90 IEN bit)**
 
-`[ref: docs/SockmasterGime.md — $FF90 Bit 5: IEN 1=GIME chip IRQ enabled]`
+`[ref: docs/ground-truth/SockmasterGime.md — $FF90 Bit 5: IEN 1=GIME chip IRQ enabled]`
 
 The current `HAL_sys_init` writes `$FF90=$4C` (IEN=0, FEN=0 — GIME interrupts
 globally off). To enable GIME → IRQ propagation, IEN (bit 5) must be set:
 `$FF90=$6C` (`$4C | $20`). This change is part of the Q001 interrupt-discipline
-migration; see `docs/open-questions.md Q001`.
+migration; see `docs/project/open-questions.md Q001`.
 
 **Step 2 — Enable VBORD source in $FF92 IRQENR**
 
-`[ref: docs/SockmasterGime.md lines 52-66 — $FF92 IRQENR bit layout]`
+`[ref: docs/ground-truth/SockmasterGime.md lines 52-66 — $FF92 IRQENR bit layout]`
 
 | Bit | Name  | Function                        |
 |-----|-------|---------------------------------|
@@ -230,7 +230,7 @@ All other GIME IRQ sources remain disabled.
 
 ### 8.2 Interrupt Acknowledgement
 
-`[ref: docs/SockmasterGime.md line 67 — "Reading from the register tells you`
+`[ref: docs/ground-truth/SockmasterGime.md line 67 — "Reading from the register tells you`
 `which interrupts came in and acknowledges and resets the interrupt source."]`
 
 **Ack = read $FF92.** A single read simultaneously:
@@ -243,14 +243,14 @@ handler immediately after RTI (infinite loop).
 
 **Timing:** ack must occur inside the handler body. No grace window.
 
-**Note on $FF03:** `docs/conventions.md §16` mentions "read $FF03 or $FF92 as
+**Note on $FF03:** `docs/project/conventions.md §16` mentions "read $FF03 or $FF92 as
 applicable." $FF03 is the legacy PIA0 data port B (CoCo 1/2 MC6847 VSYNC
 path). With $FF90 COCO=0 (CoCo3 GIME mode, karateka-coco3 default), $FF92
 is the correct VBL ack register.
 
 ### 8.3 IRQ vs FIRQ Routing
 
-`[ref: docs/SockmasterGime.md lines 52-53 — $FF93 FIRQENR identical bit layout]`
+`[ref: docs/ground-truth/SockmasterGime.md lines 52-53 — $FF93 FIRQENR identical bit layout]`
 
 $FF92 (IRQENR) and $FF93 (FIRQENR) share the same bit layout. VBORD (bit 3)
 in $FF92 routes VBL to the 6809 IRQ pin; VBORD in $FF93 routes VBL to FIRQ.
@@ -296,8 +296,8 @@ verification step, first confirm empirically (via a dedicated harness read
 before any writes) that the specific register returns the written value
 rather than hardware status.
 
-`[ref: docs/SockmasterGime.md — $FF90 register definition]`
-`[ref: docs/interrupt-handling.md §8.1 — VBL enabling sequence]`
+`[ref: docs/ground-truth/SockmasterGime.md — $FF90 register definition]`
+`[ref: docs/project/interrupt-handling.md §8.1 — VBL enabling sequence]`
 `[ref: R-boot investigation 2026-05-21 — runtime trace confirmed $FFF8=$FEF7, $FEF7=LBRA $010C, $010C=JMP hal_vbl_handler via MAME 0.281 -debug instruction trace]`
 
 ---
@@ -313,9 +313,9 @@ DP = 0 (karateka-coco3 invariant; HAL scratch $00-$1F in page 0).
 
 ```asm
 * IRQ handler — VBL frame sync reference skeleton
-* Install at $010C per docs/interrupt-handling.md §4.
+* Install at $010C per docs/project/interrupt-handling.md §4.
 *
-* [ref: docs/SockmasterGime.md line 67 — reading $FF92 = ack]
+* [ref: docs/ground-truth/SockmasterGime.md line 67 — reading $FF92 = ack]
 * [ref: src/hal/coco3-dsk/time.s — hal_frame_hi ($10), hal_frame_lo ($11)]
 
 real_irq_handler:
@@ -353,14 +353,14 @@ is moot; for any multi-source future this is load-bearing.
 surface is `HAL_time_vbl_wait` (unchanged contract). Post-R-vbl, its body
 changes from counter-increment to counter-watch spin.
 
-`[ref: docs/interrupt-handling.md §4 — handler install procedure]`
-`[ref: docs/interrupt-handling.md §8 — ack mechanism, enable sequence]`
+`[ref: docs/project/interrupt-handling.md §4 — handler install procedure]`
+`[ref: docs/project/interrupt-handling.md §8 — ack mechanism, enable sequence]`
 
 ---
 
 ## 10. Per-Driver VBL Opt-In Sequence
 
-`[ref: docs/open-questions.md Q001 — design decisions recorded here]`
+`[ref: docs/project/open-questions.md Q001 — design decisions recorded here]`
 
 Q001 established that VBL-driven behavior is per-driver opt-in.
 HAL_sys_init and HAL_time_init handle hardware setup; the CPU unmask is
@@ -380,8 +380,8 @@ HAL_time_init post-R-vbl extends from "zero counter only" to:
 CPU unmask is caller responsibility, separated from hardware setup so that
 drivers can complete their own initialization before the first VBL fires.
 
-`[ref: docs/interrupt-handling.md §8.1 — full enabling sequence]`
-`[ref: docs/interrupt-handling.md §4 — handler install procedure]`
+`[ref: docs/project/interrupt-handling.md §8.1 — full enabling sequence]`
+`[ref: docs/project/interrupt-handling.md §4 — handler install procedure]`
 
 ### 10.2 Complete per-driver opt-in sequence (Q001.1 / 1.c + Q001.4 / 4.b)
 
@@ -396,8 +396,8 @@ before entering any loop that depends on VBL timing:
 *     $FF92=$08; CC.I still 1 — HAL_time_init does not unmask)
 *   All driver state initialized (handler may fire immediately after unmask)
 *
-* [ref: docs/interrupt-handling.md §8.1 — canonical config]
-* [ref: docs/interrupt-handling.md §9 — handler skeleton]
+* [ref: docs/project/interrupt-handling.md §8.1 — canonical config]
+* [ref: docs/project/interrupt-handling.md §9 — handler skeleton]
 
         andcc   #$EF            ; clear CC.I — unmask IRQ; handler now fires
 ```
@@ -420,7 +420,7 @@ advance. No assertion fires. Detection: §10.3.
 
 ### 10.3 Verification pattern — silent-failure detection (Q001.2 / 2.a)
 
-`[ref: docs/open-questions.md Q001 — Q001.2 counter-rate verification]`
+`[ref: docs/project/open-questions.md Q001 — Q001.2 counter-rate verification]`
 
 After opt-in, verify the handler is firing at the correct rate by reading
 `hal_frame_lo` (DP `$11`, CPU address `$0011`) in the MAME Lua harness.
@@ -445,7 +445,7 @@ local delta = (finish - start) & 0xFF
 
 ### 10.4 HAL_time_frame_count race fix (EXTRA-2 / E2.a, Option A)
 
-`[ref: docs/open-questions.md Q001 EXTRA-2 — race issue and resolution]`
+`[ref: docs/project/open-questions.md Q001 EXTRA-2 — race issue and resolution]`
 
 When the counter is interrupt-driven, a VBL IRQ firing between the two load
 instructions in `HAL_time_frame_count` produces a torn 16-bit read.
@@ -475,8 +475,8 @@ this is negligible.
 visible at the HAL boundary. Not required for R-vbl; flagged as potential
 P3.1 API hardening.
 
-`[ref: docs/interrupt-handling.md §9 — handler skeleton]`
-`[ref: docs/interrupt-handling.md §8 — ack mechanism, enable sequence]`
+`[ref: docs/project/interrupt-handling.md §9 — handler skeleton]`
+`[ref: docs/project/interrupt-handling.md §8 — ack mechanism, enable sequence]`
 
 ---
 

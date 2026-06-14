@@ -27,7 +27,7 @@
 *   fires during attract, MAME hangs instead of reaching the PASS
 *   sentinel — the harness reports timeout-failure, surfacing the
 *   violation immediately. Verification depends on DEV_MODE being active.
-*   [ref: docs/conventions.md §9 — DEV_MODE build configuration]
+*   [ref: docs/project/conventions.md §9 — DEV_MODE build configuration]
 *
 * Handler semantics (Apple II): all 7 handlers produce speaker effects
 *   (SPKR toggle + ROM_WAIT timing loops). On CoCo3 they will map to

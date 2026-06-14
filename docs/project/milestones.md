@@ -43,7 +43,7 @@ bootable CoCo3 disk running the complete intro/attract sequence (INT-3).
   Gates: P2 (static render clean), P3 (cadence=8 VBL exact / idx cycles 0..8 wrap /
   page toggles each advance), HS-1 (worst-case render+flip ~4430cy ≈ 15% of a VBL,
   ~6x headroom), P4 (Jay live: motion + single-step CONFIRMED). See
-  docs/verification-plan_engine-core.md.
+  docs/project/verification-plan_engine-core.md.
   CONVERTER COLOR-CELL FIX (same gate): the P4 gate surfaced vertical color/black
   striping on Akuma's solid orange/blue fills — Apple II solid color is an
   alternating-dot pattern, so the naive 1:1 dot map left the in-cell gaps black.
@@ -106,7 +106,7 @@ deliverable. Naming uses INT-N to distinguish from karateka_dissasembly_claude's
   (static images / VOFFSET pan); the animated content (cliff-approach walk,
   demo combat, gameplay) will use TRUE double buffering via the existing
   A/B-buffer HAL_gfx_present page-flip contract (the intro never exercises the
-  flip). See docs/open-questions.md Q-512kb-architecture.
+  flip). See docs/project/open-questions.md Q-512kb-architecture.
 - INT-3 — Full attract cycle including sound, cutscenes: NOT STARTED
   Adds: sound HAL, tone-record interpreter, cutscene machinery, Akuma throne room.
   = P2 target deliverable: bootable disk looping the complete attract sequence.

@@ -18,7 +18,7 @@
 * Uses current palette descriptor 0 from HAL_gfx_init inline copy.
 *
 * [ref: plan P2.3a.6-followup-1 orange-pixel-diagnosis Part II §2.1]
-* [ref: docs/SockmasterGime.md §FFB0-FFBF — palette register format]
+* [ref: docs/ground-truth/SockmasterGime.md §FFB0-FFBF — palette register format]
 *
 * Self-contained: inline HAL copies (sys_init, gfx_init, present).
 * No blit sprite needed — fills framebuffer directly.

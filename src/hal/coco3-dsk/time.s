@@ -8,8 +8,8 @@
 *   handler in irq_vbl.s. HAL_time_vbl_wait blocks on real VBL when IRQ
 *   is unmasked; falls back to synthetic increment when masked (N3=β).
 *
-*   [ref: docs/interrupt-handling.md §10 — per-driver opt-in sequence]
-*   [ref: docs/open-questions.md Q001 — design decisions]
+*   [ref: docs/project/interrupt-handling.md §10 — per-driver opt-in sequence]
+*   [ref: docs/project/open-questions.md Q001 — design decisions]
 *
 * HAL contract reference: src/hal.inc (HAL_time_* definitions)
 *   [ref: hal.inc HAL_time_init, HAL_time_vbl_wait,
@@ -47,8 +47,8 @@
 *   step 4) to avoid IRQ assertion from stale boot state.
 *
 * [ref: hal.inc HAL_time_init — contract]
-* [ref: docs/interrupt-handling.md §10.1 — five-step sequence]
-* [ref: docs/interrupt-handling.md §8.1 — enabling sequence]
+* [ref: docs/project/interrupt-handling.md §10.1 — five-step sequence]
+* [ref: docs/project/interrupt-handling.md §8.1 — enabling sequence]
 * Clobbers: A, X, CC
 * ---------------------------------------------------------------
 HAL_time_init:
@@ -58,7 +58,7 @@ HAL_time_init:
 
 * Step 2: Patch $010C dispatch slot with JMP to real VBL handler.
 * hal_vbl_handler defined in src/hal/coco3-dsk/irq_vbl.s.
-* [ref: docs/interrupt-handling.md §4 — install procedure]
+* [ref: docs/project/interrupt-handling.md §4 — install procedure]
         lda     #$7E                    ; JMP opcode
         sta     $010C                   ; overwrite RTI stub at irq_handler slot
         ldx     #hal_vbl_handler        ; handler address (irq_vbl.s)
@@ -67,7 +67,7 @@ HAL_time_init:
 * Step 3: Configure GIME source enables BEFORE enabling IEN globally.
 * Writing $FF92/$FF93 while IEN=0 prevents IRQ assertion from stale
 * boot-state pending flags during the write sequence.
-* [ref: docs/interrupt-handling.md §8.1 steps 2-3 / §8.3]
+* [ref: docs/project/interrupt-handling.md §8.1 steps 2-3 / §8.3]
         clra
         sta     $FF93                   ; FIRQENR = 0: no FIRQ sources
         lda     #$08                    ; VBORD bit (bit 3) only
@@ -76,7 +76,7 @@ HAL_time_init:
 * Step 4: Enable GIME IRQ globally (IEN bit in $FF90).
 * Done AFTER source enables to avoid asserting IRQ on stale state.
 * $4C -> $6C: set bit 5 (IEN=1); all other bits preserved.
-* [ref: docs/SockmasterGime.md — $FF90 Bit 5 IEN]
+* [ref: docs/ground-truth/SockmasterGime.md — $FF90 Bit 5 IEN]
         lda     #$6C
         sta     $FF90                   ; INIT0: IEN=1 added; MC3/MMUEN/COCO preserved
 
@@ -84,8 +84,8 @@ HAL_time_init:
 * andcc #$FE clears CC.C (bit 0) ONLY. CC.I (bit 4) is NOT cleared.
 * INTENTIONALLY preserves CC.I per E1.c invariant (HAL init does not
 * change caller's mask state). Do not broaden this mask.
-* [ref: docs/interrupt-handling.md §10.1 — step 5]
-* [ref: docs/open-questions.md Q001 EXTRA-1 — E1.c decision]
+* [ref: docs/project/interrupt-handling.md §10.1 — step 5]
+* [ref: docs/project/open-questions.md Q001 EXTRA-1 — E1.c decision]
         andcc   #$FE                    ; CC.C clear = success; CC.I unchanged
         rts
 
@@ -99,14 +99,14 @@ HAL_time_init:
 * Contract change (R-vbl): A argument dropped. Callers that loaded
 *   A=1 before calling (timer_framesync.s lda #1 / jsr) are NOT
 *   modified; the lda #1 is harmless dead code post-R-vbl.
-*   [ref: docs/open-questions.md Q001 — N3=β; Q001.4/4.c callers]
+*   [ref: docs/project/open-questions.md Q001 — N3=β; Q001.4/4.c callers]
 *
 * ORIGIN: karateka_dissasembly_claude src/kernel.s $07D7 (routine_07d7)
 *         Apple II spins on RDVBL ($C019); replaced entirely by HAL.
 *         [ref: kernel.s routine_07d7 — lda ROM_VERSION; lda RDVBL; bmi spin]
 *
 * [ref: hal.inc HAL_time_vbl_wait — contract (no args)]
-* [ref: docs/interrupt-handling.md §10.2 — opt-in sequence]
+* [ref: docs/project/interrupt-handling.md §10.2 — opt-in sequence]
 * Clobbers: A, B, CC
 * ---------------------------------------------------------------
 HAL_time_vbl_wait:
@@ -125,7 +125,7 @@ hal_vbl_spin:
 
 * Masked path (N3=β): synthetic one-frame increment.
 * Matches prior FRAME-COUNTER STUB behavior for A=1 masked callers.
-* [ref: docs/open-questions.md Q001 N3=β decision]
+* [ref: docs/project/open-questions.md Q001 N3=β decision]
 hal_vbl_synthetic:
         inc     <hal_frame_lo           ; synthetic increment lo byte
         bne     hal_vbl_syn_done        ; no wrap: done
@@ -142,8 +142,8 @@ hal_vbl_syn_done:
 * between the two loads. Saves/restores caller's CC to preserve
 * their mask state exactly.
 *
-* [ref: docs/interrupt-handling.md §10.4 — race fix, Option A]
-* [ref: docs/open-questions.md Q001 EXTRA-2]
+* [ref: docs/project/interrupt-handling.md §10.4 — race fix, Option A]
+* [ref: docs/project/open-questions.md Q001 EXTRA-2]
 * [ref: hal.inc HAL_time_frame_count — Args: none; Returns: D=frame count]
 * Clobbers: A, B (D), CC (except caller's mask bits via pshs/puls)
 * Overhead: ~14 cycles (negligible; not called in inner loops)

@@ -235,7 +235,7 @@ def write_s_file(output_path, label, height, coco3_width, coco3_bitmap,
         f"*   TASK 1/2 gate 2026-05-16; color-cell fill P4 gate 2026-06-13).",
         f"*   0=Black 1=Orange(odd screen col) 2=Blue(even screen col) 3=White",
         f"*   start_col={start_col}",
-        f"* [ref: karateka-coco3 docs/karateka-coco3-design-v0.1.md §6.7]",
+        f"* [ref: karateka-coco3 docs/project/karateka-coco3-design-v0.1.md §6.7]",
         f"",
         f"{coco_label}:",
         f"        fcb     {height},{coco3_width}"

@@ -11,7 +11,7 @@ Palette index order matches the C# reference converter and sprite_convert.py:
   3: White   — adjacent pixel pair (GIME 63 = $3F)
 
 GIME 6-bit color format (bits 5-4=GG, 3-2=RR, 1-0=BB; each pair → 0,85,170,255):
-  [ref: docs/karateka-coco3-design-v0.1.md §5.1 Gate K.1.2 (GIME target)]
+  [ref: docs/project/karateka-coco3-design-v0.1.md §5.1 Gate K.1.2 (GIME target)]
   [no-ref: exact GIME §3.2 color codes — verify from GIME-RM during P3 HAL]
   Black  = GIME 0  (GG=0,RR=0,BB=0) = (0,0,0)         exact
   White  = GIME 63 (GG=3,RR=3,BB=3) = (255,255,255)   exact

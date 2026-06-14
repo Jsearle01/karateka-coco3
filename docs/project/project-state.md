@@ -62,7 +62,7 @@ INT-2 still IN PROGRESS (scroll done; cliff-approach + scene 5/6-opening remain)
 
 **Numbering note:** The sub-numbering below (P2.3a, P2.4.1, etc.) is informal
 session shorthand, not canonical project numbering. Canonical numbering per
-docs/p2-scoping-survey.md: P2.3 = blit/graphics engine port; P2.4 = intro.s
+docs/project/p2-scoping-survey.md: P2.3 = blit/graphics engine port; P2.4 = intro.s
 scene-1 path. Design-doc v0.1 §7.4 numbering (P2.3 = gameplay state, P2.4 = combat
 animation) is superseded by the execution trajectory.
 
@@ -96,7 +96,7 @@ intro.s scene-1 engine port (P2.4).
 - P2.4.2: "presents" sub-byte positions via visible-extent formula (3 followups,
   centered at CoCo3 pixel 160): CONFIRMED
 - P2.4.3: existing test driver inline HAL copy updates: NOT EXECUTED (deferred)
-- P2.4.4: docs/conventions.md §§20-23 (sub-byte rendering, transparency, visible-
+- P2.4.4: docs/project/conventions.md §§20-23 (sub-byte rendering, transparency, visible-
   extent metadata, provenance): CONFIRMED
 
 ### Brøderbund + presents combined scene driver (CONFIRMED 2026-05-17)
@@ -110,7 +110,7 @@ single CoCo3 frame. Visual gate: Jay "the visual looks good."
 - D2 (render order parity fix): CLOSED — driver now matches Apple II routine_b898
   badge-first/wordmark-second order; output byte-identical before and after fix.
 - Position parity Q1-Q4 reconciliation: CONFIRMED from source (all three elements
-  verified as DOCUMENTED TRANSFORM per docs/conventions.md §19).
+  verified as DOCUMENTED TRANSFORM per docs/project/conventions.md §19).
 - INT-1 content-asset preconditions (per p2-scoping-survey.md §5): SUBSTANTIALLY
   COMPLETE. Logos converted, 6 "presents" glyphs converted (INT-1 minimum met;
   full 30-glyph alphabet not yet done), positions proven, palette verified.
@@ -167,7 +167,7 @@ R-vbl = real GIME VBL IRQ implementation (first deliverable of P3.1).
 - Verification: V-counter-rate confirmed ~60 Hz advance in interrupt-driven mode
   vs polling stub.
 - Q001 (interrupt discipline migration) CLOSED 2026-05-19; decisions per §Q001.1–4
-  and EXTRA-1/EXTRA-2/EXTRA-3 filed to docs/interrupt-handling.md §10.
+  and EXTRA-1/EXTRA-2/EXTRA-3 filed to docs/project/interrupt-handling.md §10.
 
 ### R-boot execution (CONFIRMED 2026-05-21; commit ee3fa08)
 
@@ -513,7 +513,7 @@ converter, extend the sandbox to cycle the sets, Jay visually IDs.
   - The $96xx/$97xx cluster = FLOOR patterns (background), not characters.
     Scenery (Jay-IDed): bench $12C8 (right wall), floor $14BE/$1200, wall $18BF.
   - Both are composited multi-part figures (head/torso/legs) — assembly is
-    scene-5 orchestration (out of scope). Full map: docs/scene5-cast-map.md.
+    scene-5 orchestration (out of scope). Full map: docs/project/scene5-cast-map.md.
 - LESSON (reinforced): negative label-grep proves nothing; an OBSERVED-to-exist
   asset must be found by execution trace, not inferred. Do not convert a
   reasoned conclusion into a stated finding.
@@ -551,8 +551,8 @@ capture a sync-point commit per design doc Section 11.6.
 
 - Visible-extent metadata (wlead, trail) is subbyte-invariant for the 6 "presents"
   glyphs (p, r, e, s, n, t) measured at all 4 subbyte positions. Method applies to
-  other sprites; values await measurement. See docs/conventions.md §22.
-- docs/methodology.md Rule 1 (no color from screenshots) + framebuffer dump as
+  other sprites; values await measurement. See docs/project/conventions.md §22.
+- docs/project/methodology.md Rule 1 (no color from screenshots) + framebuffer dump as
   canonical verification signal established across P2.3a chain.
 - Task C methodology patterns filed to 6502-6809-conversion-patterns:
   G.3-G.38 (36 G-methodology patterns, commits 1724351) and T-technical/T-toolchain
@@ -606,7 +606,7 @@ Filed from the R-boot root-cause investigation. These augment the earlier Task C
   and (inferred) $FF9D behave as write-only at the program-space read level — reads
   return hardware status, not the last-written value. Verify writes via observable
   downstream consequences (interrupt rate, display mode, etc.), not post-write
-  read-back. See docs/interrupt-handling.md §8.4.
+  read-back. See docs/project/interrupt-handling.md §8.4.
 
 - P7. **V-counter-rate is necessary but not sufficient for real-VBL verification.**
   During the R-boot PIA trap, `hal_frame_lo` advanced at ~60 Hz (occasional VBL
@@ -617,4 +617,4 @@ Filed from the R-boot root-cause investigation. These augment the earlier Task C
 
 ## Open questions (will accumulate)
 
-See `docs/open-questions.md` (to be created as questions surface).
+See `docs/project/open-questions.md` (to be created as questions surface).

@@ -32,16 +32,16 @@
 *   boot.s starts with ORCC #$50 (defensive; HAL_sys_init also
 *   masks). With all interrupt sources disabled and dispatch stubs
 *   providing safe RTI landing pads, the system is interrupt-safe.
-*   [ref: docs/conventions.md §16 — interrupt mask policy]
-*   [ref: docs/open-questions.md Q001 — interrupt migration plan]
+*   [ref: docs/project/conventions.md §16 — interrupt mask policy]
+*   [ref: docs/project/open-questions.md Q001 — interrupt migration plan]
 *
 * Reference citations:
-*   [ref: docs/SockmasterGime.md §1] — $01xx dispatch block routing
-*   [ref: docs/memory-map.md §2] — $0100 dispatch block within stack
-*   [ref: docs/memory-map.md §4.3] — $0200 engine code start address
+*   [ref: docs/ground-truth/SockmasterGime.md §1] — $01xx dispatch block routing
+*   [ref: docs/project/memory-map.md §2] — $0100 dispatch block within stack
+*   [ref: docs/project/memory-map.md §4.3] — $0200 engine code start address
 *   [ref: src/hal.inc INIT ORDER] — boot sequence
-*   [ref: docs/interrupt-handling.md] — dispatch block design
-*   [ref: docs/conventions.md §16] — interrupt mask policy
+*   [ref: docs/project/interrupt-handling.md] — dispatch block design
+*   [ref: docs/project/conventions.md §16] — interrupt mask policy
 *   [ref: 6502-6809-conversion-patterns/shared/G-methodology/
 *         G.3-coco3-platform-assumptions.md — G.3.3 vector dispatch]
 * ---------------------------------------------------------------
@@ -56,7 +56,7 @@
 *
 * P3.1 replacement: to install a real handler, replace RTI ($3B)
 *   at the slot with JMP opcode ($7E) + 2-byte handler address.
-*   [ref: docs/interrupt-handling.md §4 — P3.1 procedure]
+*   [ref: docs/project/interrupt-handling.md §4 — P3.1 procedure]
 * ---------------------------------------------------------------
         org     $0100
 
@@ -137,7 +137,7 @@ boot:
 *   page_register = PAGE_A_TOKEN ($20): buffer A is the draw target.
 *   HAL_gfx_init left GIME displaying Frame B ($FF9D=$F8).
 *   Option B convention: $20 = buffer A is back (draw target); GIME shows B.
-*   [ref: docs/conventions.md §2 CONVENTION NOTE — Option B]
+*   [ref: docs/project/conventions.md §2 CONVENTION NOTE — Option B]
         lda     #PAGE_A_TOKEN           ; $20 = buffer A is draw target (back)
         sta     <page_register
 
@@ -146,7 +146,7 @@ boot:
 * Late VBL opt-in (D4.b): andcc #$EF here, right before rendering.
 * HAL_time_init (step 2) already installed handler + configured GIME.
 * Frame counter now interrupt-driven; HAL_time_delay uses real-VBL timing.
-* [ref: docs/interrupt-handling.md §10.2 — opt-in sequence]
+* [ref: docs/project/interrupt-handling.md §10.2 — opt-in sequence]
         andcc   #$EF                    ; unmask IRQ — VBL handler now fires
 
 * ===============================================================
@@ -173,7 +173,7 @@ boot:
 *
 * [ref: karateka_dissasembly_claude/src/intro.s outer_caller_b77c,
 *       stub_b823, routine_b7f5, LB7DE]
-* [ref: docs/project-state.md — R-p24]
+* [ref: docs/project/project-state.md — R-p24]
 * ===============================================================
         clr     <intro_input_flag       ; clear game-start flags ($86 analog)
         clr     <intro_inputaux_flag    ; ($4F analog)

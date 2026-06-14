@@ -18,8 +18,8 @@
 *   must be manually kept in sync with the canonical values below.
 *
 * Reference citations:
-*   [ref: docs/conventions.md §2 — DP band allocations]
-*   [ref: docs/memory-map.md §4.1 — DP is physical page $38 offset 0]
+*   [ref: docs/project/conventions.md §2 — DP band allocations]
+*   [ref: docs/project/memory-map.md §4.1 — DP is physical page $38 offset 0]
 *   [ref: src/hal.inc — HAL_ZP_BASE, calling conventions]
 *
 * ---------------------------------------------------------------
@@ -28,7 +28,7 @@
 
 * ---------------------------------------------------------------
 * HAL scratch band $00-$1F
-* [ref: docs/conventions.md §2 — $00-$1F HAL scratch (reserved)]
+* [ref: docs/project/conventions.md §2 — $00-$1F HAL scratch (reserved)]
 * [ref: src/hal.inc — HAL_ZP_BASE, HAL_ZP_PARAM0-3, HAL_ZP_PTR0-1]
 *
 * $00-$03: HAL_ZP_PARAM0-3 (byte parameter scratch; defined in hal.inc)
@@ -53,7 +53,7 @@ sys_init_cc_mask    equ $13     ; CC value captured post-HAL_sys_init by test dr
 
 * ---------------------------------------------------------------
 * Engine frame-coherent band $50-$5F
-* [ref: docs/conventions.md §2 — $50-$5F frame-coherent variables]
+* [ref: docs/project/conventions.md §2 — $50-$5F frame-coherent variables]
 *
 * CONVENTION (Option I, project-canonical per P2.3a.6-followup-1):
 *   page_register identifies the BACK BUFFER (active draw target).
@@ -61,7 +61,7 @@ sys_init_cc_mask    equ $13     ; CC value captured post-HAL_sys_init by test dr
 *   Caller flow: draw to back → HAL_gfx_present (shows just-drawn) → toggle.
 *   $20 = buffer A ($8000-range) is the draw target.
 *   $40 = buffer B ($C000-range) is the draw target.
-*   See docs/conventions.md §2 CONVENTION NOTE for full explanation.
+*   See docs/project/conventions.md §2 CONVENTION NOTE for full explanation.
 *   [ref: src/hal/coco3-dsk/gfx.s — HAL_gfx_present Option I implementation]
 * ---------------------------------------------------------------
 page_register       equ $50     ; active draw buffer ($20=buf-A, $40=buf-B)
@@ -74,7 +74,7 @@ frame_sync_dc       equ $54     ; frame sync state flag ($DC analog; P2.2)
 
 * ---------------------------------------------------------------
 * Engine working / combat bands $20-$4F, $60-$7F
-* [ref: docs/conventions.md §2 — engine-owned; allocated during P2]
+* [ref: docs/project/conventions.md §2 — engine-owned; allocated during P2]
 * Specific allocations added to this file when assigned during P2
 * engine porting.
 * ---------------------------------------------------------------

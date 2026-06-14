@@ -24,8 +24,8 @@
 *   => lower bank = blank[0,191] + content[192,443] + blank[444,635].
 * SCROLL: VOFFSET = $C000 + 10*top, top 0..444, K frames/step, poll input.
 *
-* [ref: docs/conventions.md §19; §22.4b]  [ref: gfx.s HAL_gfx_blit_scroll]
-* [ref: docs/memory-map.md §3 — 128K MMU / lower bank pages $30-$37]
+* [ref: docs/project/conventions.md §19; §22.4b]  [ref: gfx.s HAL_gfx_blit_scroll]
+* [ref: docs/project/memory-map.md §3 — 128K MMU / lower bank pages $30-$37]
 * ---------------------------------------------------------------
 
         setdp   0

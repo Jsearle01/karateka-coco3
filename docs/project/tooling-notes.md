@@ -44,7 +44,7 @@ python tools/sprite_convert.py sprite_0534
 
 ### Label Map Reference
 
-The correspondence between named-letter labels and address-based labels for the "presents" glyph set is in `docs/conventions.md §18 label map table`. Consult that table when you have a named label and need the address label for tool invocation.
+The correspondence between named-letter labels and address-based labels for the "presents" glyph set is in `docs/project/conventions.md §18 label map table`. Consult that table when you have a named label and need the address label for tool invocation.
 
 ### Long-term fix
 

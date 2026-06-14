@@ -15,7 +15,7 @@
 *   keyboard-IRQ trap (PIA IRQ lines OR onto the 6809 IRQ pin, bypassing
 *   GIME) — so this subsystem must NOT re-enable it.
 *   [ref: src/hal/coco3-dsk/sys.s Step 2 — PIA IRQ disable, mask $FC]
-*   [ref: docs/conventions.md — scene-1 polled-input / CR-bit-2 rule]
+*   [ref: docs/project/conventions.md — scene-1 polled-input / CR-bit-2 rule]
 *
 * CoCo3 keyboard matrix (PIA0, [ref: CC3-TR §keyboard]):
 *   $FF00 (PDRA) — row sense PA0-PA6 (7 rows, active low); PA7 = joystick
@@ -42,7 +42,7 @@
 * HAL contract reference: src/hal.inc (HAL_input_* definitions)
 *   [ref: hal.inc HAL_input_init — Args: none; Returns: CC.C clear]
 *   [ref: hal.inc HAL_input_poll — Args: none; Returns: D=input state]
-*   [ref: docs/hal.md §5.5 Input — skeleton subsystem]
+*   [ref: docs/project/hal.md §5.5 Input — skeleton subsystem]
 *
 * Calling convention:
 *   [ref: conventions.md §3 — CC.C clear on success]
@@ -63,7 +63,7 @@
 * not touch DDR (relies on BASIC's persisting keyboard DDR config).
 *
 * [ref: hal.inc HAL_input_init — Args: none; Returns: CC.C clear]
-* [ref: docs/hal.md §7 Init Order — init order 4]
+* [ref: docs/project/hal.md §7 Init Order — init order 4]
 * [ref: src/hal/coco3-dsk/sys.s — R-boot CR mask $FC, IRQ stays disabled]
 * Clobbers: A, CC
 * ---------------------------------------------------------------

@@ -9,7 +9,7 @@
 *   → HAL_gfx_present → spin
 *
 * Position derivation (Apple II → CoCo3 + 5-byte border offset):
-*   [ref: docs/conventions.md §19 — border offset formula]
+*   [ref: docs/project/conventions.md §19 — border offset formula]
 *   [ref: font glyph inspection report R-c — per-letter pixel positions]
 *   Row: Apple II hires row 110 = CoCo3 row 110 (1:1 vertical mapping)
 *
@@ -25,7 +25,7 @@
 *     s    |    169       |    42      |    +5     |     47
 *
 * Glyph data: content/font/glyph_{letter}/converted.s (start_col=119)
-* [ref: docs/conventions.md §18 — canonical start_col=119 convention]
+* [ref: docs/project/conventions.md §18 — canonical start_col=119 convention]
 *
 * Self-contained: inline copies of HAL functions (sys_init, gfx_init,
 * gfx_blit_sprite, gfx_present). Glyph data via include.
@@ -39,7 +39,7 @@
 * ---------------------------------------------------------------
 * Segment 1: Interrupt handler dispatch block
 * Physical location: $0100-$0111 (18 bytes)
-* [ref: docs/SockmasterGime.md §1]
+* [ref: docs/ground-truth/SockmasterGime.md §1]
 * ---------------------------------------------------------------
         org     $0100
 
@@ -279,7 +279,7 @@ gi_clr_b:
 * ---------------------------------------------------------------
 * HAL_gfx_blit_sprite — inline copy of src/hal/coco3-dsk/gfx.s (P2.4.1)
 * Sub-byte runtime shifter. blit_subbyte ($0C) must be set before call.
-* Mirrors production HAL exactly per docs/methodology.md Rule 4.
+* Mirrors production HAL exactly per docs/project/methodology.md Rule 4.
 * [ref: src/hal/coco3-dsk/gfx.s HAL_gfx_blit_sprite — P2.4.1]
 * ---------------------------------------------------------------
 HAL_gfx_blit_sprite:
@@ -539,7 +539,7 @@ gp_write:
 
 * ---------------------------------------------------------------
 * Glyph data — included from content/font/glyph_*/converted.s
-* Canonical start_col=119 per docs/conventions.md §18
+* Canonical start_col=119 per docs/project/conventions.md §18
 * ---------------------------------------------------------------
         include "../../content/font/glyph_p/converted.s"
         include "../../content/font/glyph_r/converted.s"

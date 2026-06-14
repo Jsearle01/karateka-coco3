@@ -153,7 +153,7 @@ Verified via `tests/scripted/palette_test_driver.bin` + MAME observation
 
 **Note on color encoding:** MAME emulates CoCo3 in composite monitor mode.
 RGB monitor interpretation (bits 5:0 = R1 G1 B1 R0 G0 B0) is NOT used.
-`[ref: docs/SockmasterGime.md lines 218-242 — composite vs RGB mode]`
+`[ref: docs/ground-truth/SockmasterGime.md lines 218-242 — composite vs RGB mode]`
 
 **Note on 2bpp pixel values:** 2bpp pixel index 0 = transparent (black
 background), index 1 = orange (chroma fringing), index 2 = blue/cyan
@@ -162,7 +162,7 @@ blue/cyan fringing at sprite edges is intentional NTSC artifacting from the
 chroma model in `tools/sprite_convert.py`.
 
 `[ref: src/hal/coco3-dsk/gfx.s HAL_gfx_init — palette register programming]`
-`[ref: docs/conventions.md §21 — transparency: index 0 = transparent key color]`
+`[ref: docs/project/conventions.md §21 — transparency: index 0 = transparent key color]`
 
 ### 4.3 Sound data formats
 
@@ -217,7 +217,7 @@ the canonical init order (HAL_time_init at step 2, HAL_gfx_init at step 3)
 are safe. Standalone drivers that omit HAL_time_init are also safe: IEN=1
 is harmless when CC.I=1 throughout.
 `[ref: src/hal/coco3-dsk/gfx.s — IEN preservation note; commit ee3fa08]`
-`[ref: docs/interrupt-handling.md §8.1 — IEN bit in $FF90]`
+`[ref: docs/project/interrupt-handling.md §8.1 — IEN bit in $FF90]`
 
 `[no-ref: GIME 320×192×4 mode setup (CRES/HRES bit values) —
 resolve during P2 from GIME-RM; confirm with CC3-TR §graphics]`
@@ -266,11 +266,11 @@ position with transparency-aware semantics.
 **Sub-byte rendering:** `ZP $0C (blit_subbyte)` must be set by the caller
 before each call. Shift amount = 2 × subbyte bits. Effective output width =
 sprite_width + 1 bytes when subbyte > 0 (overflow byte extends rightward).
-See `docs/conventions.md §20`.
+See `docs/project/conventions.md §20`.
 
 **Transparency semantics:** source index 0 (black, 2bpp = 00) preserves
 destination; non-zero source replaces destination. Applied to all 5 blit
-cases (sb0/sb1/sb2/sb3 + overflow byte). See `docs/conventions.md §21`.
+cases (sb0/sb1/sb2/sb3 + overflow byte). See `docs/project/conventions.md §21`.
 
 **Cycle cost per source byte:**
 - subbyte=0: ~43 cy
@@ -284,8 +284,8 @@ fit). Current implementation does not check overflow byte bounds.
 Column unit: byte (4 pixels). 80 bytes per row (320px / 4px per byte).
 GIME has no sprite hardware; all rendering is software blit.
 
-`[ref: docs/conventions.md §20 — sub-byte position convention]`
-`[ref: docs/conventions.md §21 — transparency semantics]`
+`[ref: docs/project/conventions.md §20 — sub-byte position convention]`
+`[ref: docs/project/conventions.md §21 — transparency semantics]`
 `[ref: src/hal/coco3-dsk/gfx.s HAL_gfx_blit_sprite — P2.4.1 implementation]`
 `[ref: p2-4-1-verdict-v1 — sub-byte shifter CONFIRMED]`
 `[ref: p2-4-1-followup-1-verdict-v1 — transparency CONFIRMED]`
@@ -353,7 +353,7 @@ $FF93=$00 (no FIRQ). Does NOT unmask the CPU — caller must execute
 **HAL_gfx_init coupling:** `HAL_time_init` must be called before
 `HAL_gfx_init` so that `HAL_gfx_init`'s $FF90 write ($6C) correctly
 preserves IEN=1. Reversing the order clobbers IEN.
-`[ref: docs/interrupt-handling.md §10.1 — HAL_time_init post-R-vbl detail]`
+`[ref: docs/project/interrupt-handling.md §10.1 — HAL_time_init post-R-vbl detail]`
 
 `[no-ref: VBL detection mechanism (poll $FF03 vs interrupt vs
 GIME vsync bit) — resolve during P2 from CC3-TR interrupt section
@@ -573,7 +573,7 @@ R-boot keyboard-IRQ trap. (Earlier guidance here recommended re-enabling PIA
 IRQ for keyboard; that is **superseded** by the R-p24 polled approach.)
 
 `[ref: src/hal/coco3-dsk/sys.s — HAL_sys_init implementation; Step 2]`
-`[ref: docs/interrupt-handling.md §11 — PIA IRQ bypass architecture]`
+`[ref: docs/project/interrupt-handling.md §11 — PIA IRQ bypass architecture]`
 `[ref: commit ee3fa08 — R-boot; PIA IRQ disable root-cause fix]`
 
 ---

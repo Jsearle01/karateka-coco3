@@ -37,7 +37,7 @@
 * ---------------------------------------------------------------
 * Handler dispatch block (inline copy from sys.s)
 * Physical location: $0100-$0111 (18 bytes)
-* [ref: docs/SockmasterGime.md §1] — $01xx routing table
+* [ref: docs/ground-truth/SockmasterGime.md §1] — $01xx routing table
 * ---------------------------------------------------------------
         org     $0100
 
@@ -140,7 +140,7 @@ HAL_sys_init:
         lda     #$4C                ; COCO=0,MMUEN=1,MC3=1,MC2=1
         sta     $FF90               ; [ref: sys.s Step 2]
 
-        lda     #$38                ; [ref: docs/memory-map.md §3.2]
+        lda     #$38                ; [ref: docs/project/memory-map.md §3.2]
         sta     $FFA0
         lda     #$39
         sta     $FFA1

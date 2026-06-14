@@ -40,7 +40,7 @@ $FF00-$FFFF  GIME registers + CPU vectors    256 B
              Total                         65,536 B  (64 KB)
 ```
 
-DP allocation follows `docs/conventions.md §2`:
+DP allocation follows `docs/project/conventions.md §2`:
 - `$00-$1F` HAL scratch
 - `$20-$7F` Engine ZP (with observed clusters at `$20-$2F`, `$60-$6F`, `$70-$7F`)
 - `$80-$FF` CoCo3 system reserved
@@ -111,7 +111,7 @@ content loading is implemented.
 
 ### 4.1 Direct Page (DP) — $0000-$00FF
 
-Physical page $38, offset $0000-$00FF. See `docs/conventions.md §2`
+Physical page $38, offset $0000-$00FF. See `docs/project/conventions.md §2`
 for the full DP allocation layout (HAL scratch, engine globals,
 observed ZP clusters from karateka Apple II source).
 
@@ -131,18 +131,18 @@ $0100-$0111  Handler dispatch block (18 bytes)
                Six 3-byte RTI stubs; CoCo3 $FExx chain routes here.
                Address order: swi3=$0100, swi2=$0103, swi=$0106,
                nmi=$0109, irq=$010C, firq=$010F
-               [ref: docs/SockmasterGime.md §1]
+               [ref: docs/ground-truth/SockmasterGime.md §1]
                [ref: src/hal/coco3-dsk/sys.s]
 $0112-$0117  Reserved for dispatch block expansion (6 bytes)
 $0118-$01FF  Stack (232 bytes available for runtime use)
 ```
 
-With the 32-byte per-call budget (`docs/conventions.md §4`), the
+With the 32-byte per-call budget (`docs/project/conventions.md §4`), the
 deepest stack reach is approximately `$01E0`, far above the dispatch
 block. The sub-allocation is architecturally safe.
 
-`[ref: docs/conventions.md §2 — handler dispatch block band entry]`
-`[ref: docs/interrupt-handling.md §4 — dispatch block design]`
+`[ref: docs/project/conventions.md §2 — handler dispatch block band entry]`
+`[ref: docs/project/interrupt-handling.md §4 — dispatch block design]`
 
 Conventional placement: `$0100-$01FF` is the standard 6809 stack
 region (immediately above DP, below engine code). This is simpler
@@ -151,7 +151,7 @@ DP for easier debugging.
 
 Stack overflow protection: With the 256-byte budget and the engine
 convention of maximum 32 bytes per call, no recursion
-(`docs/conventions.md §4`), overflow would overwrite the DP
+(`docs/project/conventions.md §4`), overflow would overwrite the DP
 region at `$0000-$00FF`. Convention enforcement is the structural
 bound — the engine discipline prevents stack/DP collision.
 
@@ -239,7 +239,7 @@ Spare at `$7900-$7FFF` (1,792 bytes, physical $77900-$77FFF) reserved
 for future use.
 
 This resolves the P1.3 follow-up `[no-ref: trace buffer location —
-deferred to P1.6]` in `docs/hal.md §5.8`. See §8 address constants.
+deferred to P1.6]` in `docs/project/hal.md §5.8`. See §8 address constants.
 
 ### 4.8 Frame Buffer A — $8000-$BBFF
 
@@ -476,8 +476,8 @@ streaming model.
 
 ## 10. Cross-References
 
-- HAL contract: `src/hal.inc` (address constants), `docs/hal.md`
-- Engine conventions: `docs/conventions.md §2` (DP layout), `§4` (stack)
+- HAL contract: `src/hal.inc` (address constants), `docs/project/hal.md`
+- Engine conventions: `docs/project/conventions.md §2` (DP layout), `§4` (stack)
 - Design doc: `karateka-coco3-design-v0.1.md §5.5` (Gate K.1.4)
-- GIME reference: `docs/GIME_Reference_Manual.pdf`
+- GIME reference: `docs/ground-truth/GIME_Reference_Manual.pdf`
 - Karateka content sizes: `../karateka_dissasembly_claude/docs/data-areas-catalog.md`

@@ -2,7 +2,7 @@
 
 ## What landed
 
-src/hal.inc and docs/hal.md establishing the HAL contract for
+src/hal.inc and docs/project/hal.md establishing the HAL contract for
 karateka-coco3.
 
 Detailed subsystems (function-by-function specs):
@@ -51,11 +51,11 @@ uppercase HAL_ prefix naming).
 
 CC3-TR (expected: palette writes unrestricted) vs Sockmaster-GIME
 (empirical: writes during active scanline cause artifact). Logged
-in docs/hal.md §6 conflicts section for when it surfaces in P2.
+in docs/project/hal.md §6 conflicts section for when it surfaces in P2.
 
 ## HAL_sound_play_event stability note
 
-Retained in contract per user direction; docs/hal.md §5.3
+Retained in contract per user direction; docs/project/hal.md §5.3
 documents that it may be removed in P2 if engine-side sound
 dispatch makes the HAL event-routing layer redundant.
 

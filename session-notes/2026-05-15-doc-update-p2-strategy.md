@@ -96,10 +96,10 @@ this protocol, it is a candidate for promotion to a shared pattern in
 
 ## Files changed
 
-- `docs/karateka-coco3-design-v0.1.md` — Section 6.7 added; Section 7.4 restructured
+- `docs/project/karateka-coco3-design-v0.1.md` — Section 6.7 added; Section 7.4 restructured
   with sub-sections 7.4.1–7.4.4
-- `docs/milestones.md` — P2 section expanded with workstream structure + INT-N milestones
-- `docs/project-state.md` — P2 trajectory section added; current-state updated
+- `docs/project/milestones.md` — P2 section expanded with workstream structure + INT-N milestones
+- `docs/project/project-state.md` — P2 trajectory section added; current-state updated
 
 ## Next
 

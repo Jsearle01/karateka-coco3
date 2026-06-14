@@ -129,7 +129,7 @@ HAL_gfx_init:
 *     interrupts; HAL_gfx_init at step 3 must not clobber that bit.
 *
 *     $FF90 is write-only (reads return hardware status, not last-written
-*     value; [ref: docs/interrupt-handling.md §8.4]). Read-modify-write is
+*     value; [ref: docs/project/interrupt-handling.md §8.4]). Read-modify-write is
 *     impossible. All bits this function requires are preserved in $6C:
 *     COCO=0, MMUEN=1, IEN=1, FEN=0, MC3=1, MC2=1, MC1=0, MC0=0.
 *
@@ -205,9 +205,9 @@ gfx_init_clear_b:
 * PALETTE FORMAT NOTE (P2.3a.6-followup-2):
 * CoCo3 GIME palette registers support two interpretations:
 *   1) RGB monitor:   bits 5:0 = R1 G1 B1 R0 G0 B0
-*      [ref: docs/SockmasterGime.md lines 218-240]
+*      [ref: docs/ground-truth/SockmasterGime.md lines 218-240]
 *   2) Composite monitor: bits 5:4 = intensity (0-3), bits 3:0 = hue (0-15)
-*      [ref: docs/SockmasterGime.md lines 241-242]
+*      [ref: docs/ground-truth/SockmasterGime.md lines 241-242]
 * MAME emulates CoCo3 in composite mode.
 *
 * Descriptor 0 (Brøderbund palette) — composite format, MAME-verified:
@@ -298,7 +298,7 @@ gfx_clear_loop:
 *
 * CONVENTION NOTE: "page_register" identifies the BACK buffer (draw
 *   target). Convention established in P2.1 with timer_framesync.s.
-*   See docs/conventions.md §2 frame-coherent band.
+*   See docs/project/conventions.md §2 frame-coherent band.
 *
 * NOTE on PAGE_A_TOKEN ($20) / PAGE_B_TOKEN ($40): Apple II heritage.
 *   On Apple II, $20/$40 are the high bytes of hires page base addresses
@@ -417,7 +417,7 @@ gfx_present_write:
 * when subbyte>0. Caller must ensure col+width <= 78 when subbyte>0.
 *
 * [ref: hal.inc HAL_gfx_blit_sprite — contract specification]
-* [ref: docs/conventions.md §2 — DP $08-$0F HAL internal scratch band]
+* [ref: docs/project/conventions.md §2 — DP $08-$0F HAL internal scratch band]
 * [ref: karateka_dissasembly_claude/src/video.s L1A84 lines 391-492]
 * [ref: Apple II sub-byte inspection report (2026-05-17)]
 * ---------------------------------------------------------------

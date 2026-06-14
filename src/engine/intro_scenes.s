@@ -25,7 +25,7 @@
 *     render-table below. title_render's 11-slot loop is ported as the
 *     shared render_glyph_run.
 *
-* [ref: docs/conventions.md §19 coordinate map, §20 sub-byte, §22 extent]
+* [ref: docs/project/conventions.md §19 coordinate map, §20 sub-byte, §22 extent]
 * ---------------------------------------------------------------
 
         setdp   0

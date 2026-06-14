@@ -14,8 +14,8 @@
 *
 * Handler address: wherever the linker places it. HAL_time_init
 *   patches $010C with JMP to this routine.
-*   [ref: docs/interrupt-handling.md §4 — install procedure]
-*   [ref: docs/interrupt-handling.md §9 — reference skeleton]
+*   [ref: docs/project/interrupt-handling.md §4 — install procedure]
+*   [ref: docs/project/interrupt-handling.md §9 — reference skeleton]
 *
 * Entry state: 6809 IRQ mechanism has stacked full machine state
 *   (CC, A, B, DP, X, Y, U, PC — 12 bytes). CC.I=1 (set by CPU
@@ -30,9 +30,9 @@
 *   [ref: src/engine/globals.s — canonical DP home]
 *
 * Reference citations:
-*   [ref: docs/SockmasterGime.md line 67 — reading $FF92 = ack]
-*   [ref: docs/interrupt-handling.md §8.2 — ack mechanism]
-*   [ref: docs/interrupt-handling.md §9 — reference skeleton]
+*   [ref: docs/ground-truth/SockmasterGime.md line 67 — reading $FF92 = ack]
+*   [ref: docs/project/interrupt-handling.md §8.2 — ack mechanism]
+*   [ref: docs/project/interrupt-handling.md §9 — reference skeleton]
 * ---------------------------------------------------------------
 
         setdp   0
@@ -49,14 +49,14 @@
 *
 * Handler runtime: ~30 cycles (budget: ~2500 cycles per VBL period
 *   at 60Hz NTSC / 1.79MHz). Well within limit.
-*   [ref: docs/interrupt-handling.md §9 — handler runtime constraint]
+*   [ref: docs/project/interrupt-handling.md §9 — handler runtime constraint]
 *
 * Multi-source constraint: lda $FF92 clears ALL pending GIME IRQ
 *   flags simultaneously. With only VBORD enabled ($FF92=$08), this
 *   is correct. If future work enables additional GIME sources
 *   (timer, HBORD, keyboard, serial, cartridge), save A and dispatch
 *   on each bit before any are lost.
-*   [ref: docs/interrupt-handling.md §9 — multi-source constraint]
+*   [ref: docs/project/interrupt-handling.md §9 — multi-source constraint]
 * ---------------------------------------------------------------
 hal_vbl_handler:
         lda     $FF92                   ; ACK: read IRQENR; clears all GIME

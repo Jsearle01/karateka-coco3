@@ -24,18 +24,18 @@ Both consumed by path/URL reference, not git submodule.
 
 ## Methodology
 
-See `docs/karateka-coco3-design-v0.1.md` for the project design,
+See `docs/project/karateka-coco3-design-v0.1.md` for the project design,
 methodology binding, and phase plan.
 
 Project follows Claude-Orchestrated Development Methodology v0.2.
 
 ## Building
 
-Build: `make` from repo root. Produces `build/karateka.bin`. See `docs/milestones.md` for phase status.
+Build: `make` from repo root. Produces `build/karateka.bin`. See `docs/project/milestones.md` for phase status.
 
 ## Repository structure
 
-See `docs/karateka-coco3-design-v0.1.md` Section 11.4 for the
+See `docs/project/karateka-coco3-design-v0.1.md` Section 11.4 for the
 canonical directory layout.
 
 ## License

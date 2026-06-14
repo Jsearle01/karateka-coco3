@@ -16,7 +16,7 @@ Rules engine code follows for consistent style, predictable behavior,
 and clean separation from the HAL.
 
 **Scope:** applies to `src/engine/*.s` and engine-side data files.
-HAL implementation conventions live in `docs/hal.md`. Toolchain
+HAL implementation conventions live in `docs/project/hal.md`. Toolchain
 conventions (lwasm syntax differences from ca65) noted in §13.
 
 **Shape inherited from pop-coco3-design v0.7 Section 6.12.** Nine
@@ -74,8 +74,8 @@ $0100-$0111  Interrupt handler dispatch block (18 bytes):
                $0100 swi3_handler, $0103 swi2_handler,
                $0106 swi_handler,  $0109 nmi_handler,
                $010C irq_handler,  $010F firq_handler
-               [ref: docs/SockmasterGime.md §1 — $01xx routing table]
-               [ref: docs/interrupt-handling.md §2 — dispatch design]
+               [ref: docs/ground-truth/SockmasterGime.md §1 — $01xx routing table]
+               [ref: docs/project/interrupt-handling.md §2 — dispatch design]
                [ref: src/hal/coco3-dsk/sys.s — implementation]
 $0112-$0117  Reserved for dispatch block expansion (6 bytes spare)
 ```
@@ -84,7 +84,7 @@ This band is within the Stack region ($0100-$01FF, memory-map.md §2).
 Stack grows downward from $01FF; with the 32-byte/call budget (§4 below)
 the stack cannot normally reach $0100. The dispatch block occupies the
 bottom 18 bytes as a safe sub-allocation.
-`[ref: docs/memory-map.md §2 — stack region; dispatch block sub-allocation]`
+`[ref: docs/project/memory-map.md §2 — stack region; dispatch block sub-allocation]`
 
 Engine region sub-divided into functional bands:
 
@@ -423,7 +423,7 @@ Per E-devmode patterns:
 `HAL_debug_trace_event` is NOT wrapped in `ifdef DEV_MODE` — it is
 always present so the harness can run against release builds.
 The other two are DEV_MODE only; wrap them as shown in the example.
-See `docs/hal.md §5.8` for full specs.
+See `docs/project/hal.md §5.8` for full specs.
 
 ---
 
@@ -639,7 +639,7 @@ Expected: P3.1, when VBL interrupt drives `HAL_time_vbl_wait`.
 ### Migration mechanics
 
 1. **Write real IRQ handler** (`irq_handler` at $010C per
-   `docs/interrupt-handling.md §5`). Handler must:
+   `docs/project/interrupt-handling.md §5`). Handler must:
    - Acknowledge the interrupt source (read $FF03 or $FF92 as applicable)
    - Perform handler work (increment frame counter, set VBL flag)
    - RTI
@@ -652,12 +652,12 @@ Expected: P3.1, when VBL interrupt drives `HAL_time_vbl_wait`.
    interrupts enabled, the mask is required during transition.
 4. **Enable VBL source**: write `$FF92` (IRQENR) to enable GIME VBORD
    interrupt on IRQ. (`$FF93` is FIRQENR — the FIRQ enable register; for
-   the IRQ path, `$FF92` is correct.) See `docs/interrupt-handling.md §8`
+   the IRQ path, `$FF92` is correct.) See `docs/project/interrupt-handling.md §8`
    for the full enabling sequence (canonical: `$FF90=$6C`, `$FF92=$08`,
    `$FF93=$00`) and §9 for the reference handler skeleton.
    PIA0 VBL path is the legacy CoCo 1/2 mechanism; not applicable in
    karateka-coco3 (which uses GIME mode, `$FF90` COCO=0). See
-   `docs/interrupt-handling.md §8.2` on the `$FF03` ack register's
+   `docs/project/interrupt-handling.md §8.2` on the `$FF03` ack register's
    non-applicability in the default configuration.
 5. **Verify handler fires**: MAME deferred-read capture should show the
    frame counter advancing per interrupt, not per polling loop.
@@ -673,20 +673,20 @@ Detection: frame counter should advance FASTER when interrupt-driven (exact
 VBL interval) vs polling (approximate). MAME deferred-read capture of
 frame rate reveals the discrepancy.
 
-`[ref: docs/open-questions.md Q001 — full migration question and criteria]`
-`[ref: docs/interrupt-handling.md §6 — P3.1 migration procedure]`
+`[ref: docs/project/open-questions.md Q001 — full migration question and criteria]`
+`[ref: docs/project/interrupt-handling.md §6 — P3.1 migration procedure]`
 `[ref: 6502-6809-conversion-patterns/shared/G-methodology/G.3-coco3-platform-assumptions.md]`
 
 ---
 
 ## 17. Cross-References
 
-- HAL contract: `src/hal.inc` and `docs/hal.md`
-- Design doc §6.4: `docs/karateka-coco3-design-v0.1.md`
+- HAL contract: `src/hal.inc` and `docs/project/hal.md`
+- Design doc §6.4: `docs/project/karateka-coco3-design-v0.1.md`
 - 6502→6809 patterns: `../6502-6809-conversion-patterns/shared/`
 - Methodology patterns: `../apple2-disasm-patterns/`
 - Reference oracle: `../karateka_dissasembly_claude/`
-- Pop-coco3 conventions (model): `docs/pop-coco3-design-v0_7.pdf`
+- Pop-coco3 conventions (model): `docs/ground-truth/pop-coco3-design-v0_7.pdf`
   Section 6.12
 
 ---
@@ -769,7 +769,7 @@ Each converted glyph lives in `content/font/glyph_{letter}/`:
 Established post-P2.3a.9 following font glyph inspection.
 Applied first to "presents" splash text in P2.3a.10.
 
-`[ref: docs/methodology.md Rule 1 — color identification requires Jay's observation]`
+`[ref: docs/project/methodology.md Rule 1 — color identification requires Jay's observation]`
 `[ref: tools/sprite_convert.py — chroma model implementation]`
 
 ---

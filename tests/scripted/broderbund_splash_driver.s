@@ -18,7 +18,7 @@
 * [ref: karateka_dissasembly_claude/src/intro.s routine_b898 — row values]
 * [ref: content/broderbund/broderbund_logo_sprite_1/converted.s — sprite 1 start_col=119]
 * [ref: content/broderbund/broderbund_logo_sprite_2/converted.s — sprite 2 start_col=84]
-* [ref: docs/conventions.md §2 — Option I page_register convention]
+* [ref: docs/project/conventions.md §2 — Option I page_register convention]
 * [ref: plan P2.3a.6-plan-v1 — A3 border offset, A5 position table]
 *
 * Self-contained: inline copies of HAL functions (sys_init, gfx_init,
@@ -36,7 +36,7 @@
 * Address order per Sockmaster-GIME §1:
 *   SWI3 → $0100, SWI2 → $0103, SWI → $0106
 *   NMI  → $0109, IRQ  → $010C, FIRQ → $010F
-* [ref: docs/SockmasterGime.md §1]
+* [ref: docs/ground-truth/SockmasterGime.md §1]
 * ---------------------------------------------------------------
         org     $0100
 
@@ -98,7 +98,7 @@ test_start:
         * Initialize page_register to PAGE_A_TOKEN:
         * buffer A ($8000) is the draw target (back buffer).
         * HAL_gfx_init will leave GIME displaying Frame B; we draw to A.
-        * [ref: docs/conventions.md §2 Option B convention]
+        * [ref: docs/project/conventions.md §2 Option B convention]
         lda     #PAGE_A_TOKEN
         sta     <page_register          ; DP $50 = $20
 

@@ -28,9 +28,9 @@ implemented; GIME IRQ/FIRQ sources are not yet enabled.
 **Refs consulted:**
 
 - P2.3a.0-plan-v3 §11 — interrupt mask policy design
-- `docs/conventions.md` — "Interrupt mask policy" section
-- `docs/interrupt-handling.md` — full dispatch documentation
-- `docs/SockmasterGime.md §1` — three-level dispatch; $01xx address table
+- `docs/project/conventions.md` — "Interrupt mask policy" section
+- `docs/project/interrupt-handling.md` — full dispatch documentation
+- `docs/ground-truth/SockmasterGime.md §1` — three-level dispatch; $01xx address table
 - `6502-6809-conversion-patterns/shared/G-methodology/G.3-coco3-platform-assumptions.md`
   G.3.3 exemplar — vector install incident
 
@@ -62,7 +62,7 @@ All of the following:
 - Test driver's entry `ORCC #$50` removed (or justified if kept)
 - `HAL_sys_init` mask policy revisited for the interrupt-enabled era
 - First real handler installed at Sockmaster-correct $01xx address
-  (e.g., IRQ handler at $010C per `docs/interrupt-handling.md §5`)
+  (e.g., IRQ handler at $010C per `docs/project/interrupt-handling.md §5`)
 - `ANDCC #$AF` (unmask) verified to allow that handler to fire in MAME
 - VBL interrupt confirmed working (frame counter advances per interrupt,
   not per polling)
@@ -74,12 +74,12 @@ Decisions per sub-question:
 **Q001.1 — Migration sequence: per-driver opt-in (1.c).**
 Existing drivers unchanged. Drivers that need real-VBL call the explicit
 three-step enable sequence after HAL_time_init. No global mask change.
-`[ref: docs/interrupt-handling.md §10 — per-driver opt-in sequence]`
+`[ref: docs/project/interrupt-handling.md §10 — per-driver opt-in sequence]`
 
 **Q001.2 — Silent-failure avoidance: counter-rate verification (2.a).**
 Capture `hal_frame_lo` via MAME Lua harness over N frames; verify counter
 advances at ~60 Hz independent of HAL_time_vbl_wait calls.
-`[ref: docs/interrupt-handling.md §10.3 — verification pattern]`
+`[ref: docs/project/interrupt-handling.md §10.3 — verification pattern]`
 
 **Q001.3 — HAL_sys_init mask policy: keep ORCC #$50 in HAL_sys_init (3.b).**
 Rationale: HAL init functions preserve caller's mask state by convention —
@@ -97,12 +97,12 @@ Additional design decisions surfaced by X2/X3:
 HAL_time_init extended to: zero counter, patch $010C with JMP to real
 handler, write $FF90=$6C (IEN=1), write $FF92=$08 (VBORD). Does NOT
 unmask CPU; that is caller responsibility.
-`[ref: docs/interrupt-handling.md §10.1]`
+`[ref: docs/project/interrupt-handling.md §10.1]`
 
 **EXTRA-2 — HAL_time_frame_count race fix (E2.a, Option A).**
 `pshs cc` / `orcc #$10` / load both bytes / `puls cc`. Preserves caller's
 prior mask state. ~14-cycle overhead; not in inner loops.
-`[ref: docs/interrupt-handling.md §10.4]`
+`[ref: docs/project/interrupt-handling.md §10.4]`
 
 **EXTRA-3 — Multi-source future readiness: single-source per §9 (E3.a).**
 §9 multi-source-extension constraint note covers what to watch for when
