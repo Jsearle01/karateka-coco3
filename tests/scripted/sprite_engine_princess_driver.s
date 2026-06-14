@@ -68,8 +68,9 @@ test_start:
         ; (blue). pr_set_state clears both buffers to the floor + renders frame 0.
         ; TAP ANY KEY -> toggle: 0 WALK(loop) <-> 1 TURN->delay->COLLAPSE->loop.
         clr     <pk_prevkey
-        clr     <pk_demo
-        clra                            ; state 0 = WALK
+        lda     #$01                    ; default = full chain (tap a key -> walk-loop)
+        sta     <pk_demo
+        lda     #STATE_STAND
         jsr     pr_set_state
 
 princess_loop:
@@ -86,7 +87,10 @@ princess_loop:
         blo     pl_set
         clr     <pk_demo
 pl_set:
-        lda     <pk_demo
+        lda     <pk_demo                ; 0 = WALK-loop, 1 = full chain (STAND...)
+        beq     pl_setst
+        lda     #STATE_STAND
+pl_setst:
         jsr     pr_set_state            ; switch + clear + render
         bra     princess_loop
 pl_held:
@@ -137,5 +141,8 @@ pcb_b:
         include "../../content/princess/fig_175E/converted.s"
         include "../../content/princess/fig_17D3/converted.s"
         include "../../content/princess/fig_1829/converted.s"
+        ; chain lead-ins: rest legs ($1DD7) + head-bow ($1867)
+        include "../../content/princess/fig_1DD7/converted.s"
+        include "../../content/princess/fig_1867/converted.s"
 
         end     test_start

@@ -33,20 +33,30 @@ pr_state        equ $49         ; 0=walk 1=turn 2=fall
 pr_seqlen       equ $4A         ; frames in the current pose sequence
 pr_cadrel       equ $4B         ; cadence reload value (per-state: walk/turn vs fall)
 pr_shadow_lead  equ $4C         ; shadow lead px (walk leads +; turn under her)
-pr_holdctr      equ $4D         ; inter-animation hold (turn->fall delay; fall->loop hold)
+pr_holdctr      equ $4D         ; 16-bit ($4D/$4E) hold counter (stand 383 > 255)
+pr_fullseq      equ $4F         ; 1 = full chain (walk -> bow...); 0 = walk-loop
 
 STATE_WALK      equ 0
 STATE_TURN      equ 1
 STATE_FALL      equ 2
 STATE_FLOOR     equ 3
+STATE_STAND     equ 4           ; $1DD7 rest pose (pre-walk + chain lead-in)
+STATE_BOW       equ 5           ; $1867 head-bow (collapse lead-in)
 
 * --- tunables (live-gate) ---
 PR_CAD          equ 13          ; walk-leg cadence — ORACLE-MEASURED (phase-1, 13 VBLs/leg)
 PR_POSE_CAD     equ 11          ; turn & collapse cadence — ORACLE-MEASURED (~11 VBLs/frame)
-PR_TF_DELAY     equ 173         ; facing-left hold before collapse — ORACLE-MEASURED (~2.9s)
-PR_FLOOR_HOLD   equ 90          ; hold collapsed before looping the demo
+* Demo-loop holds (sandbox watchability). ORACLE VBL values in comments — the
+* scene-5 integration restores those; the per-frame animation CADENCES below
+* (PR_CAD / PR_POSE_CAD / PR_BOW_HOLD) stay oracle-exact.
+PR_TF_DELAY     equ 75          ; demo (oracle $169A/$39=12 = 173 VBLs/~2.9s)
+PR_TURN0_HOLD   equ 40          ; demo (oracle 1530/$39=8 = 173 VBLs/~2.9s)
+PR_STAND_HOLD   equ 60          ; demo (oracle $1DD7/$39=0 = 383 VBLs/~6.4s)
+PR_BOW_HOLD     equ 30          ; demo-visible (oracle $1867/$39=$13 = 4 VBLs flash)
+PR_FLOOR_HOLD   equ 60          ; hold collapsed before looping the demo
 PR_STARTPX      equ 8           ; walk start (px)
 PR_ENDPX        equ 220         ; walk-loop wrap (re-enter from left)
+PR_CHAIN_BOWPX  equ 36          ; chain: walk this far, then BOW->turn (short demo walk)
 PR_DEMO_CX      equ 56          ; turn/fall demo: stationary center (px)
 PR_PXNUM        equ 2           ; walk speed = 2/13 px/VBL = 8px/cycle (oracle)
 PR_PXDEN        equ 13
@@ -67,56 +77,79 @@ PR_SHADOW_H     equ 2
 PR_FLOOR_FILL   equ $AA         ; sandbox floor = index-2 (blue); index-0 = black (shadow)
 
 * ===============================================================
-* pr_set_state — A = demo state (0=walk,1=turn,2=fall). Resets + positions +
-*   clears both buffers + renders frame 0. Each state LOOPS in isolation so it
-*   can be viewed/tuned separately (driver cycles states on a key tap).
+* pr_set_state — A = entry state. Two driver entries:
+*   0 (WALK)  = walk-loop in isolation (wraps at PR_ENDPX, fullseq=0).
+*   4 (STAND) = the full in-game chain: STAND($1DD7,383) -> WALK -> BOW($1867,4)
+*               -> TURN(1530 h173/1588/1611/169A h173) -> COLLAPSE -> floor -> loop.
+*   (1/2 still init TURN/FALL standalone for tuning.)
+*   Resets, positions, clears both buffers, renders frame 0.
 * ===============================================================
 pr_set_state:
         sta     <pr_state
         ldb     #4                      ; sequence length (turn & fall = 4)
         stb     <pr_seqlen
-        ldb     #PR_POSE_CAD            ; turn/fall = ~11 VBLs (oracle)
-        tsta
-        bne     pr_ss_cad
-        ldb     #PR_CAD                 ; walk legs = 13 VBLs (oracle)
-pr_ss_cad:
-        stb     <pr_cadrel
-        stb     <pr_cadctr
-        ; shadow lead: WALK leads +12 (ahead of toes); TURN under her (0)
-        ldb     #0
-        tsta
-        bne     pr_ss_shl
-        ldb     #PR_SHADOW_LEADPX
-pr_ss_shl:
-        stb     <pr_shadow_lead
-        clr     <pr_holdctr             ; not mid-chain (animate immediately)
         clr     <pr_leg
         clr     <pr_frac
-        tsta
-        bne     pr_ss_pose
-        ldb     #PR_STARTPX             ; walk: start left
-        bra     pr_ss_px
-pr_ss_pose:
-        ldb     #PR_DEMO_CX             ; turn/fall: stationary center
-pr_ss_px:
-        stb     <pr_px
+        clr     <pr_holdctr             ; 16-bit
+        clr     <pr_holdctr+1
+        clr     <pr_fullseq
+        ; --- STAND (chain lead-in) ---
+        cmpa    #STATE_STAND
+        bne     pr_ss_nstand
+        inc     <pr_fullseq             ; chain mode
+        lda     #4                      ; leg idx 4 = $1DD7 rest legs
+        sta     <pr_leg
+        ldd     #PR_STAND_HOLD          ; hold the stand (383 VBLs)
+        std     <pr_holdctr
+        lda     #PR_CAD
+        sta     <pr_cadrel
+        sta     <pr_cadctr
+        clr     <pr_shadow_lead         ; stand: shadow under her (stationary)
+        lda     #PR_STARTPX
+        sta     <pr_px
         jsr     pr_clear_both
-        tst     <pr_state
-        bne     pr_ss_pose_r
+        jsr     pr_render_walk          ; STAND = walk composite (leg=4)
+        rts
+pr_ss_nstand:
+        ; --- WALK (loop, isolated) ---
+        cmpa    #STATE_WALK
+        bne     pr_ss_pose
+        lda     #PR_CAD
+        sta     <pr_cadrel
+        sta     <pr_cadctr
+        lda     #PR_SHADOW_LEADPX
+        sta     <pr_shadow_lead
+        lda     #PR_STARTPX
+        sta     <pr_px
+        jsr     pr_clear_both
         jsr     pr_render_walk
         rts
-pr_ss_pose_r:
+pr_ss_pose:
+        ; --- TURN / FALL standalone ---
+        lda     #PR_POSE_CAD
+        sta     <pr_cadrel
+        sta     <pr_cadctr
+        clr     <pr_shadow_lead
+        lda     #PR_DEMO_CX
+        sta     <pr_px
+        jsr     pr_clear_both
         jsr     pr_render_pose
         rts
 
 * ===============================================================
-* pr_tick — per-VBL. Each state LOOPS (no auto-transition; driver selects).
+* pr_tick — per-VBL state machine. WALK loops (fullseq=0) or chains to BOW
+*   (fullseq=1); STAND/BOW are timed holds; TURN/FALL run the pose sequence.
 * ===============================================================
 pr_tick:
         lda     <pr_state
-        bne     pr_tick_pose
+        cmpa    #STATE_STAND
+        lbeq    pr_tk_stand
+        cmpa    #STATE_BOW
+        lbeq    pr_tk_bow
+        tsta
+        lbne    pr_tick_pose
 
-* --- WALK (loops: wrap position at PR_ENDPX) ---
+* --- WALK: glide; loop (fullseq=0) or chain to BOW at PR_DEMO_CX (fullseq=1) ---
         lda     <pr_frac
         adda    #PR_PXNUM
         cmpa    #PR_PXDEN
@@ -125,10 +158,21 @@ pr_tick:
         sta     <pr_frac
         lda     <pr_px
         inca
+        sta     <pr_px
+        tst     <pr_fullseq
+        beq     pr_w_wrap
+        cmpa    #PR_CHAIN_BOWPX         ; chain: reached turn spot -> BOW
+        blo     pr_w_cad
+        lda     #STATE_BOW
+        sta     <pr_state
+        ldd     #PR_BOW_HOLD
+        std     <pr_holdctr
+        clr     <pr_shadow_lead
+        jmp     pr_pose_render
+pr_w_wrap:
         cmpa    #PR_ENDPX
-        blo     pr_w_pxst
+        blo     pr_w_cad
         lda     #PR_STARTPX             ; loop: re-enter from left
-pr_w_pxst:
         sta     <pr_px
         bra     pr_w_cad
 pr_w_frac:
@@ -149,18 +193,56 @@ pr_w_render:
         jsr     pr_render_walk
         rts
 
-* --- TURN / FALL (loop the 4-frame sequence) ---
+* --- STAND ($1DD7 rest, hold PR_STAND_HOLD) -> WALK ---
+pr_tk_stand:
+        jsr     pr_dec_hold
+        bne     pr_ts_hold
+        clr     <pr_state               ; -> WALK (chain: fullseq stays 1)
+        clr     <pr_leg
+        lda     #PR_CAD
+        sta     <pr_cadrel
+        sta     <pr_cadctr
+        lda     #PR_SHADOW_LEADPX
+        sta     <pr_shadow_lead
+        jsr     pr_render_walk
+        rts
+pr_ts_hold:
+        jsr     pr_render_walk          ; still standing (leg=4 = $1DD7)
+        rts
+
+* --- BOW ($1867 head-bow, hold PR_BOW_HOLD) -> TURN (1530 held PR_TURN0_HOLD) ---
+pr_tk_bow:
+        jsr     pr_dec_hold
+        bne     pr_tb_hold
+        lda     #STATE_TURN
+        sta     <pr_state
+        clr     <pr_leg                 ; turn frame 0 = 1530
+        lda     #PR_POSE_CAD
+        sta     <pr_cadrel
+        sta     <pr_cadctr
+        clr     <pr_shadow_lead
+        ldd     #PR_TURN0_HOLD          ; 1530 stand-hold ($39=8)
+        std     <pr_holdctr
+        jsr     pr_render_pose
+        rts
+pr_tb_hold:
+        jsr     pr_render_pose          ; still bowing ($1867)
+        rts
+
+* --- TURN / FALL pose sequence (with 16-bit inter-anim holds) ---
 pr_tick_pose:
-        ; --- inter-animation hold (chain: turn-end -> delay -> fall; fall-end ->
-        ;     hold collapsed -> loop to turn) ---
-        lda     <pr_holdctr
+        ldd     <pr_holdctr
         beq     pr_tp_anim
-        dec     <pr_holdctr
-        bne     pr_pose_render          ; still holding last frame
+        subd    #1
+        std     <pr_holdctr
+        bne     pr_pose_render          ; still holding
+        ; hold expired -> branch by state + frame
         lda     <pr_state
         cmpa    #STATE_TURN
-        bne     pr_tp_loop              ; was holding after FALL -> loop demo
-        ; held after TURN -> start the collapse
+        bne     pr_tp_he_fall
+        lda     <pr_leg
+        beq     pr_tp_resume            ; leg 0 (1530) hold done -> resume cadence
+        ; leg 3 (169A) delay done -> COLLAPSE
         lda     #STATE_FALL
         sta     <pr_state
         clr     <pr_leg
@@ -168,11 +250,16 @@ pr_tick_pose:
         sta     <pr_cadrel
         sta     <pr_cadctr
         bra     pr_pose_render
-pr_tp_loop:
-        lda     #STATE_TURN             ; loop: re-init turn (clears + renders)
+pr_tp_resume:
+        lda     #PR_POSE_CAD
+        sta     <pr_cadctr
+        inc     <pr_leg                 ; 1530 -> 1588
+        bra     pr_pose_render
+pr_tp_he_fall:
+        lda     #STATE_STAND            ; floor hold done -> loop the chain
         jsr     pr_set_state
         rts
-* --- frame advance for the active sequence ---
+* --- frame advance (no hold pending) ---
 pr_tp_anim:
         dec     <pr_cadctr
         bne     pr_pose_render
@@ -180,22 +267,32 @@ pr_tp_anim:
         sta     <pr_cadctr
         inc     <pr_leg
         lda     <pr_leg
-        cmpa    <pr_seqlen
-        blo     pr_pose_render
-        ; sequence complete -> hold last frame + set the inter-anim delay
+        cmpa    #4
+        blo     pr_tp_chk3
+        ; sequence end (FALL complete) -> hold last frame on floor
         deca
-        sta     <pr_leg                 ; hold last frame (seqlen-1)
+        sta     <pr_leg
+        ldd     #PR_FLOOR_HOLD
+        std     <pr_holdctr
+        bra     pr_pose_render
+pr_tp_chk3:
+        ; reached last turn frame (169A, idx 3)? hold it (the facing-left delay)
+        cmpa    #3
+        bne     pr_pose_render
         lda     <pr_state
         cmpa    #STATE_TURN
-        bne     pr_tp_fall_end
-        lda     #PR_TF_DELAY            ; turn done: short delay then collapse
-        sta     <pr_holdctr
-        bra     pr_pose_render
-pr_tp_fall_end:
-        lda     #PR_FLOOR_HOLD          ; fall done: hold collapsed then loop
-        sta     <pr_holdctr
+        bne     pr_pose_render
+        ldd     #PR_TF_DELAY
+        std     <pr_holdctr
 pr_pose_render:
         jsr     pr_render_pose
+        rts
+
+* pr_dec_hold — 16-bit decrement of pr_holdctr; Z set when it reaches 0.
+pr_dec_hold:
+        ldd     <pr_holdctr
+        subd    #1
+        std     <pr_holdctr
         rts
 
 * ===============================================================
@@ -283,11 +380,20 @@ pr_p_clrok:
         lda     #PR_FLOOR_FILL
         sta     <eng_fillval
         jsr     eng_clear_box
-        ; TURN: shadow under her (oracle draws idx7 $1CC4 in poses). FALL: no
-        ; shadow yet (its shape/position is TBD from the oracle).
+        ; Shadow (oracle draw_princess_frame, idx7 $1CC4): TURN draws it; FALL
+        ; draws it for frames 0,1 ($16CC/$175E) only — $17D3/$1829 ($39 $11/$12)
+        ; branch early in the oracle = NO shadow (she's hit the floor).
         lda     <pr_state
         cmpa    #STATE_TURN
+        beq     pr_p_shadow
+        cmpa    #STATE_BOW              ; BOW ($1867) draws idx7 shadow too
+        beq     pr_p_shadow
+        cmpa    #STATE_FALL
         bne     pr_p_noshadow
+        lda     <pr_leg
+        cmpa    #2
+        bhs     pr_p_noshadow           ; fall frames 2,3 -> no shadow
+pr_p_shadow:
         jsr     pr_draw_shadow
 pr_p_noshadow:
         ; Facing-left turn frame (TURN, idx 3) overlays a 1611 BASE, per the
@@ -386,6 +492,12 @@ pr_leg_ptr:
 * pr_pose_ptr — X = pose frame ptr for (pr_state, pr_leg); pr_tmp = signed X align.
 pr_pose_ptr:
         lda     <pr_state
+        cmpa    #STATE_BOW
+        bne     pr_pp_t1
+        clr     <pr_tmp                 ; BOW: single frame $1867, align 0
+        ldx     #fig_1867_coco3
+        rts
+pr_pp_t1:
         cmpa    #STATE_TURN
         bne     pr_pp_fall
         ldx     #pr_turn_tbl
@@ -408,8 +520,9 @@ pr_leg_tbl:
         fdb     fig_1D5A_coco3
         fdb     fig_1D7E_coco3
         fdb     fig_1DA2_coco3
+        fdb     fig_1DD7_coco3          ; idx 4 = rest legs (STAND, $39=0)
 pr_leg_align:
-        fcb     0,4,3,1                 ; walk leg torso registration
+        fcb     0,4,3,1,4               ; walk leg torso registration (+ rest $1DD7 +4px)
 
 pr_turn_tbl:
         fdb     fig_1530_coco3          ; standing, facing right
