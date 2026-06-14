@@ -253,7 +253,7 @@ scene3_title_tbl:
         fdb     title_r_coco3              ; slot 9  r  apple69   -> px89  byte22 sub1
         fcb     22,1,78
         fdb     title_ra_connector_coco3   ; slot 10 accent apple104 -> px124 byte31 sub0
-        fcb     31,0,112
+        fcb     32,0,111                   ; +4px right (byte31->32) + row 111 (Jay-tuned) for the now-solid connector
 
 * "pressed" — oracle xstep metrics, centered@160, row 90 (debug placeholder)
 pressed_tbl:

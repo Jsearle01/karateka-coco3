@@ -138,7 +138,8 @@ def _classify_row_convert(row_bytes, width_pixels):
     return col_info
 
 
-def convert_sprite_to_coco3(apple_ii_bytes, height, apple_width_bytes, start_col=0):
+def convert_sprite_to_coco3(apple_ii_bytes, height, apple_width_bytes, start_col=0,
+                            parity_flip=False):
     """
     Apple II sprite bitmap → CoCo3 4-color packed bytes.
 
@@ -174,14 +175,17 @@ def convert_sprite_to_coco3(apple_ii_bytes, height, apple_width_bytes, start_col
                 screen_col = start_col + col
 
                 if run_len == 1:
-                    # Isolated pixel: chroma at this col.
-                    row_indices[col] = (2 if screen_col % 2 == 0 else 1) if pal_bit == 1 else 2
+                    # Isolated pixel: chroma at this col. parity_flip swaps the
+                    # blue/orange assignment (for sprites whose real render-column
+                    # parity differs from the start_col used) — color-only, no
+                    # shape change. [ref: column-parity fix, 2026-06-14]
+                    row_indices[col] = (2 if ((screen_col % 2 == 0) ^ parity_flip) else 1) if pal_bit == 1 else 2
 
                 elif pos_in_run == 0 and gap == 1 and col > 0:
                     # NTSC chroma: attributed to this ON pixel, painted at col-1
                     # (-1 sub-pixel render offset). Color from ON pixel's screen col.
                     sc = start_col + col
-                    chroma_idx = (2 if sc % 2 == 0 else 1) if pal_bit == 1 else 2
+                    chroma_idx = (2 if ((sc % 2 == 0) ^ parity_flip) else 1) if pal_bit == 1 else 2
                     row_indices[col - 1] = chroma_idx  # overwrite col-1 (was Black)
                     row_indices[col] = 3               # this ON pixel is White
 
@@ -257,6 +261,11 @@ def main():
                         help='Apple II screen pixel column of sprite left edge '
                              '(required for correct isolated-pixel color). '
                              'Karateka: Logo1=119, Logo2=84.')
+    parser.add_argument('--flip-parity', action='store_true',
+                        help='Swap the blue/orange assignment (color-only, no '
+                             'shape change). Use when a sprite was converted at '
+                             "the wrong column parity and its blues/oranges are "
+                             'reversed. [column-parity fix, 2026-06-14]')
     args = parser.parse_args()
 
     coco_label = args.coco_label or (args.label + '_coco3')
@@ -271,7 +280,7 @@ def main():
         bitmap_bytes += [0] * (expected_data - len(bitmap_bytes))
 
     coco3_bitmap, coco3_width = convert_sprite_to_coco3(bitmap_bytes, height, apple_width,
-                                                         args.start_col)
+                                                         args.start_col, args.flip_parity)
 
     # Trim trailing and leading all-zero byte columns (P2.3a.11-followup-2)
     original_width = coco3_width
