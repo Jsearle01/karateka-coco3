@@ -31,12 +31,13 @@ echo "  Logo 2 (wordmark): col=26, row=88"
 echo "  Logo 1 (badge):    col=35, row=72"
 echo "  presents:          byte cols 33-52, row 110"
 mkdir -p build
+mkdir -p build/logs/engine build/logs/scenes build/logs/unit build/logs/snapshots
 cmd.exe /c "cd /d C:\karateka-capture && C:\mame\mame.exe coco3 \
     -rompath C:\mame\roms \
     -window \
     -seconds_to_run 10 \
     -autoboot_script tools\broderbund_presents_scene_test.lua" \
-    > build/broderbund_presents_scene_mame.log 2>&1 || true
+    > build/logs/scenes/broderbund_presents_scene_mame.log 2>&1 || true
 
 echo "--- Step 4: COLLECT ---"
 [ -f "$CAPTURE_DIR/tools/broderbund_presents_scene_test.log" ] && \
@@ -45,9 +46,9 @@ for dump in "$CAPTURE_DIR/dumps/broderbund_presents_scene_shot"*.bin; do
     [ -f "$dump" ] && cp "$dump" build/ && echo "  collected $(basename "$dump")" || true
 done
 
-if [ -f build/broderbund_presents_scene_test.log ]; then
+if [ -f build/logs/scenes/broderbund_presents_scene_test.log ]; then
     echo "=== broderbund_presents_scene_test.log ==="
-    cat build/broderbund_presents_scene_test.log
+    cat build/logs/scenes/broderbund_presents_scene_test.log
 fi
 
 if ls build/broderbund_presents_scene_shot*_frameA.bin 1>/dev/null 2>&1; then

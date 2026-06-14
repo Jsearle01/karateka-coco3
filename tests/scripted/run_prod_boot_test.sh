@@ -14,6 +14,7 @@ echo "=== R-boot production boot integration test ==="
 # ---------------------------------------------------------------------------
 echo "--- Step 1: BUILD ---"
 cd "$REPO_ROOT"
+mkdir -p build/logs/engine build/logs/scenes build/logs/unit build/logs/snapshots
 make karateka.bin 2>&1
 echo "BUILD: PASS ($(wc -c < build/karateka.bin) bytes)"
 
@@ -36,7 +37,7 @@ cmd.exe /c "cd /d C:\karateka-capture && C:\mame\mame.exe coco3 \
     -window -nothrottle \
     -seconds_to_run 18 \
     -autoboot_script tools\prod_boot_test.lua" \
-    > build/prod_boot_mame.log 2>&1 || true
+    > build/logs/scenes/prod_boot_mame.log 2>&1 || true
 
 # ---------------------------------------------------------------------------
 # Step 4: Collect results
@@ -45,12 +46,12 @@ echo "--- Step 4: COLLECT ---"
 [ -f "$CAPTURE_DIR/tools/prod_boot_test.log" ] && \
     cp "$CAPTURE_DIR/tools/prod_boot_test.log" build/ || true
 
-if [ -f "build/prod_boot_test.log" ]; then
+if [ -f "build/logs/scenes/prod_boot_test.log" ]; then
     grep -E "PASS|FAIL|counter-rate|SCREENSHOT|page_register|elapsed" \
-        build/prod_boot_test.log 2>/dev/null || true
+        build/logs/scenes/prod_boot_test.log 2>/dev/null || true
     echo "=== R-boot MAME TEST COMPLETE ==="
 else
-    echo "NO RESULT (check build/prod_boot_mame.log)"
-    cat build/prod_boot_mame.log 2>/dev/null | tail -20
+    echo "NO RESULT (check build/logs/scenes/prod_boot_mame.log)"
+    cat build/logs/scenes/prod_boot_mame.log 2>/dev/null | tail -20
     exit 1
 fi

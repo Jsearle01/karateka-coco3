@@ -35,12 +35,13 @@ echo "STAGE: binary + Lua script staged"
 # ---------------------------------------------------------------------------
 echo "--- Step 3: RUN (MAME CoCo3) ---"
 mkdir -p build
+mkdir -p build/logs/engine build/logs/scenes build/logs/unit build/logs/snapshots
 cmd.exe /c "cd /d C:\karateka-capture && C:\mame\mame.exe coco3 \
     -rompath C:\mame\roms \
     -window -nothrottle \
     -seconds_to_run 40 \
     -autoboot_script tools\gfx_init_test.lua" \
-    > build/gfxtest_mame.log 2>&1 || true
+    > build/logs/unit/gfxtest_mame.log 2>&1 || true
 
 # ---------------------------------------------------------------------------
 # Step 4: Collect results
@@ -53,14 +54,14 @@ done
 
 if [ -f "$CAPTURE_DIR/tools/gfxtest_PASS" ]; then
     echo "MAME TEST: PASS"
-    grep -E "RESULT|DP\$|frame_count|\$8000|\$BBFF|\$C000|\$FBFF" build/gfxtest.log 2>/dev/null || true
+    grep -E "RESULT|DP\$|frame_count|\$8000|\$BBFF|\$C000|\$FBFF" build/logs/unit/gfxtest.log 2>/dev/null || true
 elif [ -f "$CAPTURE_DIR/tools/gfxtest_FAIL" ]; then
     echo "MAME TEST: FAIL"
-    cat build/gfxtest.log 2>/dev/null
+    cat build/logs/unit/gfxtest.log 2>/dev/null
     exit 1
 else
-    echo "MAME TEST: NO RESULT (check build/gfxtest_mame.log)"
-    tail -20 build/gfxtest_mame.log 2>/dev/null
+    echo "MAME TEST: NO RESULT (check build/logs/unit/gfxtest_mame.log)"
+    tail -20 build/logs/unit/gfxtest_mame.log 2>/dev/null
     exit 1
 fi
 

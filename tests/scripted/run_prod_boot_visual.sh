@@ -28,6 +28,7 @@ echo ""
 # Stage
 # ---------------------------------------------------------------------------
 cd "$REPO_ROOT"
+mkdir -p build/logs/engine build/logs/scenes build/logs/unit build/logs/snapshots
 mkdir -p "$CAPTURE_DIR/tools" "$CAPTURE_DIR/tests"
 cp build/karateka.bin                              "$CAPTURE_DIR/tests/"
 cp tests/scripted/prod_boot_loader_minimal.lua     "$CAPTURE_DIR/tools/"
@@ -44,11 +45,11 @@ cmd.exe /c "cd /d C:\karateka-capture && C:\mame\mame.exe coco3 \
     -window \
     -seconds_to_run 30 \
     -autoboot_script tools\prod_boot_loader_minimal.lua" \
-    > build/visual_run.log 2>&1 || true
+    > build/logs/scenes/visual_run.log 2>&1 || true
 
 echo "MAME run complete."
 echo ""
 echo "Console output:"
-cat build/visual_run.log 2>/dev/null | head -20 || true
+cat build/logs/scenes/visual_run.log 2>/dev/null | head -20 || true
 echo ""
 echo "=== Visual run done. Jay: report what you observed. ==="

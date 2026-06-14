@@ -24,26 +24,27 @@ echo "STAGE: binary + Lua script staged"
 
 echo "--- Step 3: RUN (MAME CoCo3) ---"
 mkdir -p build
+mkdir -p build/logs/engine build/logs/scenes build/logs/unit build/logs/snapshots
 cmd.exe /c "cd /d C:\karateka-capture && C:\mame\mame.exe coco3 \
     -rompath C:\mame\roms \
     -window -nothrottle \
     -seconds_to_run 40 \
     -autoboot_script tools\sys_init_test.lua" \
-    > build/sysinittest_mame.log 2>&1 || true
+    > build/logs/unit/sysinittest_mame.log 2>&1 || true
 
 echo "--- Step 4: COLLECT ---"
 [ -f "$CAPTURE_DIR/tools/sysinittest.log" ] && cp "$CAPTURE_DIR/tools/sysinittest.log" build/ || true
 
 if [ -f "$CAPTURE_DIR/tools/sysinittest_PASS" ]; then
     echo "MAME TEST: PASS"
-    grep -E "RESULT|CC_mask|FFA|DISPATCH" build/sysinittest.log 2>/dev/null | head -20 || true
+    grep -E "RESULT|CC_mask|FFA|DISPATCH" build/logs/unit/sysinittest.log 2>/dev/null | head -20 || true
 elif [ -f "$CAPTURE_DIR/tools/sysinittest_FAIL" ]; then
     echo "MAME TEST: FAIL"
-    cat build/sysinittest.log 2>/dev/null
+    cat build/logs/unit/sysinittest.log 2>/dev/null
     exit 1
 else
     echo "MAME TEST: NO RESULT"
-    tail -20 build/sysinittest_mame.log 2>/dev/null
+    tail -20 build/logs/unit/sysinittest_mame.log 2>/dev/null
     exit 1
 fi
 echo ""

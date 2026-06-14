@@ -26,20 +26,21 @@ echo "--- Step 3: RUN (MAME CoCo3 — REAL SPEED for visual observation) ---"
 echo "Jay: watch the MAME window for alternating white squares."
 echo "MAME will run for ~25 seconds total (5s BASIC boot + 20s observation)."
 mkdir -p build
+mkdir -p build/logs/engine build/logs/scenes build/logs/unit build/logs/snapshots
 # NOTE: -nothrottle intentionally OMITTED so animation is visible in real time
 cmd.exe /c "cd /d C:\karateka-capture && C:\mame\mame.exe coco3 \
     -rompath C:\mame\roms \
     -window \
     -seconds_to_run 10 \
     -autoboot_script tools\visual_smoke_test.lua" \
-    > build/smoketest_mame.log 2>&1 || true
+    > build/logs/unit/smoketest_mame.log 2>&1 || true
 
 echo "--- Step 4: COLLECT ---"
 [ -f "$CAPTURE_DIR/tools/smoketest.log" ] && cp "$CAPTURE_DIR/tools/smoketest.log" build/ || true
 
-if [ -f build/smoketest.log ]; then
+if [ -f build/logs/unit/smoketest.log ]; then
     echo "=== smoketest.log ==="
-    cat build/smoketest.log
+    cat build/logs/unit/smoketest.log
 fi
 
 echo ""

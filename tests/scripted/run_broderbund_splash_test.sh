@@ -32,12 +32,13 @@ echo "  Logo 1 (narrower, 'B' mark):      row 72, byte col 35"
 echo "  Colors: orange, blue, white pixels on black background."
 echo "MAME will run for ~35 seconds total (5s BASIC boot + 30s observation)."
 mkdir -p build
+mkdir -p build/logs/engine build/logs/scenes build/logs/unit build/logs/snapshots
 cmd.exe /c "cd /d C:\karateka-capture && C:\mame\mame.exe coco3 \
     -rompath C:\mame\roms \
     -window \
     -seconds_to_run 10 \
     -autoboot_script tools\broderbund_splash_test.lua" \
-    > build/broderbund_splash_mame.log 2>&1 || true
+    > build/logs/scenes/broderbund_splash_mame.log 2>&1 || true
 
 echo "--- Step 4: COLLECT ---"
 [ -f "$CAPTURE_DIR/tools/broderbund_splash_test.log" ] && \
@@ -46,9 +47,9 @@ for dump in "$CAPTURE_DIR/dumps/broderbund_splash_shot"*.bin; do
     [ -f "$dump" ] && cp "$dump" build/ && echo "  collected $(basename "$dump")" || true
 done
 
-if [ -f build/broderbund_splash_test.log ]; then
+if [ -f build/logs/scenes/broderbund_splash_test.log ]; then
     echo "=== broderbund_splash_test.log ==="
-    cat build/broderbund_splash_test.log
+    cat build/logs/scenes/broderbund_splash_test.log
 fi
 
 if ls build/broderbund_splash_shot*_frameA.bin 1>/dev/null 2>&1; then

@@ -15,6 +15,7 @@ echo "=== P2.1 timer/frame-sync test ==="
 # ---------------------------------------------------------------------------
 echo "--- Step 1: ASSEMBLE ---"
 cd "$REPO_ROOT"
+mkdir -p build/logs/engine build/logs/scenes build/logs/unit build/logs/snapshots
 lwasm --decb \
     -I src/engine -I src/hal/coco3-dsk \
     -o tests/scripted/timer_framesync_driver.bin \
@@ -40,7 +41,7 @@ cmd.exe /c "cd /d C:\karateka-capture && C:\mame\mame.exe coco3 \
     -window -nothrottle \
     -seconds_to_run 5 \
     -autoboot_script tools\timer_framesync_test.lua" \
-    > build/tftest_mame.log 2>&1 || true
+    > build/logs/unit/tftest_mame.log 2>&1 || true
 
 # ---------------------------------------------------------------------------
 # Step 4: Collect results
@@ -53,14 +54,14 @@ done
 
 if [ -f "$CAPTURE_DIR/tools/tftest_PASS" ]; then
     echo "MAME TEST: PASS"
-    cat build/tftest.log 2>/dev/null | grep -E "RESULT|DP\$|invariant" || true
+    cat build/logs/unit/tftest.log 2>/dev/null | grep -E "RESULT|DP\$|invariant" || true
 elif [ -f "$CAPTURE_DIR/tools/tftest_FAIL" ]; then
     echo "MAME TEST: FAIL"
-    cat build/tftest.log 2>/dev/null
+    cat build/logs/unit/tftest.log 2>/dev/null
     exit 1
 else
-    echo "MAME TEST: NO RESULT (check build/tftest_mame.log)"
-    cat build/tftest_mame.log 2>/dev/null | tail -20
+    echo "MAME TEST: NO RESULT (check build/logs/unit/tftest_mame.log)"
+    cat build/logs/unit/tftest_mame.log 2>/dev/null | tail -20
     exit 1
 fi
 

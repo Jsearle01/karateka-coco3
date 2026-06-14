@@ -22,7 +22,7 @@ to the double-buffer toggle — expected, not a defect.)
 
 ## P3 — state cadence + cycle + flip (agent memory trace) — **PASS** (2026-06-13)
 
-`build/sprite_engine_sandbox.log`. Memory reads (reliable under `-nothrottle`,
+`build/logs/engine/sprite_engine_sandbox.log`. Memory reads (reliable under `-nothrottle`,
 unlike pixel motion):
 
 - **Cadence**: every steady-state advance delta = **8 VBLs** = `AKUMA_CADENCE`.

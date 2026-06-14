@@ -29,18 +29,19 @@ echo "STAGE: done"
 
 echo "--- Step 3: RUN (MAME CoCo3, -nothrottle: automated P2/P3 trace) ---"
 mkdir -p build
+mkdir -p build/logs/engine build/logs/scenes build/logs/unit build/logs/snapshots
 cmd.exe /c "cd /d C:\karateka-capture && C:\mame\mame.exe coco3 \
     -rompath C:\mame\roms \
     -window -nothrottle \
     -seconds_to_run 14 \
     -autoboot_script tools\sprite_engine_sandbox.lua" \
-    > build/sprite_engine_sandbox_mame.log 2>&1 || true
+    > build/logs/engine/sprite_engine_sandbox_mame.log 2>&1 || true
 
 echo "--- Step 4: COLLECT ---"
 [ -f "$CAPTURE_DIR/tools/sprite_engine_sandbox.log" ] && cp "$CAPTURE_DIR/tools/sprite_engine_sandbox.log" build/ || true
-if [ -f build/sprite_engine_sandbox.log ]; then
+if [ -f build/logs/engine/sprite_engine_sandbox.log ]; then
     echo "=== sprite_engine_sandbox.log ==="
-    cat build/sprite_engine_sandbox.log
+    cat build/logs/engine/sprite_engine_sandbox.log
 fi
 
 echo ""

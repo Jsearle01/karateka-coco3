@@ -32,12 +32,13 @@ echo "    Row 35 (subbyte=1): left edge at pixel 41"
 echo "    Row 50 (subbyte=2): left edge at pixel 42"
 echo "    Row 65 (subbyte=3): left edge at pixel 43"
 mkdir -p build
+mkdir -p build/logs/engine build/logs/scenes build/logs/unit build/logs/snapshots
 cmd.exe /c "cd /d C:\karateka-capture && C:\mame\mame.exe coco3 \
     -rompath C:\mame\roms \
     -window \
     -seconds_to_run 10 \
     -autoboot_script tools\sub_byte_shifter_test.lua" \
-    > build/sub_byte_shifter_mame.log 2>&1 || true
+    > build/logs/unit/sub_byte_shifter_mame.log 2>&1 || true
 
 echo "--- Step 4: COLLECT ---"
 [ -f "$CAPTURE_DIR/tools/sub_byte_shifter_test.log" ] && \
@@ -46,9 +47,9 @@ for dump in "$CAPTURE_DIR/dumps/sb_shifter_shot"*.bin; do
     [ -f "$dump" ] && cp "$dump" build/ && echo "  collected $(basename "$dump")" || true
 done
 
-if [ -f build/sub_byte_shifter_test.log ]; then
+if [ -f build/logs/unit/sub_byte_shifter_test.log ]; then
     echo "=== sub_byte_shifter_test.log ==="
-    cat build/sub_byte_shifter_test.log
+    cat build/logs/unit/sub_byte_shifter_test.log
 fi
 
 if ls build/sb_shifter_shot*_frameA.bin 1>/dev/null 2>&1; then

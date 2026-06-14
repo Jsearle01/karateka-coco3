@@ -30,12 +30,13 @@ echo "  Band 1 (2nd quarter):    index 1 = \$FFB1=\$26 = expected ORANGE"
 echo "  Band 2 (3rd quarter):    index 2 = \$FFB2=\$1B = expected BLUE"
 echo "  Band 3 (bottom quarter): index 3 = \$FFB3=\$3F = expected WHITE"
 mkdir -p build
+mkdir -p build/logs/engine build/logs/scenes build/logs/unit build/logs/snapshots
 cmd.exe /c "cd /d C:\karateka-capture && C:\mame\mame.exe coco3 \
     -rompath C:\mame\roms \
     -window \
     -seconds_to_run 35 \
     -autoboot_script tools\palette_test.lua" \
-    > build/palette_test_mame.log 2>&1 || true
+    > build/logs/unit/palette_test_mame.log 2>&1 || true
 
 echo "--- Step 4: COLLECT ---"
 [ -f "$CAPTURE_DIR/tools/palette_test.log" ] && \
@@ -44,7 +45,7 @@ for dump in "$CAPTURE_DIR/dumps/palette_test_shot"*.bin; do
     [ -f "$dump" ] && cp "$dump" build/ && echo "  collected $(basename "$dump")" || true
 done
 
-[ -f build/palette_test.log ] && cat build/palette_test.log
+[ -f build/logs/unit/palette_test.log ] && cat build/logs/unit/palette_test.log
 
 if ls build/palette_test_shot*_frameA.bin 1>/dev/null 2>&1; then
     echo ""

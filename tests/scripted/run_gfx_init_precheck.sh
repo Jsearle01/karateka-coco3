@@ -19,26 +19,27 @@ echo "STAGE: gfx_init_precheck.lua staged"
 
 echo "--- RUN (MAME CoCo3, no binary) ---"
 mkdir -p build
+mkdir -p build/logs/engine build/logs/scenes build/logs/unit build/logs/snapshots
 cmd.exe /c "cd /d C:\karateka-capture && C:\mame\mame.exe coco3 \
     -rompath C:\mame\roms \
     -window -nothrottle \
     -seconds_to_run 40 \
     -autoboot_script tools\gfx_init_precheck.lua" \
-    > build/gfxprecheck_mame.log 2>&1 || true
+    > build/logs/unit/gfxprecheck_mame.log 2>&1 || true
 
 echo "--- COLLECT ---"
 [ -f "$CAPTURE_DIR/tools/gfxprecheck.log" ] && cp "$CAPTURE_DIR/tools/gfxprecheck.log" build/ || true
 
 if [ -f "$CAPTURE_DIR/tools/gfxprecheck_PASS" ]; then
     echo "PRE-CHECK: PASS"
-    grep -E "RESULT|BASIC-ready|FFA|FF91|FF90" build/gfxprecheck.log 2>/dev/null || true
+    grep -E "RESULT|BASIC-ready|FFA|FF91|FF90" build/logs/unit/gfxprecheck.log 2>/dev/null || true
 elif [ -f "$CAPTURE_DIR/tools/gfxprecheck_FAIL" ]; then
     echo "PRE-CHECK: FAIL"
-    cat build/gfxprecheck.log 2>/dev/null
+    cat build/logs/unit/gfxprecheck.log 2>/dev/null
     exit 1
 else
     echo "PRE-CHECK: NO RESULT"
-    tail -20 build/gfxprecheck_mame.log 2>/dev/null
+    tail -20 build/logs/unit/gfxprecheck_mame.log 2>/dev/null
     exit 1
 fi
 

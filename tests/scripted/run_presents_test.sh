@@ -32,12 +32,13 @@ echo "  Byte columns:  30,33,35,38,40,42,44,47"
 echo "  Colors: white letter strokes with chromatic fringing on black background."
 echo "MAME will run for ~35 seconds total (5s BASIC boot + 30s observation)."
 mkdir -p build
+mkdir -p build/logs/engine build/logs/scenes build/logs/unit build/logs/snapshots
 cmd.exe /c "cd /d C:\karateka-capture && C:\mame\mame.exe coco3 \
     -rompath C:\mame\roms \
     -window \
     -seconds_to_run 35 \
     -autoboot_script tools\presents_test.lua" \
-    > build/presents_test_mame.log 2>&1 || true
+    > build/logs/scenes/presents_test_mame.log 2>&1 || true
 
 echo "--- Step 4: COLLECT ---"
 [ -f "$CAPTURE_DIR/tools/presents_test.log" ] && \
@@ -46,9 +47,9 @@ for dump in "$CAPTURE_DIR/dumps/presents_shot"*.bin; do
     [ -f "$dump" ] && cp "$dump" build/ && echo "  collected $(basename "$dump")" || true
 done
 
-if [ -f build/presents_test.log ]; then
+if [ -f build/logs/scenes/presents_test.log ]; then
     echo "=== presents_test.log ==="
-    cat build/presents_test.log
+    cat build/logs/scenes/presents_test.log
 fi
 
 if ls build/presents_shot*_frameA.bin 1>/dev/null 2>&1; then

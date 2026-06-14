@@ -15,6 +15,7 @@ echo "=== P2.2 kernel/dispatch test ==="
 # ---------------------------------------------------------------------------
 echo "--- Step 1: ASSEMBLE ---"
 cd "$REPO_ROOT"
+mkdir -p build/logs/engine build/logs/scenes build/logs/unit build/logs/snapshots
 lwasm --decb \
     -o tests/scripted/kernel_dispatch_driver.bin \
     tests/scripted/kernel_dispatch_driver.s 2>&1
@@ -39,7 +40,7 @@ cmd.exe /c "cd /d C:\karateka-capture && C:\mame\mame.exe coco3 \
     -window -nothrottle \
     -seconds_to_run 5 \
     -autoboot_script tools\kernel_dispatch_test.lua" \
-    > build/kdtest_mame.log 2>&1 || true
+    > build/logs/unit/kdtest_mame.log 2>&1 || true
 
 # ---------------------------------------------------------------------------
 # Step 4: Collect results
@@ -52,14 +53,14 @@ done
 
 if [ -f "$CAPTURE_DIR/tools/kdtest_PASS" ]; then
     echo "MAME TEST: PASS"
-    cat build/kdtest.log 2>/dev/null | grep -E "PASS|DP\$|invariant|frame" || true
+    cat build/logs/unit/kdtest.log 2>/dev/null | grep -E "PASS|DP\$|invariant|frame" || true
 elif [ -f "$CAPTURE_DIR/tools/kdtest_FAIL" ]; then
     echo "MAME TEST: FAIL"
-    cat build/kdtest.log 2>/dev/null
+    cat build/logs/unit/kdtest.log 2>/dev/null
     exit 1
 else
-    echo "MAME TEST: NO RESULT (check build/kdtest_mame.log)"
-    cat build/kdtest_mame.log 2>/dev/null | tail -20
+    echo "MAME TEST: NO RESULT (check build/logs/unit/kdtest_mame.log)"
+    cat build/logs/unit/kdtest_mame.log 2>/dev/null | tail -20
     exit 1
 fi
 

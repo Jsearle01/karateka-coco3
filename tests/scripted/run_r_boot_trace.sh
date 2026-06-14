@@ -11,6 +11,7 @@ echo "$(date '+%Y-%m-%d %H:%M:%S')  binary: build/karateka.bin ($(wc -c < "$REPO
 echo ""
 
 cd "$REPO_ROOT"
+mkdir -p build/logs/engine build/logs/scenes build/logs/unit build/logs/snapshots
 mkdir -p "$CAPTURE_DIR/tools/lib" "$CAPTURE_DIR/tests"
 cp build/karateka.bin                       "$CAPTURE_DIR/tests/"
 cp tests/scripted/r_boot_trace.lua          "$CAPTURE_DIR/tools/"
@@ -23,16 +24,16 @@ cmd.exe /c "cd /d C:\karateka-capture && C:\mame\mame.exe coco3 \
     -window \
     -seconds_to_run 30 \
     -autoboot_script tools\r_boot_trace.lua" \
-    > build/trace_mame.log 2>&1 || true
+    > build/logs/engine/trace_mame.log 2>&1 || true
 
 echo ""
 echo "--- Trace output ---"
 if [ -f "$CAPTURE_DIR/tools/rboot_trace.log" ]; then
     cp "$CAPTURE_DIR/tools/rboot_trace.log" build/
-    cat build/rboot_trace.log
+    cat build/logs/engine/rboot_trace.log
 else
-    echo "No trace log produced — check build/trace_mame.log:"
-    tail -20 build/trace_mame.log 2>/dev/null || true
+    echo "No trace log produced — check build/logs/engine/trace_mame.log:"
+    tail -20 build/logs/engine/trace_mame.log 2>/dev/null || true
 fi
 echo ""
 echo "=== Trace done ==="

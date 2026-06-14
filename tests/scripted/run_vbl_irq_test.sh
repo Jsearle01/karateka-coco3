@@ -15,6 +15,7 @@ echo "=== R-vbl VBL IRQ test ==="
 # ---------------------------------------------------------------------------
 echo "--- Step 1: ASSEMBLE ---"
 cd "$REPO_ROOT"
+mkdir -p build/logs/engine build/logs/scenes build/logs/unit build/logs/snapshots
 lwasm --decb \
     -o tests/scripted/vbl_irq_test_driver.bin \
     tests/scripted/vbl_irq_test_driver.s 2>&1
@@ -43,7 +44,7 @@ cmd.exe /c "cd /d C:\karateka-capture && C:\mame\mame.exe coco3 \
     -window -nothrottle \
     -seconds_to_run 15 \
     -autoboot_script tools\vbl_irq_test.lua" \
-    > build/vbltest_mame.log 2>&1 || true
+    > build/logs/unit/vbltest_mame.log 2>&1 || true
 
 # ---------------------------------------------------------------------------
 # Step 4: Collect results
@@ -53,14 +54,14 @@ echo "--- Step 4: COLLECT ---"
 
 if [ -f "$CAPTURE_DIR/tools/vbltest_PASS" ]; then
     echo "MAME TEST: PASS"
-    grep -E "PASS|FAIL|delta|counter|FF90|010C|sys_init" build/vbltest.log 2>/dev/null || true
+    grep -E "PASS|FAIL|delta|counter|FF90|010C|sys_init" build/logs/unit/vbltest.log 2>/dev/null || true
 elif [ -f "$CAPTURE_DIR/tools/vbltest_FAIL" ]; then
     echo "MAME TEST: FAIL"
-    cat build/vbltest.log 2>/dev/null
+    cat build/logs/unit/vbltest.log 2>/dev/null
     exit 1
 else
-    echo "MAME TEST: NO RESULT (check build/vbltest_mame.log)"
-    cat build/vbltest_mame.log 2>/dev/null | tail -20
+    echo "MAME TEST: NO RESULT (check build/logs/unit/vbltest_mame.log)"
+    cat build/logs/unit/vbltest_mame.log 2>/dev/null | tail -20
     exit 1
 fi
 
