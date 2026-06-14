@@ -25,11 +25,19 @@ applied over her moving band each frame. **Single fill (HS-2 satisfied by reuse)
 rest frame) unconverted, but not drawn in the walk (`$39=1→4`) → out of walk-in scope.
 Parity: princess frames flipped in the color-fix gate (Jay PASS); AC-6 re-confirms.
 
-## Summary
-The princess walk-in is ported as **her own controller** (`src/engine/princess_controller.s`)
-driving the **shared** `HAL_gfx_blit_sprite` leaf (multi-animator model). Runs isolated in a
-boot-excluded sandbox. Cadence + render + dirty-rect + position are **agent-confirmed**; the
-walk *fidelity* (composite alignment) + colors are Jay's live gate.
+## Summary — PARTIAL (walk-in LEGS only; not full acceptance)
+The princess **walk-in legs** are ported as her own controller (`src/engine/princess_controller.s`)
+driving the **shared** `HAL_gfx_blit_sprite` leaf, isolated in a boot-excluded sandbox, and
+Jay-gated (walk + leg colors PASS). **NOT yet done** (this is a first increment, not full
+dispatch acceptance):
+- **Compositing** — `draw_princess` layers body `$1D00` + parts `$1CD4`/`$1CC4` onto the legs.
+  Deferred: they rendered as a "white box + blue C" jumble at the crude `tbl_y` offsets. The
+  legs alone read as the walking figure, so the walk-in is proven, but the full composited
+  princess is outstanding (needs the same per-frame registration approach the legs got).
+- **Full 27-frame table** — only the 4 walk legs (`$1D36/5A/7E/A2`) are wired/exercised. The
+  standing/turning/torso/fall/head-bowed poses (the other 23 entries) are NOT in the controller.
+- So **AC-1 (27-frame table + compositing)** and **AC-3 (27 frames render)** are **PARTIAL**
+  (legs only); AC-5/AC-6 pass **for the legs**.
 
 ## Files
 - `src/engine/princess_controller.s` — NEW. State (`pr_leg`/`pr_x`/`pr_cadctr` @ ZP $43-45);
@@ -45,13 +53,14 @@ walk *fidelity* (composite alignment) + colors are Jay's live gate.
 
 ## AC-by-AC
 - **AC-0 [E]** — DONE (both gates above; no HS-1).
-- **AC-1 [E]** — Controller ported (cadence native-integer, position, leg table, 4-sprite
-  composite) driving the **shared leaf** (not a second path). Assembles (1963 B).
+- **AC-1 [E]** — **PARTIAL.** Controller ported driving the shared leaf (cadence, position,
+  per-frame registration) — but only the **4 walk legs**, NOT the full 27-frame table and NOT
+  the `draw_princess` compositing (body/parts deferred). Full AC-1 = remaining.
 - **AC-2 [E] (HS-2)** — Dirty-rect via reused `eng_clear_box`; **no smear** (SNAP2 shows clean
   background as she moves pr_x 10→22). Single fill primitive.
-- **AC-3 [E] / P1** — Renders: snapshots show the composite (white body/legs + blue/orange
-  head) at her position. (Full 27-frame static render = the existing set-select sandbox; the
-  walk-in uses the 7 composite frames.)
+- **AC-3 [E] / P1** — **PARTIAL.** Only the **4 walk-leg frames** render in this controller
+  (snapshots confirm). The full 27-frame static render (poses/fall/torso) is NOT exercised
+  here — outstanding.
 - **AC-4 [T] / P2** — Cadence trace **PASS**: `pr_leg` cycles 0→1→2→3→0; `pr_x` steps **+2 on
   each leg-wrap** (2→4→…→32 = 8px/cycle, oracle effective speed); `page_register` `$20↔$40`
   each render; ~8 VBLs/leg. (`build/logs/engine/princess_trace.log`.)
@@ -65,8 +74,9 @@ walk *fidelity* (composite alignment) + colors are Jay's live gate.
   registration** `pr_leg_align=[0,4,3,1]` — the converter trims each frame's blanks
   independently, so the torso-left was `[5,1,2,4]`px → the figure lurched ~4px backward on
   `1D5A`; offsets re-align the body so only the legs swing.
-- **AC-6 [H] / P4** — colors render white body + orange feet (princess set flipped in the
-  color-fix gate); awaiting Jay's explicit game-parity confirm.
+- **AC-6 [H] / P4** — **PASS (Jay: "colors look good for the legs").** White body + orange
+  feet correct at the game-parity column (princess set flipped in the color-fix gate). Scoped
+  to the walk-in/legs (the deferred composite parts get their own color check when added).
 - **AC-7 [E]** — `pr_x` free-runs + wraps (no fall — isolated); sandbox **boot-excluded** (not
   in `build.bat`); `build.bat` clean, **prod boot 7359 B unregressed**.
 
