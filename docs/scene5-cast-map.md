@@ -82,3 +82,10 @@ Handles `fig_<addr>`; rename to semantic names at the port.
   assembled at scene-5 orchestration time (out of this dispatch's scope).
 - The walk/fall/turn frame sequencing is the engine's data-driven job; the
   sandbox cycles them per-set for ID.
+- **Sandbox animated confirm (Jay, 2026-06-13): PASS** — 8 cast sets
+  (akuma_gloat / akuma_full / princess_walk / princess_fall / princess_poses /
+  guard / eagle / props) cycle cleanly, **no striping** across the whole cast
+  (color-cell fix holds), characters recognizable.
+- **OPEN (deferred): some colors wrong** — the sandbox loads the Brøderbund
+  palette (descriptor 0), not a throne-room palette. Hue accuracy is a palette
+  follow-up at the scene-5 port; the striping fix is palette-independent.

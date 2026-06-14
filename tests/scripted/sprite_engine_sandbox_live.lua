@@ -9,8 +9,9 @@
 --       -autoboot_script tools\sprite_engine_sandbox_live.lua
 --
 -- Controls: the current SET free-runs its frames; TAP any key to advance to
--- the next set. Set order: 0 akuma_gloat, 1 walk_legs, 2 walk_torso,
--- 3 akuma_throne, 4 eagle, 5 figures(guard?), 6 props(cell door/banner).
+-- the next set. Set order: 0 akuma_gloat, 1 akuma_full(throne+robe/feet),
+-- 2 princess_walk(legs), 3 princess_fall, 4 princess_poses, 5 guard,
+-- 6 eagle, 7 props(cell door / banner).
 -- [ref: tests/scripted/sprite_engine_sandbox.lua — automated P2/P3 trace variant]
 
 local BIN_PATH = "tests/sprite_engine_sandbox.bin"
