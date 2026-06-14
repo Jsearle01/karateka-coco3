@@ -56,7 +56,7 @@ black, producing vertical striping in solid letter strokes.
 ### Fix
 Color-cell fill in `convert_sprite_to_coco3` fills a Black dot when flanked by the
 same chroma (index 1 or 2) on both sides. The title logo content
-(`content/title_*/converted.s`) was re-converted through the fixed converter; the
+(`content/title/title_*/converted.s`) was re-converted through the fixed converter; the
 only diff is gap-filled bytes (e.g. R-A connector row `$11 -> $15`) — geometry
 unchanged. The R-A connector position was then hand-tuned to byte 32 / row 111.
 

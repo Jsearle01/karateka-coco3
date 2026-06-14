@@ -141,11 +141,11 @@ broderbund_scene:
 * Sprite data (INT-1 content conversion wave 1)
 * [ref: docs/p2-scoping-survey.md §5 — INT-1 content asset list]
 * ---------------------------------------------------------------
-        include "../../content/broderbund_logo_sprite_2/converted.s"
-        include "../../content/broderbund_logo_sprite_1/converted.s"
-        include "../../content/glyph_p/converted.s"
-        include "../../content/glyph_r/converted.s"
-        include "../../content/glyph_e/converted.s"
-        include "../../content/glyph_s/converted.s"
-        include "../../content/glyph_n/converted.s"
-        include "../../content/glyph_t/converted.s"
+        include "../../content/broderbund/broderbund_logo_sprite_2/converted.s"
+        include "../../content/broderbund/broderbund_logo_sprite_1/converted.s"
+        include "../../content/font/glyph_p/converted.s"
+        include "../../content/font/glyph_r/converted.s"
+        include "../../content/font/glyph_e/converted.s"
+        include "../../content/font/glyph_s/converted.s"
+        include "../../content/font/glyph_n/converted.s"
+        include "../../content/font/glyph_t/converted.s"

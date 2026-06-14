@@ -100,14 +100,14 @@ akuma_anim:
         include "../../src/hal/coco3-dsk/time.s"
         include "../../src/hal/coco3-dsk/input.s"
 
-        include "../../content/akuma_frame_0/converted.s"
-        include "../../content/akuma_frame_1/converted.s"
-        include "../../content/akuma_frame_2/converted.s"
-        include "../../content/akuma_frame_3/converted.s"
-        include "../../content/akuma_frame_4/converted.s"
-        include "../../content/akuma_frame_5/converted.s"
-        include "../../content/akuma_frame_6/converted.s"
-        include "../../content/akuma_frame_7/converted.s"
-        include "../../content/akuma_frame_8/converted.s"
+        include "../../content/akuma/akuma_frame_0/converted.s"
+        include "../../content/akuma/akuma_frame_1/converted.s"
+        include "../../content/akuma/akuma_frame_2/converted.s"
+        include "../../content/akuma/akuma_frame_3/converted.s"
+        include "../../content/akuma/akuma_frame_4/converted.s"
+        include "../../content/akuma/akuma_frame_5/converted.s"
+        include "../../content/akuma/akuma_frame_6/converted.s"
+        include "../../content/akuma/akuma_frame_7/converted.s"
+        include "../../content/akuma/akuma_frame_8/converted.s"
 
         end     test_start

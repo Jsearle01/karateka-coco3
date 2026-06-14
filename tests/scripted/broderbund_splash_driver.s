@@ -16,8 +16,8 @@
 *   Logo 1: Apple II col 119 → CoCo3 byte 119/4=29.75 rounded to 30 → +5 → A=35, row 72
 *
 * [ref: karateka_dissasembly_claude/src/intro.s routine_b898 — row values]
-* [ref: content/broderbund_logo_sprite_1/converted.s — sprite 1 start_col=119]
-* [ref: content/broderbund_logo_sprite_2/converted.s — sprite 2 start_col=84]
+* [ref: content/broderbund/broderbund_logo_sprite_1/converted.s — sprite 1 start_col=119]
+* [ref: content/broderbund/broderbund_logo_sprite_2/converted.s — sprite 2 start_col=84]
 * [ref: docs/conventions.md §2 — Option I page_register convention]
 * [ref: plan P2.3a.6-plan-v1 — A3 border offset, A5 position table]
 *
@@ -337,7 +337,7 @@ gp_write:
 * ---------------------------------------------------------------
 
 * Logo 2: 9 rows × 28 bytes = 252 bitmap bytes + 2 header = 254 bytes total
-* [ref: content/broderbund_logo_sprite_2/converted.s — start_col=84]
+* [ref: content/broderbund/broderbund_logo_sprite_2/converted.s — start_col=84]
 logo2_data:
         fcb     9,28                    ; height=9 rows, coco3_width=28 bytes/row
         fcb     $00,$FF,$00,$00,$00,$03,$C0,$00,$00,$3C,$00,$00,$00,$00,$0F,$00,$FC,$00,$00,$F0,$00,$00,$00,$00,$00,$00,$00,$00  ; row 0
@@ -351,7 +351,7 @@ logo2_data:
         fcb     $03,$FF,$0F,$00,$F0,$3F,$03,$F0,$F0,$0F,$C0,$FC,$3E,$F0,$FC,$00,$FC,$0F,$C3,$C0,$F0,$F0,$F0,$3F,$EF,$03,$F0,$00  ; row 8
 
 * Logo 1: 14 rows × 9 bytes = 126 bitmap bytes + 2 header = 128 bytes total
-* [ref: content/broderbund_logo_sprite_1/converted.s — start_col=119]
+* [ref: content/broderbund/broderbund_logo_sprite_1/converted.s — start_col=119]
 logo1_data:
         fcb     14,9                    ; height=14 rows, coco3_width=9 bytes/row
         fcb     $00,$00,$00,$20,$00,$00,$02,$00,$00  ; row 0

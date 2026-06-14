@@ -292,7 +292,7 @@ unconverted scene-4 narrative glyphs:
 - 7 letters (f,i,k,l,u,v,w) + 4 punctuation (period,comma,colon,hyphen) from
   oracle `sprite_data_0400.s`, address-form labels (sprite_046e/0626/04d0/
   04e6/05aa/05c0/05d6 + sprite_0640/064c/065a/0668), start_col=119 uniform per
-  the Wave-1/2 convention. → `content/glyph_<name>/converted.s` (Wave-1 format).
+  the Wave-1/2 convention. → `content/font/glyph_<name>/converted.s` (Wave-1 format).
 - Extents (wlead/trail) generated for all 11 via `tools/glyph_extent.py`,
   recorded in conventions §22.4b alongside each glyph's oracle pen-model xstep
   (the R-p26 bake input) — folds the extent step into conversion so R-p26's
@@ -445,7 +445,7 @@ interaction) is INT-3, additive on top.
   automated P2/P3 read without input injection.
 - AKUMA conversion (AC-0): the 9 frames (oracle sprite_data.s labels
   sprite_9879/988b/989d/98af/98c1/98d3/9908/9956/9a62, start_col 120) ->
-  content/akuma_frame_0..8 (untracked per content rule).
+  content/akuma/akuma_frame_0..8 (untracked per content rule).
 - GATES: P2 (static render clean at anchor, no garbage) PASS; P3 (memory trace:
   cadence delta=8 VBL exact, eng_idx cycles 0..8 wrapping, page_register toggles
   $20<->$40 each advance) PASS; HS-1 (worst-case render+flip ~4430 cy ~= 15% of

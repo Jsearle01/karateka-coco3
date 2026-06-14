@@ -24,7 +24,7 @@
 *     t    |    159       |    39      |    +5     |     44
 *     s    |    169       |    42      |    +5     |     47
 *
-* Glyph data: content/glyph_{letter}/converted.s (start_col=119)
+* Glyph data: content/font/glyph_{letter}/converted.s (start_col=119)
 * [ref: docs/conventions.md §18 — canonical start_col=119 convention]
 *
 * Self-contained: inline copies of HAL functions (sys_init, gfx_init,
@@ -538,14 +538,14 @@ gp_write:
         rts
 
 * ---------------------------------------------------------------
-* Glyph data — included from content/glyph_*/converted.s
+* Glyph data — included from content/font/glyph_*/converted.s
 * Canonical start_col=119 per docs/conventions.md §18
 * ---------------------------------------------------------------
-        include "../../content/glyph_p/converted.s"
-        include "../../content/glyph_r/converted.s"
-        include "../../content/glyph_e/converted.s"
-        include "../../content/glyph_s/converted.s"
-        include "../../content/glyph_n/converted.s"
-        include "../../content/glyph_t/converted.s"
+        include "../../content/font/glyph_p/converted.s"
+        include "../../content/font/glyph_r/converted.s"
+        include "../../content/font/glyph_e/converted.s"
+        include "../../content/font/glyph_s/converted.s"
+        include "../../content/font/glyph_n/converted.s"
+        include "../../content/font/glyph_t/converted.s"
 
         end     test_start

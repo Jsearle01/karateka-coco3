@@ -17,10 +17,31 @@ observation (princess walks across toward the door, guard stationary
 left/center, Akuma center-bottom, eagle on shoulder) + the trace + Jay's
 per-sprite visual ID nailed them.
 
+## Content folder layout (2026-06-14 restructure)
+
+`content/` is grouped by character/role; each sprite dir keeps its original
+name (`fig_XXXX`, `akuma_frame_N`, `floor_XXXX`, …) under its category folder:
+
+| Folder | Contents |
+|---|---|
+| `content/akuma/` | gloat frames 0–8, throne, feet, elem_984F, mask (`fig_974B`), `fig_9F8C` |
+| `content/princess/` | 14 frames (body/walk/poses/fall) — the `fig_*` listed below |
+| `content/guard/` | `fig_8F2B` (head), `fig_899C` (torso), `fig_8ACB` (lower body) |
+| `content/bird/` | `eagle_body_9FC4`, `eagle_head_9FD8`, `s5_985c_eagle_head` |
+| `content/floor/` | `floor_9600/964A/96CE/971D/9743`, `fig_14BE`, `fig_1200` |
+| `content/scenery/` | bench `fig_12C8`, wall `fig_18BF`, `s5_9858/9a18/9a2a/9980_cell_door/9a74_banner` |
+| `content/player/` | `player_run_legs_*`, `player_run_torso_*` (the $9B00 walk cycle) |
+| `content/unsorted/` | unidentified: `fig_18D0/1CC4/1CD4/8EC1` |
+| `content/title/` · `content/font/` · `content/broderbund/` | prod scene-2/3 assets (logo, glyphs, Brøderbund + copyright) |
+
+Include paths follow the folder, e.g.
+`include "../../content/princess/fig_1D00/converted.s"`.
+
 ## PRINCESS — 14 frames ($11e8 + $1c7a), Jay-IDed
 
-Converted unlabeled by address (`content/fig_XXXX/`); previews in
-`content/engine-previews/cast/princess/`.
+Converted unlabeled by address; the `fig_XXXX` dirs now live under their
+character folder (here `content/princess/fig_XXXX/` — see **Content folder
+layout** above); previews in `content/engine-previews/cast/princess/`.
 
 | Addr | H×W (px) | Pose (Jay ID) |
 |---|---|---|

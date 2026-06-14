@@ -2,7 +2,7 @@
 
 Engine: `src/engine/sprite_engine.s` (single-source animation core).
 Sandbox: `tests/scripted/sprite_engine_sandbox_driver.s` (+ `.lua`, `.bat`, `.sh`).
-Proven on: Akuma 9-frame set (`content/akuma_frame_0..8`).
+Proven on: Akuma 9-frame set (`content/akuma/akuma_frame_0..8`).
 
 The sandbox **includes the real engine + real HAL + real globals verbatim**
 (never a copy), so a sandbox pass is a production-code pass. The sandbox is

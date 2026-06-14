@@ -734,7 +734,7 @@ reason.
 python3 tools/sprite_convert.py \
   --source karateka_dissasembly_claude/src/sprite_data_0400.s \
   --label sprite_XXXX \           # use address-based label (see §13 note below)
-  --output content/glyph_X/converted.s \
+  --output content/font/glyph_X/converted.s \
   --coco-label glyph_X_coco3 \
   --start-col 119
 ```
@@ -759,7 +759,7 @@ Label map for "presents" letters:
 
 #### Output structure
 
-Each converted glyph lives in `content/glyph_{letter}/`:
+Each converted glyph lives in `content/font/glyph_{letter}/`:
 - `apple2.png` — Apple II source rendering (visual gate reference)
 - `coco3.png` — CoCo3 converter output prediction (visual gate)
 - `converted.s` — lwasm-compatible FCB data for inclusion in drivers
@@ -834,7 +834,7 @@ CoCo3 byte col 30, rounded from 119/4+5=34.75; note: Logo 1 used
 start_col=119 for chroma and byte col 35 for position). Documented
 formally in P2.3a.11.
 
-`[ref: content/broderbund_logo_sprite_1/ — first application]`
+`[ref: content/broderbund/broderbund_logo_sprite_1/ — first application]`
 `[ref: font glyph inspection report R-c — "presents" position table]`
 
 ---
@@ -1049,7 +1049,7 @@ visible-extent formula remains the scene-1 "presents" chroma-positioning record;
 inter-letter spacing agrees with the oracle xstep because §22 was calibrated
 against "presents".
 
-Source: `content/glyph_{letter}/converted.s`. Original 6 (above): per-glyph
+Source: `content/font/glyph_{letter}/converted.s`. Original 6 (above): per-glyph
 per-subbyte inspection traced through HAL shift logic (2026-05-17).
 Anchor: 'p' at nominal pixel 135 (byte 33, subbyte 3).
 
