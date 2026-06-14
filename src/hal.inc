@@ -214,6 +214,14 @@ HAL_gfx_shutdown    equ *       ; STUB-P3 — not yet implemented
 ;   [ref: src/hal/coco3-dsk/gfx.s — implementation]
         import  HAL_gfx_blit_sprite     ; defined in src/hal/coco3-dsk/gfx.s (P2.4.1)
 
+; HAL_gfx_blit_sprite_opaque
+;   As HAL_gfx_blit_sprite, but OPAQUE: every pixel incl. index-0 (black) is
+;   stored, overwriting the dest (no index-0 transparency keying). For black
+;   shadows / solid fills that must render against a (partially black) floor.
+;   Faithful to the oracle's $0F-selected store blend (video.s routine_1927).
+;   Same args/returns as HAL_gfx_blit_sprite. [ref: src/hal/coco3-dsk/gfx.s]
+        import  HAL_gfx_blit_sprite_opaque
+
 ; HAL_gfx_set_palette
 ;   Write 4-entry palette to GIME palette registers.
 ;   Args:  X = pointer to 4-byte palette array (one byte per

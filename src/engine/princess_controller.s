@@ -50,10 +50,19 @@ PR_ENDPX        equ 240         ; wrap point (re-enter from left) — isolated d
 * /~52 VBLs, ~9px/sec) — 8px/cycle spatial gait at the oracle's wall-clock pace.
 PR_PXNUM        equ 2
 PR_PXDEN        equ 13
-PR_BASEROW      equ 60          ; top row of the figure
+PR_BASEROW      equ 60          ; leg top row
+PR_TORSO_ROW    equ 34          ; torso top row (= legs - 26, oracle body/leg y gap)
+PR_TORSO_DX     equ 3           ; +px to align torso centroid (4.83) over leg (7.98)
 PR_CLR_LEFT     equ 4           ; dirty-rect margin left of pr_x (covers vacated)
-PR_CLR_W        equ 12          ; dirty-rect width (leg <=6 bytes + movement margin)
-PR_CLR_H        equ 20          ; dirty-rect height (leg 17 rows + margin)
+PR_CLR_W        equ 24          ; dirty-rect width (figure + leading shadow + margin)
+PR_CLR_H        equ 46          ; dirty-rect height (torso row 34 .. leg bottom ~77)
+* shadow ($1CC4) — all index-0 on Apple (black shadow on the colored floor); the
+* transparency blit can't draw black, so render it as a solid bar leading her.
+PR_SHADOW_ROW   equ 76          ; at her feet (leg bottom)
+PR_SHADOW_LEADPX equ 12         ; pixels ahead = start at front of her toes — TUNABLE
+PR_SHADOW_W     equ 13          ; $1CC4 width (bytes)
+PR_SHADOW_H     equ 2           ; $1CC4 height
+PR_FLOOR_FILL   equ $AA         ; sandbox floor = index-2 (blue); index-0 stays black (shadow)
 
 * ===============================================================
 * pr_init — initialise the walk-in controller + render frame 0.
@@ -115,54 +124,87 @@ pr_tick_render:
 *   (body + part6 + leg + part7) via the shared leaf, then present + flip.
 * ===============================================================
 pr_render:
-        ; (0) per-frame registration: the converter trims each leg frame's
-        ;     blank columns independently, so the body sits at body-left
-        ;     [1,0,1,1] px across frames 0-3. Subtract it so EVERY frame's body
-        ;     lands at pr_px (kills the 1px once-per-cycle back-forth hitch).
-        ldx     #pr_leg_align
-        lda     <pr_leg
-        lda     a,x                     ; A = +px to register this frame's torso
-        sta     <pr_tmp
+        ; (1) dirty-rect: clear the torso+leg band. col = (pr_px>>2) - margin.
         lda     <pr_px
-        adda    <pr_tmp                 ; effective px = pr_px + align (torso to ref)
-        ; derive byte col (>>2) + sub-pixel (&3). CoCo3 4px/byte: subbyte 0-3.
-        tfr     a,b
-        andb    #$03
-        stb     <blit_subbyte           ; sub-pixel within byte
         lsra
         lsra
-        sta     <pr_x                   ; byte column (traced)
-
-        ; (1) dirty-rect: clear a band at (pr_x - PR_CLR_LEFT, PR_BASEROW)
-        lda     <pr_x
         suba    #PR_CLR_LEFT
-        bcc     pr_clr_x_ok
+        bcc     pr_clr_ok
         clra                            ; clamp to col 0
-pr_clr_x_ok:
+pr_clr_ok:
         sta     <eng_col
-        lda     #PR_BASEROW
+        lda     #PR_TORSO_ROW
         sta     <eng_row
         lda     #PR_CLR_W
         sta     <eng_clrw
         lda     #PR_CLR_H
         sta     <eng_clrh
+        lda     #PR_FLOOR_FILL          ; dirty-rect RESTORES the floor (not black),
+        sta     <eng_fillval            ; so the index-0 black shadow contrasts
         jsr     eng_clear_box
 
-        ; (2) LEGS-ONLY (AC-5 step 1): the leg frame IS the walking figure
-        ;     (white dress + orange feet). The $1D00/$1CD4/$1CC4 composite
-        ;     parts are deferred until their offsets are tuned with Jay.
-        ;     blit_subbyte (set in step 0) gives smooth 1px horizontal motion.
-        jsr     pr_leg_ptr              ; X = leg sprite ptr for pr_leg
-        lda     <pr_x
-        ldb     #PR_BASEROW
+        ; (1b) SHADOW leading her (solid bar; $1CC4 is all index-0 black)
+        jsr     pr_draw_shadow
+
+        ; (2) TORSO $1D00 (waist+torso) at (pr_px + TORSO_DX, TORSO_ROW).
+        ;     Centroid-aligned over the legs; one frame, moves smoothly w/ pr_px.
+        lda     <pr_px
+        adda    #PR_TORSO_DX
+        jsr     pr_set_pos              ; A = byte col, blit_subbyte set
+        ldb     #PR_TORSO_ROW
+        ldx     #fig_1D00_coco3
         jsr     HAL_gfx_blit_sprite
 
-        ; (3) reveal + flip (Option-I double buffer)
+        ; (3) LEG (idx pr_leg) at (pr_px + align[leg], BASEROW). Per-frame
+        ;     registration [0,4,3,1] so the body stays put + only legs swing.
+        ldx     #pr_leg_align
+        lda     <pr_leg
+        lda     a,x                     ; A = align[leg]
+        adda    <pr_px
+        jsr     pr_set_pos              ; A = byte col, blit_subbyte set
+        sta     <pr_x                   ; (traced)
+        ldb     #PR_BASEROW
+        pshs    a                       ; save col across pr_leg_ptr
+        jsr     pr_leg_ptr              ; X = leg ptr (clobbers A; B preserved)
+        puls    a
+        jsr     HAL_gfx_blit_sprite
+
+        ; (4) reveal + flip (Option-I double buffer)
         jsr     HAL_gfx_present
         lda     <page_register
         eora    #$60                    ; $20<->$40
         sta     <page_register
         rts
+
+* pr_set_pos — A = effective pixel X -> returns A = byte col (px>>2) and sets
+*   blit_subbyte = px&3 (CoCo3 4px/byte sub-pixel). Clobbers B.
+pr_set_pos:
+        tfr     a,b
+        andb    #$03
+        stb     <blit_subbyte
+        lsra
+        lsra
+        rts
+
+* pr_draw_shadow — blit the shadow bar SPRITE via the shared leaf at
+*   (pr_px + LEADPX), sub-pixel-positioned (blit_subbyte) so it tracks the
+*   princess in lockstep (driven by the same pr_px) instead of stepping by
+*   whole bytes. Starts at the front of her toes.
+pr_draw_shadow:
+        lda     <pr_px
+        adda    #PR_SHADOW_LEADPX
+        jsr     pr_set_pos              ; A = byte col, blit_subbyte = sub-pixel
+        ldb     #PR_SHADOW_ROW
+        ldx     #pr_shadow_spr
+        jmp     HAL_gfx_blit_sprite_opaque   ; OPAQUE: black ($00) renders, not keyed out
+
+* shadow bar sprite (HAL format: H,W then H*W bytes). REAL black ($00, index-0):
+* drawn via the OPAQUE blit so it shows against the (non-black) floor — exactly
+* what the in-game partially-black floor needs. ($1CC4 is all index-0.)
+pr_shadow_spr:
+        fcb     PR_SHADOW_H,PR_SHADOW_W
+        fcb     $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+        fcb     $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
 
 * ---------------------------------------------------------------
 * pr_leg_ptr — X = walk-leg sprite ptr for the current pr_leg (0..3).

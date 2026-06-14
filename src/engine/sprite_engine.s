@@ -109,6 +109,7 @@ eng_render:
         sta     <eng_row
         pshs    x                       ; save entry ptr across the box clear
         ; (1) clear the bounding box at (eng_col, eng_row) in the back buffer
+        clr     <eng_fillval            ; cast path: clear to 0 (black) as before
         jsr     eng_clear_box
         ; (2) blit the frame sprite via the render leaf = HAL_gfx_blit_sprite.
         ;     HAL_gfx_blit_sprite IS the render leaf: it selects the back
@@ -156,7 +157,7 @@ eng_cb_base:
 eng_cb_row:
         pshs    a,y
         ldb     <eng_clrw               ; bytes/row
-        clra
+        lda     <eng_fillval            ; fill byte (0=clear, or floor color for restores)
 eng_cb_byte:
         sta     ,y+
         decb

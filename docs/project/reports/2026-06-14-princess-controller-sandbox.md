@@ -25,10 +25,29 @@ applied over her moving band each frame. **Single fill (HS-2 satisfied by reuse)
 rest frame) unconverted, but not drawn in the walk (`$39=1→4`) → out of walk-in scope.
 Parity: princess frames flipped in the color-fix gate (Jay PASS); AC-6 re-confirms.
 
-## Summary — PARTIAL (walk-in LEGS only; not full acceptance)
-The princess **walk-in legs** are ported as her own controller (`src/engine/princess_controller.s`)
+## Summary — PARTIAL (walk-in: legs + torso + shadow; pose frames remain)
+The princess **walk-in** is ported as her own controller (`src/engine/princess_controller.s`)
 driving the **shared** `HAL_gfx_blit_sprite` leaf, isolated in a boot-excluded sandbox, and
-Jay-gated (walk + leg colors PASS). **NOT yet done** (this is a first increment, not full
+Jay-gated. Now composited: **legs (animated) + torso (`$1D00`) + shadow (`$1CC4`)**; the
+blue-C `$1CD4` is **excluded** (Jay: not the princess). Jay-confirmed: walk, leg colors,
+torso placement, shadow.
+
+**Compositing progress (Jay-gated, this session):**
+- **Torso `$1D00`** layered above the legs (centroid-aligned +3px, 26 rows up per oracle
+  `tbl_y`). "looks good."
+- **Shadow `$1CC4`** — it's 100% index-0 (black). Rendered as a sub-pixel-synced sprite
+  **leading her toes**, via a NEW **opaque HAL blit** (below). Sandbox uses a blue (index-2)
+  floor + a floor-restoring dirty-rect so the black shadow contrasts. "looks good."
+- `$1CD4` (blue-C) **dropped** — not the princess.
+
+**NEW HAL feature — `HAL_gfx_blit_sprite_opaque`** (`gfx.s`): the blit was transparency-keyed
+on index-0, so a black (index-0) shadow couldn't be drawn. Added an opaque mode (selects an
+all-`$FF` mask table → plain store, index-0 included) — faithful to the oracle's `$0F`
+store-blend. Additive: `HAL_gfx_blit_sprite` clears the flag, existing transparent callers
+unchanged (cast sandbox + scenes verified un-regressed). **Prod boot 7359 → 7634** (+275B for
+the opaque table/entry — expected for the feature; prod builds clean, scene-5 will use it).
+`eng_clear_box` parameterized with `eng_fillval` (single fill, value-selectable) so the
+dirty-rect can restore a colored floor. **NOT yet done** (this is a first increment, not full
 dispatch acceptance):
 - **Compositing** — `draw_princess` layers body `$1D00` + parts `$1CD4`/`$1CC4` onto the legs.
   Deferred: they rendered as a "white box + blue C" jumble at the crude `tbl_y` offsets. The

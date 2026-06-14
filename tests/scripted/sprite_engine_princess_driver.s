@@ -61,6 +61,10 @@ test_start:
         sta     <page_register
         andcc   #$EF
 
+        ; index-0 stays BLACK (default palette) = the shadow color. The FLOOR is
+        ; index-2 (blue): buffers cleared to $AA + the dirty-rect restores $AA.
+        ; So the index-0 black shadow contrasts against the blue floor (a stand-in
+        ; for the in-game partially-black floor).
         jsr     clear_both_buffers
         jsr     pr_init
 
@@ -71,7 +75,7 @@ princess_loop:
 
 clear_both_buffers:
         ldx     #FB_A_LO
-        ldd     #$0000
+        ldd     #$AAAA                  ; floor = index-2 (blue) so the black shadow shows
 pcb_a:
         std     ,x++
         cmpx    #FB_A_HI

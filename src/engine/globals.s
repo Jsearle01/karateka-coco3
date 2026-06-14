@@ -99,6 +99,7 @@ eng_clrh            equ $37     ; 8-bit:  clear-box height (rows)
 eng_col             equ $38     ; 8-bit:  current frame byte column (scratch from table)
 eng_sub             equ $39     ; 8-bit:  current frame sub-byte offset (0-3)
 eng_row             equ $3A     ; 8-bit:  current frame pixel row
+eng_fillval         equ $3B     ; 8-bit:  eng_clear_box fill byte (0=clear; floor color for dirty-rect restores)
 
 * --- Engine intro / scene-1 state ($60-$61) — R-p24 ---
 * Game-start signal flags set by scene-1 input detection. Apple II

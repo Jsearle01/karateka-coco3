@@ -431,8 +431,23 @@ blit_subbyte    equ $0C                 ; sub-byte pixel offset 0-3 (set by call
 blit_ovf_new    equ $0D                 ; per-byte overflow accumulator (HAL internal)
 blit_ovf_prev   equ $0E                 ; per-row overflow carry (HAL internal)
 blit_tmp        equ $0F                 ; transparency scratch: source byte during mask sequence
+blit_opaque     equ $13                 ; 0=transparent (index-0 keyed), nonzero=opaque (store all)
+
+* HAL_gfx_blit_sprite_opaque — like HAL_gfx_blit_sprite but OPAQUE: every pixel
+* (incl. index-0/black) is stored, overwriting the dest. Faithful to the oracle's
+* $0F-selected store blend (video.s routine_1927). Use for black shadows / solid
+* fills that must show against a (partially black) background. Same args as
+* HAL_gfx_blit_sprite (X=sprite, A=col, B=row, blit_subbyte set).
+HAL_gfx_blit_sprite_opaque:
+        pshs    a
+        lda     #$01
+        sta     <blit_opaque
+        puls    a
+        bra     blit_have_mode
 
 HAL_gfx_blit_sprite:
+        clr     <blit_opaque            ; default transparent (existing callers unchanged)
+blit_have_mode:
         pshs    u                       ; preserve U per contract
 
         sta     <blit_col               ; $0A = destination byte column
@@ -473,6 +488,9 @@ blit_got_base:
         ldb     <blit_col
         leay    b,y                     ; Y = buffer_base + row*80 + col
         ldu     #blit_trans_table_mid   ; U = transparency mask table midpoint
+        tst     <blit_opaque            ; opaque mode? -> all-$FF table (store verbatim)
+        beq     blit_dispatch
+        ldu     #blit_opaque_table_mid
 
         ; Dispatch to sub-byte-specific row loop
 blit_dispatch:                          ; shared entry (HAL_gfx_blit_scroll jumps here w/ Y,U set)
@@ -761,3 +779,28 @@ blit_trans_table_mid:
         fcb     $F0,$F3,$F3,$F3,$FC,$FF,$FF,$FF,$FC,$FF,$FF,$FF,$FC,$FF,$FF,$FF  ; src $50-$5F
         fcb     $F0,$F3,$F3,$F3,$FC,$FF,$FF,$FF,$FC,$FF,$FF,$FF,$FC,$FF,$FF,$FF  ; src $60-$6F
         fcb     $F0,$F3,$F3,$F3,$FC,$FF,$FF,$FF,$FC,$FF,$FF,$FF,$FC,$FF,$FF,$FF  ; src $70-$7F
+
+* ---------------------------------------------------------------
+* blit_opaque_table — 256-byte all-$FF mask. Selected (instead of the
+* transparency table) by HAL_gfx_blit_sprite_opaque. mask=$FF -> coma=$00 ->
+* anda dest = 0 -> ora output = output, i.e. a plain STORE: every pixel incl.
+* index-0/black overwrites the dest. Mid at +128 (same signed-offset indexing).
+* ---------------------------------------------------------------
+blit_opaque_table_base:
+        fcb     $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        fcb     $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        fcb     $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        fcb     $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        fcb     $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        fcb     $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        fcb     $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        fcb     $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+blit_opaque_table_mid:
+        fcb     $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        fcb     $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        fcb     $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        fcb     $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        fcb     $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        fcb     $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        fcb     $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        fcb     $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
