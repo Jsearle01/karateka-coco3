@@ -1,137 +1,232 @@
 * src/engine/princess_controller.s
 *
-* PRINCESS CONTROLLER — CoCo3 port of the oracle scene-5 princess walk-in
-* (display_7700.s: advance_princess_anim $7F33 + draw_princess + the
-* tbl_princess_* table). Her OWN controller, driving the ONE shared render
-* leaf (HAL_gfx_blit_sprite) — multi-animator model, NOT a second render path.
+* PRINCESS CONTROLLER — CoCo3 port of the oracle scene-5 princess (display_7700.s:
+* advance_princess_anim $7F33 + draw_princess + tbl_princess_*). Her OWN controller
+* driving the ONE shared render leaf (HAL_gfx_blit_sprite) — multi-animator model.
 *
-* ORACLE BASIS (pre-flight confirmed, docs/project/reports 2026-06-14):
-*  - CADENCE (GATE 1): advance_princess_anim cycles $39 1->4 (the 4 walk legs)
-*    and on each completed cycle steps her position. The oracle's $3A mod-7 +
-*    extra-$3B is Apple-II 7px/byte sub-byte bookkeeping for a UNIFORM
-*    8-Apple-px/cycle advance. $10(:=$3A) is the blit's sub-byte pixel index
-*    (0-6, video.s L1A84 7-case shift) — a byte-packing ARTIFACT. The converter
-*    is 1:1 px and CoCo3 is 4px/byte, so 8 Apple-px = exactly 2 CoCo3
-*    byte-cols: the port is a clean +2 byte-cols/cycle, subbyte stays 0. No
-*    mod-7, no fixed-point fraction (GATE-1 native-integer branch).
-*  - COMPOSITE (draw_princess): each rendered princess = body $1D00 (idx5) +
-*    part $1CD4 (idx6) + leg $39 (idx1-4) + part $1CC4 (idx7). Vertical stack
-*    from tbl_princess_y (Apple rows, ~1:1 CoCo3): body/part6 at +0, leg at
-*    +26 ($3E-$24), part7 at +41 ($4D-$24). X all ~= her column (tbl_x[2..7]=0).
-*  - DIRTY-RECT (GATE 2): draw_princess_bg = render_pass_a single-colour band
-*    behind her ([$3B-1..$3B+4] x rows $77-$A3). CoCo3: reuse eng_clear_box
-*    (the existing region-fill primitive) over her moving band each frame.
-*  - $3B-analog (pr_x) FREE-RUNS in the sandbox (no $0D fall check — the fall
-*    is the scene $3B clock, pass one). We WRAP pr_x so the walk-in re-enters
-*    for the live gate (AC-7: isolated walk-in, no fall).
+* Sandbox state machine (isolated demo of her animation states; the SCENE $3B clock
+* drives these transitions in-game — pass one):
+*   WALK  : walk-in. Legs (idx1-4) cycle + position glides; torso $1D00 composited
+*           above; shadow $1CC4 (opaque black) leads her toes. -> TURN at target X.
+*   TURN  : $1530->$1588->$1611->$169A (turning to face the cell). -> FALL.
+*   FALL  : $16CC->$175E->$17D3->$1829 (collapse). Bottom-aligned (height shrinks
+*           36->10 rows) so she sinks to the floor. -> FLOOR.
+*   FLOOR : hold $1829 (collapsed on the cell floor).
+* $1CD4 (blue-C) is NOT the princess (Jay ID) — excluded.
 *
-* [ref: src/engine/sprite_engine.s eng_clear_box / eng_render]
-* [ref: src/hal/coco3-dsk/gfx.s HAL_gfx_blit_sprite / HAL_gfx_present]
+* CADENCE (GATE 1): native-integer; oracle-measured ~52 VBLs/walk-cycle = 8px/cycle.
+* REGISTRATION: converter trims each frame's blanks independently -> per-frame X
+*   offset tables re-align the body so it doesn't lurch between frames.
+* [ref: docs/project/reports/2026-06-14-princess-controller-sandbox.md]
 * ---------------------------------------------------------------
 
         setdp   0
 
-* --- princess controller state (ZP $43-$45; $40/$42 are the sandbox's) ---
-pr_leg          equ $43         ; current leg index 0..3 (oracle $39 1..4)
-pr_x            equ $44         ; derived byte column (pr_px>>2) — traced
+* --- state ($43-$49; $40/$42 are the sandbox's) ---
+pr_leg          equ $43         ; frame index within the current sequence (walk leg / pose)
+pr_x            equ $44         ; derived byte column (traced)
 pr_cadctr       equ $45         ; cadence down-counter
 pr_px           equ $46         ; PIXEL position (master)
-pr_frac         equ $47         ; sub-pixel accumulator (PR_PXNUM/PR_PXDEN per VBL)
-pr_tmp          equ $48         ; scratch (per-frame registration)
+pr_frac         equ $47         ; sub-pixel accumulator
+pr_tmp          equ $48         ; scratch (per-frame registration / align)
+pr_state        equ $49         ; 0=walk 1=turn 2=fall
+pr_seqlen       equ $4A         ; frames in the current pose sequence
+pr_cadrel       equ $4B         ; cadence reload value (per-state: walk/turn vs fall)
+pr_shadow_lead  equ $4C         ; shadow lead px (walk leads +; turn under her)
+pr_holdctr      equ $4D         ; inter-animation hold (turn->fall delay; fall->loop hold)
 
-* --- tunable layout constants (AC-5 live-gate) ---
-PR_CAD          equ 13          ; VBLs per leg frame — ORACLE-MEASURED (recon trace:
-                                ; ~52 VBLs/walk-cycle / 4 legs = 13 VBLs/leg) — TUNABLE
-PR_STARTPX      equ 8           ; left start, in pixels
-PR_ENDPX        equ 240         ; wrap point (re-enter from left) — isolated demo
-* position advances EVERY VBL by PR_PXNUM/PR_PXDEN px (decoupled from the leg
-* cadence -> continuous glide). 2/13 px/VBL x (4*PR_CAD=52) VBLs/cycle = 8px/cycle.
-* This is the oracle's MEASURED walk cadence (apple2e $3B-poll: +1 position byte
-* /~52 VBLs, ~9px/sec) — 8px/cycle spatial gait at the oracle's wall-clock pace.
-PR_PXNUM        equ 2
+STATE_WALK      equ 0
+STATE_TURN      equ 1
+STATE_FALL      equ 2
+STATE_FLOOR     equ 3
+
+* --- tunables (live-gate) ---
+PR_CAD          equ 13          ; walk-leg cadence — ORACLE-MEASURED (phase-1, 13 VBLs/leg)
+PR_POSE_CAD     equ 11          ; turn & collapse cadence — ORACLE-MEASURED (~11 VBLs/frame)
+PR_TF_DELAY     equ 173         ; facing-left hold before collapse — ORACLE-MEASURED (~2.9s)
+PR_FLOOR_HOLD   equ 90          ; hold collapsed before looping the demo
+PR_STARTPX      equ 8           ; walk start (px)
+PR_ENDPX        equ 220         ; walk-loop wrap (re-enter from left)
+PR_DEMO_CX      equ 56          ; turn/fall demo: stationary center (px)
+PR_PXNUM        equ 2           ; walk speed = 2/13 px/VBL = 8px/cycle (oracle)
 PR_PXDEN        equ 13
-PR_BASEROW      equ 60          ; leg top row
-PR_TORSO_ROW    equ 34          ; torso top row (= legs - 26, oracle body/leg y gap)
-PR_TORSO_DX     equ 3           ; +px to align torso centroid (4.83) over leg (7.98)
-PR_CLR_LEFT     equ 4           ; dirty-rect margin left of pr_x (covers vacated)
-PR_CLR_W        equ 24          ; dirty-rect width (figure + leading shadow + margin)
-PR_CLR_H        equ 46          ; dirty-rect height (torso row 34 .. leg bottom ~77)
-* shadow ($1CC4) — all index-0 on Apple (black shadow on the colored floor); the
-* transparency blit can't draw black, so render it as a solid bar leading her.
-PR_SHADOW_ROW   equ 76          ; at her feet (leg bottom)
-PR_SHADOW_LEADPX equ 12         ; pixels ahead = start at front of her toes — TUNABLE
-PR_SHADOW_W     equ 13          ; $1CC4 width (bytes)
-PR_SHADOW_H     equ 2           ; $1CC4 height
-PR_FLOOR_FILL   equ $AA         ; sandbox floor = index-2 (blue); index-0 stays black (shadow)
+PR_BASEROW      equ 60          ; walk: leg top row
+PR_TORSO_ROW    equ 34          ; walk: torso top row
+PR_TORSO_DX     equ 3           ; walk: torso centroid align (+px)
+PR_FLOOR_ROW    equ 78          ; FALL bottom-align reference (base stays on floor)
+PR_POSE_TOP     equ 34          ; TURN top-align row (43-row figures -> feet at floor)
+PR_CLR_LEFT     equ 4
+PR_CLR_W        equ 24          ; dirty-rect width (figure + leading shadow)
+PR_CLR_H        equ 46          ; walk dirty-rect height
+PR_POSE_ROW     equ 28          ; pose dirty-rect top (covers 43-row figures)
+PR_POSE_H       equ 54          ; pose dirty-rect height (rows 28..~80)
+PR_SHADOW_ROW   equ 76
+PR_SHADOW_LEADPX equ 12
+PR_SHADOW_W     equ 13
+PR_SHADOW_H     equ 2
+PR_FLOOR_FILL   equ $AA         ; sandbox floor = index-2 (blue); index-0 = black (shadow)
 
 * ===============================================================
-* pr_init — initialise the walk-in controller + render frame 0.
+* pr_set_state — A = demo state (0=walk,1=turn,2=fall). Resets + positions +
+*   clears both buffers + renders frame 0. Each state LOOPS in isolation so it
+*   can be viewed/tuned separately (driver cycles states on a key tap).
 * ===============================================================
-pr_init:
+pr_set_state:
+        sta     <pr_state
+        ldb     #4                      ; sequence length (turn & fall = 4)
+        stb     <pr_seqlen
+        ldb     #PR_POSE_CAD            ; turn/fall = ~11 VBLs (oracle)
+        tsta
+        bne     pr_ss_cad
+        ldb     #PR_CAD                 ; walk legs = 13 VBLs (oracle)
+pr_ss_cad:
+        stb     <pr_cadrel
+        stb     <pr_cadctr
+        ; shadow lead: WALK leads +12 (ahead of toes); TURN under her (0)
+        ldb     #0
+        tsta
+        bne     pr_ss_shl
+        ldb     #PR_SHADOW_LEADPX
+pr_ss_shl:
+        stb     <pr_shadow_lead
+        clr     <pr_holdctr             ; not mid-chain (animate immediately)
         clr     <pr_leg
         clr     <pr_frac
-        lda     #PR_STARTPX
-        sta     <pr_px
-        lda     #PR_CAD
-        sta     <pr_cadctr
-        jsr     pr_render
+        tsta
+        bne     pr_ss_pose
+        ldb     #PR_STARTPX             ; walk: start left
+        bra     pr_ss_px
+pr_ss_pose:
+        ldb     #PR_DEMO_CX             ; turn/fall: stationary center
+pr_ss_px:
+        stb     <pr_px
+        jsr     pr_clear_both
+        tst     <pr_state
+        bne     pr_ss_pose_r
+        jsr     pr_render_walk
+        rts
+pr_ss_pose_r:
+        jsr     pr_render_pose
         rts
 
 * ===============================================================
-* pr_tick — per-VBL tick. Cadence down-counter; on expiry advance the leg
-*   (0->1->2->3->wrap). On a completed cycle (leg wraps to 0) step pr_x by
-*   PR_STEP (the oracle per-cycle position advance). Then render.
+* pr_tick — per-VBL. Each state LOOPS (no auto-transition; driver selects).
 * ===============================================================
 pr_tick:
-        ; --- (a) smooth position: every VBL add PR_PXNUM/PR_PXDEN px ---
+        lda     <pr_state
+        bne     pr_tick_pose
+
+* --- WALK (loops: wrap position at PR_ENDPX) ---
         lda     <pr_frac
         adda    #PR_PXNUM
         cmpa    #PR_PXDEN
-        blo     pr_frac_store
+        blo     pr_w_frac
         suba    #PR_PXDEN
         sta     <pr_frac
-        ; carry one pixel (with wrap)
         lda     <pr_px
         inca
         cmpa    #PR_ENDPX
-        blo     pr_px_store
-        lda     #PR_STARTPX             ; wrap: re-enter from left
-pr_px_store:
+        blo     pr_w_pxst
+        lda     #PR_STARTPX             ; loop: re-enter from left
+pr_w_pxst:
         sta     <pr_px
-        bra     pr_leg_cad
-pr_frac_store:
+        bra     pr_w_cad
+pr_w_frac:
         sta     <pr_frac
-        ; --- (b) leg cadence: advance leg every PR_CAD VBLs ---
-pr_leg_cad:
+pr_w_cad:
         dec     <pr_cadctr
-        bne     pr_tick_render
-        lda     #PR_CAD
+        bne     pr_w_render
+        lda     <pr_cadrel
         sta     <pr_cadctr
         lda     <pr_leg
         inca
         cmpa    #4
-        blo     pr_leg_store
-        clra                            ; completed 4-frame cycle -> wrap
-pr_leg_store:
+        blo     pr_w_legst
+        clra
+pr_w_legst:
         sta     <pr_leg
-        ; --- (c) render EVERY VBL -> continuous motion ---
-pr_tick_render:
-        jsr     pr_render
+pr_w_render:
+        jsr     pr_render_walk
+        rts
+
+* --- TURN / FALL (loop the 4-frame sequence) ---
+pr_tick_pose:
+        ; --- inter-animation hold (chain: turn-end -> delay -> fall; fall-end ->
+        ;     hold collapsed -> loop to turn) ---
+        lda     <pr_holdctr
+        beq     pr_tp_anim
+        dec     <pr_holdctr
+        bne     pr_pose_render          ; still holding last frame
+        lda     <pr_state
+        cmpa    #STATE_TURN
+        bne     pr_tp_loop              ; was holding after FALL -> loop demo
+        ; held after TURN -> start the collapse
+        lda     #STATE_FALL
+        sta     <pr_state
+        clr     <pr_leg
+        lda     #PR_POSE_CAD
+        sta     <pr_cadrel
+        sta     <pr_cadctr
+        bra     pr_pose_render
+pr_tp_loop:
+        lda     #STATE_TURN             ; loop: re-init turn (clears + renders)
+        jsr     pr_set_state
+        rts
+* --- frame advance for the active sequence ---
+pr_tp_anim:
+        dec     <pr_cadctr
+        bne     pr_pose_render
+        lda     <pr_cadrel
+        sta     <pr_cadctr
+        inc     <pr_leg
+        lda     <pr_leg
+        cmpa    <pr_seqlen
+        blo     pr_pose_render
+        ; sequence complete -> hold last frame + set the inter-anim delay
+        deca
+        sta     <pr_leg                 ; hold last frame (seqlen-1)
+        lda     <pr_state
+        cmpa    #STATE_TURN
+        bne     pr_tp_fall_end
+        lda     #PR_TF_DELAY            ; turn done: short delay then collapse
+        sta     <pr_holdctr
+        bra     pr_pose_render
+pr_tp_fall_end:
+        lda     #PR_FLOOR_HOLD          ; fall done: hold collapsed then loop
+        sta     <pr_holdctr
+pr_pose_render:
+        jsr     pr_render_pose
         rts
 
 * ===============================================================
-* pr_render — dirty-rect clear behind/around her, composite the 4 sprites
-*   (body + part6 + leg + part7) via the shared leaf, then present + flip.
+* pr_clear_both — clear both frame buffers to the floor color ($AA), so a
+*   state switch wipes the previous sequence's remnants.
 * ===============================================================
-pr_render:
-        ; (1) dirty-rect: clear the torso+leg band. col = (pr_px>>2) - margin.
+pr_clear_both:
+        ldx     #$8000
+        ldd     #(PR_FLOOR_FILL*256)+PR_FLOOR_FILL
+pr_cb1:
+        std     ,x++
+        cmpx    #$BC00
+        blo     pr_cb1
+        ldx     #$C000
+pr_cb2:
+        std     ,x++
+        cmpx    #$FC00
+        blo     pr_cb2
+        rts
+
+* ===============================================================
+* pr_render_walk — dirty-rect (floor restore) + shadow + torso + leg, flip.
+* ===============================================================
+pr_render_walk:
         lda     <pr_px
         lsra
         lsra
         suba    #PR_CLR_LEFT
-        bcc     pr_clr_ok
-        clra                            ; clamp to col 0
-pr_clr_ok:
+        bcc     pr_w_clrok
+        clra
+pr_w_clrok:
         sta     <eng_col
         lda     #PR_TORSO_ROW
         sta     <eng_row
@@ -139,45 +234,124 @@ pr_clr_ok:
         sta     <eng_clrw
         lda     #PR_CLR_H
         sta     <eng_clrh
-        lda     #PR_FLOOR_FILL          ; dirty-rect RESTORES the floor (not black),
-        sta     <eng_fillval            ; so the index-0 black shadow contrasts
+        lda     #PR_FLOOR_FILL
+        sta     <eng_fillval
         jsr     eng_clear_box
-
-        ; (1b) SHADOW leading her (solid bar; $1CC4 is all index-0 black)
         jsr     pr_draw_shadow
-
-        ; (2) TORSO $1D00 (waist+torso) at (pr_px + TORSO_DX, TORSO_ROW).
-        ;     Centroid-aligned over the legs; one frame, moves smoothly w/ pr_px.
+        ; torso $1D00
         lda     <pr_px
         adda    #PR_TORSO_DX
-        jsr     pr_set_pos              ; A = byte col, blit_subbyte set
+        jsr     pr_set_pos
         ldb     #PR_TORSO_ROW
         ldx     #fig_1D00_coco3
         jsr     HAL_gfx_blit_sprite
-
-        ; (3) LEG (idx pr_leg) at (pr_px + align[leg], BASEROW). Per-frame
-        ;     registration [0,4,3,1] so the body stays put + only legs swing.
+        ; leg
         ldx     #pr_leg_align
         lda     <pr_leg
-        lda     a,x                     ; A = align[leg]
+        lda     a,x
         adda    <pr_px
-        jsr     pr_set_pos              ; A = byte col, blit_subbyte set
-        sta     <pr_x                   ; (traced)
+        jsr     pr_set_pos
+        sta     <pr_x
         ldb     #PR_BASEROW
-        pshs    a                       ; save col across pr_leg_ptr
-        jsr     pr_leg_ptr              ; X = leg ptr (clobbers A; B preserved)
+        pshs    a
+        jsr     pr_leg_ptr
         puls    a
         jsr     HAL_gfx_blit_sprite
+        jmp     pr_flip
 
-        ; (4) reveal + flip (Option-I double buffer)
+* ===============================================================
+* pr_render_pose — single full-figure pose frame (turn/fall/floor):
+*   dirty-rect floor restore, shadow, then blit the frame X-registered +
+*   BOTTOM-ALIGNED (Y = PR_FLOOR_ROW - height) so she stands/collapses on the
+*   floor. Then flip.
+* ===============================================================
+pr_render_pose:
+        lda     <pr_px
+        lsra
+        lsra
+        suba    #PR_CLR_LEFT
+        bcc     pr_p_clrok
+        clra
+pr_p_clrok:
+        sta     <eng_col
+        lda     #PR_POSE_ROW
+        sta     <eng_row
+        lda     #PR_CLR_W
+        sta     <eng_clrw
+        lda     #PR_POSE_H
+        sta     <eng_clrh
+        lda     #PR_FLOOR_FILL
+        sta     <eng_fillval
+        jsr     eng_clear_box
+        ; TURN: shadow under her (oracle draws idx7 $1CC4 in poses). FALL: no
+        ; shadow yet (its shape/position is TBD from the oracle).
+        lda     <pr_state
+        cmpa    #STATE_TURN
+        bne     pr_p_noshadow
+        jsr     pr_draw_shadow
+pr_p_noshadow:
+        ; Facing-left turn frame (TURN, idx 3) overlays a 1611 BASE, per the
+        ; oracle draw_princess_frame (draws idx$0B=1611 then 169A at the same
+        ; origin x=0/y=$24). Pre-draw 1611 here; 169A blits on top below.
+        lda     <pr_state
+        cmpa    #STATE_TURN
+        bne     pr_p_nobase
+        lda     <pr_leg
+        cmpa    #3
+        bne     pr_p_nobase
+        ; draw 1611 base (full turning body)
+        lda     <pr_px
+        adda    #-7                     ; 1611 align (= 169A align)
+        jsr     pr_set_pos
+        pshs    a                       ; save base byte col
+        ldb     #PR_POSE_TOP
+        ldx     #fig_1611_coco3
+        jsr     HAL_gfx_blit_sprite
+        ; clear 1611's UPPER region (its flying hair) to floor, so the 169A
+        ; settled (hair-down) torso fully replaces it — kills the hair ghost.
+        puls    a
+        sta     <eng_col
+        lda     #PR_POSE_TOP
+        sta     <eng_row
+        lda     #8
+        sta     <eng_clrw
+        lda     #16
+        sta     <eng_clrh               ; = 169A height (no over-clear / cut)
+        jsr     eng_clear_box
+pr_p_nobase:
+        jsr     pr_pose_ptr             ; X = frame ptr, pr_tmp = signed X align
+        lda     <pr_px
+        adda    <pr_tmp                 ; + per-frame registration (signed)
+        jsr     pr_set_pos              ; A = byte col, blit_subbyte set; X,pr_tmp kept
+        pshs    a                       ; save col
+        ; Y: TURN top-aligns (fixed row, feet-at-floor for 43-row figures);
+        ;    FALL bottom-aligns (base on floor as height shrinks = collapse).
+        lda     <pr_state
+        cmpa    #STATE_FALL
+        beq     pr_p_bottom
+        lda     #PR_POSE_TOP
+        bra     pr_p_yset
+pr_p_bottom:
+        lda     ,x                      ; sprite height
+        nega
+        adda    #PR_FLOOR_ROW           ; Y = floor - height
+pr_p_yset:
+        tfr     a,b                     ; B = row
+        puls    a                       ; A = col
+        jsr     HAL_gfx_blit_sprite
+        jmp     pr_flip
+
+* ---------------------------------------------------------------
+* pr_flip — reveal back buffer + toggle page (shared by walk/pose).
+* ---------------------------------------------------------------
+pr_flip:
         jsr     HAL_gfx_present
         lda     <page_register
-        eora    #$60                    ; $20<->$40
+        eora    #$60
         sta     <page_register
         rts
 
-* pr_set_pos — A = effective pixel X -> returns A = byte col (px>>2) and sets
-*   blit_subbyte = px&3 (CoCo3 4px/byte sub-pixel). Clobbers B.
+* pr_set_pos — A = effective px -> A = byte col, blit_subbyte = px&3. Clobbers B.
 pr_set_pos:
         tfr     a,b
         andb    #$03
@@ -186,46 +360,73 @@ pr_set_pos:
         lsra
         rts
 
-* pr_draw_shadow — blit the shadow bar SPRITE via the shared leaf at
-*   (pr_px + LEADPX), sub-pixel-positioned (blit_subbyte) so it tracks the
-*   princess in lockstep (driven by the same pr_px) instead of stepping by
-*   whole bytes. Starts at the front of her toes.
+* pr_draw_shadow — opaque black bar leading her toes, sub-pixel synced.
 pr_draw_shadow:
         lda     <pr_px
-        adda    #PR_SHADOW_LEADPX
-        jsr     pr_set_pos              ; A = byte col, blit_subbyte = sub-pixel
+        adda    <pr_shadow_lead
+        jsr     pr_set_pos
         ldb     #PR_SHADOW_ROW
         ldx     #pr_shadow_spr
-        jmp     HAL_gfx_blit_sprite_opaque   ; OPAQUE: black ($00) renders, not keyed out
+        jmp     HAL_gfx_blit_sprite_opaque
 
-* shadow bar sprite (HAL format: H,W then H*W bytes). REAL black ($00, index-0):
-* drawn via the OPAQUE blit so it shows against the (non-black) floor — exactly
-* what the in-game partially-black floor needs. ($1CC4 is all index-0.)
 pr_shadow_spr:
         fcb     PR_SHADOW_H,PR_SHADOW_W
         fcb     $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
         fcb     $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
 
-* ---------------------------------------------------------------
-* pr_leg_ptr — X = walk-leg sprite ptr for the current pr_leg (0..3).
-* ---------------------------------------------------------------
+* pr_leg_ptr — X = walk-leg sprite ptr for pr_leg (0..3).
 pr_leg_ptr:
         lda     <pr_leg
-        lsla                            ; *2 (fdb table entries)
+        lsla
         ldx     #pr_leg_tbl
-        leax    a,x                     ; X = pr_leg_tbl + pr_leg*2
-        ldx     ,x                      ; X = leg sprite ptr
+        leax    a,x
+        ldx     ,x
+        rts
+
+* pr_pose_ptr — X = pose frame ptr for (pr_state, pr_leg); pr_tmp = signed X align.
+pr_pose_ptr:
+        lda     <pr_state
+        cmpa    #STATE_TURN
+        bne     pr_pp_fall
+        ldx     #pr_turn_tbl
+        ldy     #pr_turn_align
+        bra     pr_pp_idx
+pr_pp_fall:
+        ldx     #pr_fall_tbl
+        ldy     #pr_fall_align
+pr_pp_idx:
+        lda     <pr_leg
+        ldb     a,y                     ; B = align[idx] (signed)
+        stb     <pr_tmp
+        lsla
+        leax    a,x
+        ldx     ,x
         rts
 
 pr_leg_tbl:
-        fdb     fig_1D36_coco3          ; leg 0  ($39=1)
-        fdb     fig_1D5A_coco3          ; leg 1  ($39=2)
-        fdb     fig_1D7E_coco3          ; leg 2  ($39=3)
-        fdb     fig_1DA2_coco3          ; leg 3  ($39=4)
-
-* per-frame registration (+px) — added in pr_render so each frame's TORSO lands
-* at the same screen x (ref = frame-0 torso col 5). The converter trimmed each
-* frame's blanks independently -> torso-left was [5,1,2,4]px; offsets = 5-that =
-* [0,4,3,1] re-align the body so only the legs swing (kills the ~4px back-lurch).
+        fdb     fig_1D36_coco3
+        fdb     fig_1D5A_coco3
+        fdb     fig_1D7E_coco3
+        fdb     fig_1DA2_coco3
 pr_leg_align:
-        fcb     0,4,3,1
+        fcb     0,4,3,1                 ; walk leg torso registration
+
+pr_turn_tbl:
+        fdb     fig_1530_coco3          ; standing, facing right
+        fdb     fig_1588_coco3          ; mid-turn (facing forward)
+        fdb     fig_1611_coco3          ; turning left (hair up)
+        fdb     fig_169A_coco3          ; facing left = 1611 base + 169A torso overlay
+* turn registration: leftmost-white [0,6,7,7]px -> align lefts to frame 0.
+* idx3 (169A) is drawn OVER a 1611 base (oracle draw_princess_frame composites
+* idx$0B=1611 then 169A, both at tbl x=0 y=$24) — see pr_render_pose.
+pr_turn_align:
+        fcb     0,-6,-7,-7
+
+pr_fall_tbl:
+        fdb     fig_16CC_coco3          ; fall 1
+        fdb     fig_175E_coco3          ; fall 2
+        fdb     fig_17D3_coco3          ; fall 3
+        fdb     fig_1829_coco3          ; collapsed on floor
+* fall registration: leftmost-white was [6,6,1,3]px -> align lefts to frame 0
+pr_fall_align:
+        fcb     0,0,5,3

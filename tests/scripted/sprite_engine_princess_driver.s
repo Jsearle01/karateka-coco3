@@ -45,6 +45,9 @@ FB_A_HI         equ $BC00
 FB_B_LO         equ $C000
 FB_B_HI         equ $FC00
 
+pk_prevkey      equ $40         ; key edge-detect
+pk_demo         equ $41         ; demo state selector 0=walk 1=turn 2=fall
+
 test_start:
         orcc    #$50
         lds     #$01FF
@@ -61,15 +64,35 @@ test_start:
         sta     <page_register
         andcc   #$EF
 
-        ; index-0 stays BLACK (default palette) = the shadow color. The FLOOR is
-        ; index-2 (blue): buffers cleared to $AA + the dirty-rect restores $AA.
-        ; So the index-0 black shadow contrasts against the blue floor (a stand-in
-        ; for the in-game partially-black floor).
-        jsr     clear_both_buffers
-        jsr     pr_init
+        ; index-0 stays BLACK (default palette) = the shadow color; FLOOR = index-2
+        ; (blue). pr_set_state clears both buffers to the floor + renders frame 0.
+        ; TAP ANY KEY -> toggle: 0 WALK(loop) <-> 1 TURN->delay->COLLAPSE->loop.
+        clr     <pk_prevkey
+        clr     <pk_demo
+        clra                            ; state 0 = WALK
+        jsr     pr_set_state
 
 princess_loop:
         jsr     HAL_time_vbl_wait
+        jsr     HAL_input_poll
+        bcc     pl_nokey
+        lda     <pk_prevkey
+        bne     pl_held
+        lda     #$01
+        sta     <pk_prevkey
+        inc     <pk_demo
+        lda     <pk_demo
+        cmpa    #2
+        blo     pl_set
+        clr     <pk_demo
+pl_set:
+        lda     <pk_demo
+        jsr     pr_set_state            ; switch + clear + render
+        bra     princess_loop
+pl_held:
+        bra     princess_loop
+pl_nokey:
+        clr     <pk_prevkey
         jsr     pr_tick
         bra     princess_loop
 
@@ -104,5 +127,15 @@ pcb_b:
         include "../../content/princess/fig_1D00/converted.s"
         include "../../content/princess/fig_1CD4/converted.s"
         include "../../content/princess/fig_1CC4/converted.s"
+        ; turn sequence
+        include "../../content/princess/fig_1530/converted.s"
+        include "../../content/princess/fig_1588/converted.s"
+        include "../../content/princess/fig_1611/converted.s"
+        include "../../content/princess/fig_169A/converted.s"
+        ; fall sequence
+        include "../../content/princess/fig_16CC/converted.s"
+        include "../../content/princess/fig_175E/converted.s"
+        include "../../content/princess/fig_17D3/converted.s"
+        include "../../content/princess/fig_1829/converted.s"
 
         end     test_start

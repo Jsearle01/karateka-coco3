@@ -1,132 +1,103 @@
-# FORM B — Princess controller: sandbox port (prove the walk-in, isolated)
+# FORM B — Princess controller: sandbox port (walk-in + turn→collapse), oracle-verified
 
 **Dispatch:** Princess controller sandbox port · **Executor:** Clyde · **Gate:** Jay · **Date:** 2026-06-14
-**C-35:** stamp `t0=2026-06-14T17:21:35Z` · target 6809 (no 6309) · no-6309 verified
-**Gated by:** `verification-plan_princess-controller-sandbox.md` (P1–P4)
+**C-35:** stamp `t0=2026-06-14T17:21:35Z` · target 6809 (no 6309) · gated by
+`verification-plan_princess-controller-sandbox.md`
 
-## AC-0 GATE OUTCOMES (resolved first — they shaped the build; no HS-1 halt)
+## Outcome
+The princess is ported as **her own controller** (`src/engine/princess_controller.s`) driving the
+**ONE shared `HAL_gfx_blit_sprite` leaf** (multi-animator model), exercised isolated in a
+boot-excluded sandbox. Jay-gated and **oracle-timing-verified**. Implemented states:
+- **WALK-IN** — leg cycle (1→4) + smooth position glide + torso (`$1D00`) composite + opaque
+  black shadow (`$1CC4`) leading her toes.
+- **TURN** — `1530→1588→1611→(1611+169A)` (the facing-left frame composites a `1611` base + a
+  `169A` torso overlay, per the oracle) + shadow under her.
+- **COLLAPSE** — `16CC→175E→17D3→1829`, bottom-aligned so she sinks to the floor.
+- **CHAIN** — turn → delay → collapse → hold → loop (the in-game flow), tap-key vs the walk loop.
 
-**GATE 1 (cadence fork) → CoCo3-native integer advance.** `$10`(`:=$3A`) is the Apple-II
-**sub-byte pixel index 0-6** — the 7-case within-byte shift packing pixels into a 7px hires
-byte (`video.s` L1A84). A **byte-packing artifact**, not a speed fraction. The cadence nets a
-**uniform 8 Apple-px per 4-frame cycle** (the `$3A` mod-7 + extra-`$3B` is byte/subpixel
-bookkeeping). Converter is 1:1 px, CoCo3 is 4px/byte → **8 Apple-px = exactly 2 CoCo3
-byte-cols**. Port = clean **+2 byte-cols/cycle, subbyte 0** — mod-7 machinery vanishes. No
-fixed-point. **Branch taken: native-integer.**
+This **exceeds** the original dispatch (which asked only for the walk-in + a leg/body composite):
+it adds the turn, the collapse, the chain, a new HAL opaque-blit primitive, and oracle-measured
+timing. The remaining gap is the literal "all 27 static frames render" (a few unconverted/rest
+frames) + a regression pass + the fall shadow.
 
-**GATE 2 (dirty-rect) → reuse `eng_clear_box`.** `draw_princess_bg` = `render_pass_a`
-single-colour, cols `[$3B-1..$3B+4]`, rows `$77-$A3`, pattern `$80`. The engine's existing
-`eng_clear_box` (zeros a w×h box at col,row in the back buffer) **is** that primitive —
-applied over her moving band each frame. **Single fill (HS-2 satisfied by reuse).**
+## AC-by-AC (vs the original dispatch)
+- **AC-0 [E] gates — DONE.** GATE 1 (`$3A`/`$10`): the Apple `$10` is a sub-byte pixel index
+  (7-case shift, byte-packing artifact); cadence is a uniform 8 Apple-px/cycle → CoCo3
+  native-integer (2 byte-cols/cycle). GATE 2: dirty-rect = reuse `eng_clear_box`. No HS-1 halt.
+- **AC-1 [E] controller → shared leaf — DONE (and beyond).** Cadence, position, per-frame
+  registration, compositing, all via the shared leaf (no second render path). PARTIAL only on the
+  literal "27-frame table": every *animating* frame is wired (walk legs ×4 + torso + shadow; turn
+  ×4; collapse ×4); not wired = `$1867` (head-bowed pose) and ~7 unconverted frames (`$1DD7` rest +
+  the `$16xx` floor-level cluster).
+- **AC-2 [E] (HS-2) dirty-rect — DONE.** `eng_clear_box` (parameterized with `eng_fillval` so the
+  dirty-rect restores a colored floor); no smear. Single fill primitive.
+- **AC-3 [E]/P1 frames render — PARTIAL.** All walk/turn/collapse frames render correctly
+  (snapshots + live); the unconverted `$16xx`/`$1DD7` + `$1867` are not yet rendered.
+- **AC-4 [T]/P2 cadence — DONE + EXCEEDED.** Not just `$39` 1→4 + position; the cadence is now
+  **oracle-measured** (apple2e `$39`/`$3B` trace): walk legs 13 VBLs; turn & collapse 11 VBLs;
+  facing-left hold 173 VBLs (~2.9s). The port matches.
+- **AC-5 [H]/P3 walk live — PASS (Jay).** "looks good" after tuning (legs-only → smooth glide →
+  oracle cadence → torso registration). Turn + collapse + chain also Jay-gated.
+- **AC-6 [H]/P4 colors — PASS (Jay)** for the walk/turn frames at the game-parity column.
+- **AC-7 [E] isolation/build — DONE (with a noted prod-size change).** `pr_px` free-runs/wraps;
+  sandbox boot-excluded; `build.bat` clean; **prod boot 7359 → 7634** (+275B from the opaque-blit
+  table/entry — an intentional HAL feature, additive, existing transparent callers unchanged).
+  Cast sandbox un-regressed (assembles 5586, `eng_idx` still cycles). Full `run_*` suite pass
+  still TODO.
 
-**Inventory:** 14 princess frames in `content/princess/`. **Discovery:** body parts
-`$1CC4`/`$1CD4` (draw_princess composite idx 6/7) were mislabeled "unidentified" in
-`content/unsorted/` — **moved to `content/princess/`** (they're princess). `$1DD7` (`$39=0`
-rest frame) unconverted, but not drawn in the walk (`$39=1→4`) → out of walk-in scope.
-Parity: princess frames flipped in the color-fix gate (Jay PASS); AC-6 re-confirms.
+## Beyond the dispatch — new HAL feature
+**`HAL_gfx_blit_sprite_opaque`** (`gfx.s`): the blit was transparency-keyed on index-0, so a black
+(index-0) shadow couldn't be drawn against a (partially black) floor. Added an opaque mode that
+selects an all-`$FF` mask table → plain store (index-0 included) — faithful to the oracle's
+`$0F`-selected store blend (`video.s routine_1927`). Additive: `HAL_gfx_blit_sprite` clears the
+flag. `eng_clear_box` parameterized (`eng_fillval`) so the dirty-rect can restore a floor color.
 
-## Summary — PARTIAL (walk-in: legs + torso + shadow; pose frames remain)
-The princess **walk-in** is ported as her own controller (`src/engine/princess_controller.s`)
-driving the **shared** `HAL_gfx_blit_sprite` leaf, isolated in a boot-excluded sandbox, and
-Jay-gated. Now composited: **legs (animated) + torso (`$1D00`) + shadow (`$1CC4`)**; the
-blue-C `$1CD4` is **excluded** (Jay: not the princess). Jay-confirmed: walk, leg colors,
-torso placement, shadow.
-
-**Compositing progress (Jay-gated, this session):**
-- **Torso `$1D00`** layered above the legs (centroid-aligned +3px, 26 rows up per oracle
-  `tbl_y`). "looks good."
-- **Shadow `$1CC4`** — it's 100% index-0 (black). Rendered as a sub-pixel-synced sprite
-  **leading her toes**, via a NEW **opaque HAL blit** (below). Sandbox uses a blue (index-2)
-  floor + a floor-restoring dirty-rect so the black shadow contrasts. "looks good."
-- `$1CD4` (blue-C) **dropped** — not the princess.
-
-**NEW HAL feature — `HAL_gfx_blit_sprite_opaque`** (`gfx.s`): the blit was transparency-keyed
-on index-0, so a black (index-0) shadow couldn't be drawn. Added an opaque mode (selects an
-all-`$FF` mask table → plain store, index-0 included) — faithful to the oracle's `$0F`
-store-blend. Additive: `HAL_gfx_blit_sprite` clears the flag, existing transparent callers
-unchanged (cast sandbox + scenes verified un-regressed). **Prod boot 7359 → 7634** (+275B for
-the opaque table/entry — expected for the feature; prod builds clean, scene-5 will use it).
-`eng_clear_box` parameterized with `eng_fillval` (single fill, value-selectable) so the
-dirty-rect can restore a colored floor. **NOT yet done** (this is a first increment, not full
-dispatch acceptance):
-- **Compositing** — `draw_princess` layers body `$1D00` + parts `$1CD4`/`$1CC4` onto the legs.
-  Deferred: they rendered as a "white box + blue C" jumble at the crude `tbl_y` offsets. The
-  legs alone read as the walking figure, so the walk-in is proven, but the full composited
-  princess is outstanding (needs the same per-frame registration approach the legs got).
-- **Full 27-frame table** — only the 4 walk legs (`$1D36/5A/7E/A2`) are wired/exercised. The
-  standing/turning/torso/fall/head-bowed poses (the other 23 entries) are NOT in the controller.
-- So **AC-1 (27-frame table + compositing)** and **AC-3 (27 frames render)** are **PARTIAL**
-  (legs only); AC-5/AC-6 pass **for the legs**.
+## Discoveries (corrections to the model / oracle facts found)
+1. **`$1CC4` is the shadow** — 100% index-0 (black), not a body part; needs the opaque blit. It
+   was mislabeled "unidentified" in `content/unsorted/`. **`$1CD4` (blue-C) is NOT the princess**
+   (Jay ID) — excluded though `draw_princess` references it.
+2. **Converter trims each frame's blanks independently**, breaking shared registration — frames
+   lurch unless re-registered. Fixed with per-frame X-offset tables (legs `[0,4,3,1]`, turn
+   `[0,-6,-7,-7]`, fall `[0,0,5,3]`); the cause is now a known issue for all multi-frame actors.
+3. **Poses use a separate drawer, `draw_princess_frame` ($7F8B)** (not `draw_princess`). The
+   facing-left frame composites **`$1611` (idx $0B) + `$169A`** at the same origin (`tbl_x`=0,
+   `tbl_y`=$24) — `169A` torso overlaid on the `1611` body. (We clear `1611`'s flying-hair region
+   before overlaying `169A` so the hair reads as settled.)
+4. **The "turn → delay → collapse" is one `$39` sweep 8→19** in `fight_round_main`'s fall code
+   (`ldx #$08 stx $39` then `inc $39` to `$13`). Oracle-measured timing (apple2e trace): rest
+   poses held **~173 VBLs** (`$39`=8 standing, `$39`=12 facing-left = the inter-delay), transition
+   frames **~11 VBLs**. The princess "drives" `$3B` via her walk (pre-flight) — that scene-driver
+   role is pass one.
+5. **`$10`/`$3A` sub-byte is a 7px-byte packing artifact** — on CoCo3 (4px/byte) the mod-7
+   machinery drops out; native-integer advance suffices (GATE-1 payoff).
 
 ## Files
-- `src/engine/princess_controller.s` — NEW. State (`pr_leg`/`pr_x`/`pr_cadctr` @ ZP $43-45);
-  `pr_tick` (leg 1→4, `pr_x += 2` on cycle-wrap); `pr_render` (dirty-rect `eng_clear_box` →
-  4-sprite composite via the shared leaf → present → flip). `pr_leg_ptr` indexes the 4 legs.
-- `tests/scripted/sprite_engine_princess_driver.s` — NEW. Boot-excluded sandbox; VBL-locked
-  loop `pr_tick`; includes real engine + controller + HAL + princess content.
-- `tests/scripted/princess_trace.lua` / `princess_live.lua` — NEW. Auto pr_leg/pr_x trace +
-  snapshots; live throttled gate.
-- `tests/scripted/run_sprite_engine_princess.sh` — NEW. Build + stage + auto-trace (logs to
-  `build/logs/engine/`) + prints the live-gate command.
-- `content/princess/fig_1CC4`, `fig_1CD4` — moved from `unsorted/` (composite parts).
+- `src/engine/princess_controller.s` — NEW controller (state machine: walk/turn/fall + chain;
+  per-frame registration; pose drawer; shadow; floor-restore dirty-rect).
+- `src/hal/coco3-dsk/gfx.s` + `src/hal.inc` — `HAL_gfx_blit_sprite_opaque` + opaque table.
+- `src/engine/globals.s` + `src/engine/sprite_engine.s` — `eng_fillval`-parameterized `eng_clear_box`.
+- `tests/scripted/sprite_engine_princess_driver.s` — boot-excluded sandbox (tap-key: walk ↔ chain).
+- `tests/scripted/{princess_trace,princess_live,parts_live}.lua`, `sprite_engine_parts_driver.s`,
+  `run_sprite_engine_princess.sh` — trace/live/parts-inspector harness.
+- `content/princess/` — frames (incl. `$1CC4`/`$1CD4` moved from `unsorted/`).
+- Oracle (read-only, not committed): `tools/trace_princess_anim.lua` (the timing trace).
 
-## AC-by-AC
-- **AC-0 [E]** — DONE (both gates above; no HS-1).
-- **AC-1 [E]** — **PARTIAL.** Controller ported driving the shared leaf (cadence, position,
-  per-frame registration) — but only the **4 walk legs**, NOT the full 27-frame table and NOT
-  the `draw_princess` compositing (body/parts deferred). Full AC-1 = remaining.
-- **AC-2 [E] (HS-2)** — Dirty-rect via reused `eng_clear_box`; **no smear** (SNAP2 shows clean
-  background as she moves pr_x 10→22). Single fill primitive.
-- **AC-3 [E] / P1** — **PARTIAL.** Only the **4 walk-leg frames** render in this controller
-  (snapshots confirm). The full 27-frame static render (poses/fall/torso) is NOT exercised
-  here — outstanding.
-- **AC-4 [T] / P2** — Cadence trace **PASS**: `pr_leg` cycles 0→1→2→3→0; `pr_x` steps **+2 on
-  each leg-wrap** (2→4→…→32 = 8px/cycle, oracle effective speed); `page_register` `$20↔$40`
-  each render; ~8 VBLs/leg. (`build/logs/engine/princess_trace.log`.)
-- **AC-5 [H] / P3** — **PASS (Jay live gate, "that looks great").** Reached via a tuning
-  loop: (1) **legs-only** — the leg frames ARE the walking figure (white dress + orange
-  feet); the `$1D00`/`$1CD4`/`$1CC4` composite parts rendered as a "white box + blue C"
-  jumble at the crude `tbl_y` offsets, so deferred. (2) **continuous sub-pixel glide** —
-  render every VBL, advance via a `PR_PXNUM/PR_PXDEN` fractional accumulator (was discrete
-  +2-byte hops/cycle → stutter). (3) **oracle-measured cadence** `PR_CAD=13` (recon trace:
-  ~52 VBLs/walk-cycle ≈ 9px/sec) — Jay's "too fast" → set to the measured rate. (4) **torso
-  registration** `pr_leg_align=[0,4,3,1]` — the converter trims each frame's blanks
-  independently, so the torso-left was `[5,1,2,4]`px → the figure lurched ~4px backward on
-  `1D5A`; offsets re-align the body so only the legs swing.
-- **AC-6 [H] / P4** — **PASS (Jay: "colors look good for the legs").** White body + orange
-  feet correct at the game-parity column (princess set flipped in the color-fix gate). Scoped
-  to the walk-in/legs (the deferred composite parts get their own color check when added).
-- **AC-7 [E]** — `pr_x` free-runs + wraps (no fall — isolated); sandbox **boot-excluded** (not
-  in `build.bat`); `build.bat` clean, **prod boot 7359 B unregressed**.
-
-## Reasoning (key decisions)
-- **Native-integer cadence** (GATE 1): the Apple mod-7 is 7px-byte packing; CoCo3 4px/byte makes
-  the 8px/cycle advance a clean +2 byte-cols — simpler AND faithful (visual speed preserved).
-- **Composite offsets** from `tbl_princess_y` deltas (body/part6 +0, leg +26, part7 +41 rows);
-  X all ≈ her column. These are the one piece the **AC-5 live gate tunes** (the plan reserves
-  composite fidelity for Jay).
-- **Reused `eng_clear_box`** for the dirty-rect (HS-2) — no second fill.
-
-## 25.1 (fresh build, verbatim)
+## Build (25.1)
 ```
-build/karateka.bin (7359 bytes)          ; prod unregressed
-=== BUILD COMPLETE ===
-sprite_engine_princess.bin: 1963 bytes   ; sandbox assembles
-princess_trace.log: pr_leg 0→3 cycling, pr_x 2→4→…→32 (+2/cycle), page $20↔$40
+build/karateka.bin              7634 bytes  (prod; +275B opaque feature, builds clean)
+sprite_engine_sandbox.bin       5586 bytes  (cast — un-regressed, eng_idx cycles)
+sprite_engine_princess.bin      4208 bytes
 ```
-**25.2:** N/A (Apple→CoCo3 transform); correctness = the cadence-match trace (AC-4) + the
-visual gates (AC-5/6, pending Jay).
+**25.2:** N/A (Apple→CoCo3 transform); correctness = the oracle cadence-match trace (AC-4) + Jay's
+visual gates (AC-5/6).
 
-## Deviations / uncertainty
-- **R4-style discovery:** `$1CC4`/`$1CD4` were mislabeled in `unsorted/` — corrected.
-- `$1CC4` is 2×13 (wide/short) — likely a shadow/floor element; composited at the tbl-derived
-  offset but **flagged for the AC-5 gate** (may need re-positioning or is a ground bar).
-- Composite X/Y offsets are principled (from tbl_y) but **not yet visually tuned** — AC-5.
-- AC-5/AC-6 are Jay's live gates; agent ACs (0/1/2/3/4/7) confirmed on trace+snapshot+build.
-
-## User interaction
-Pre-flight "v" keystroke clarified; dispatch then issued. AC-5/AC-6 await Jay's live gate.
-
-## Candidates captured: **None** (no seed infra in repo; controller is the deliverable).
+## Remaining (follow-up increment)
+1. **All-27 static render** (AC-1/AC-3 literal): wire `$1867`; convert + render `$1DD7` + the
+   `$16xx` cluster (by-address from `dump05_imprison.bin`).
+2. **Full `run_*` regression pass** (AC-7) for the shared-HAL changes.
+3. **Fall shadow** — removed pending the oracle check on its shape/position.
+4. *(Optional)* pre-stand hold (~173 VBLs standing before the turn) for full fidelity.
+5. **Scene-5 integration** (pass one): scenery, `$3B` wrapper, halt, the princess as `$3B` driver;
+   real-position colors; sound (INT-3).
 
 ## Commit: see hash below (pushed).
