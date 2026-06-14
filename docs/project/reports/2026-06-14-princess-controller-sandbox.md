@@ -55,9 +55,18 @@ walk *fidelity* (composite alignment) + colors are Jay's live gate.
 - **AC-4 [T] / P2** — Cadence trace **PASS**: `pr_leg` cycles 0→1→2→3→0; `pr_x` steps **+2 on
   each leg-wrap** (2→4→…→32 = 8px/cycle, oracle effective speed); `page_register` `$20↔$40`
   each render; ~8 VBLs/leg. (`build/logs/engine/princess_trace.log`.)
-- **AC-5 [H] / P3** — **PENDING JAY:** live walk gate (motion smooth, no smear, reads as a
-  walking princess). Run command in the run script / below.
-- **AC-6 [H] / P4** — **PENDING JAY:** colors at game-parity column.
+- **AC-5 [H] / P3** — **PASS (Jay live gate, "that looks great").** Reached via a tuning
+  loop: (1) **legs-only** — the leg frames ARE the walking figure (white dress + orange
+  feet); the `$1D00`/`$1CD4`/`$1CC4` composite parts rendered as a "white box + blue C"
+  jumble at the crude `tbl_y` offsets, so deferred. (2) **continuous sub-pixel glide** —
+  render every VBL, advance via a `PR_PXNUM/PR_PXDEN` fractional accumulator (was discrete
+  +2-byte hops/cycle → stutter). (3) **oracle-measured cadence** `PR_CAD=13` (recon trace:
+  ~52 VBLs/walk-cycle ≈ 9px/sec) — Jay's "too fast" → set to the measured rate. (4) **torso
+  registration** `pr_leg_align=[0,4,3,1]` — the converter trims each frame's blanks
+  independently, so the torso-left was `[5,1,2,4]`px → the figure lurched ~4px backward on
+  `1D5A`; offsets re-align the body so only the legs swing.
+- **AC-6 [H] / P4** — colors render white body + orange feet (princess set flipped in the
+  color-fix gate); awaiting Jay's explicit game-parity confirm.
 - **AC-7 [E]** — `pr_x` free-runs + wraps (no fall — isolated); sandbox **boot-excluded** (not
   in `build.bat`); `build.bat` clean, **prod boot 7359 B unregressed**.
 

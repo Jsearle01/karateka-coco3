@@ -33,28 +33,36 @@
 
 * --- princess controller state (ZP $43-$45; $40/$42 are the sandbox's) ---
 pr_leg          equ $43         ; current leg index 0..3 (oracle $39 1..4)
-pr_x            equ $44         ; byte column (oracle $3B-analog; +2/cycle)
+pr_x            equ $44         ; derived byte column (pr_px>>2) — traced
 pr_cadctr       equ $45         ; cadence down-counter
+pr_px           equ $46         ; PIXEL position (master)
+pr_frac         equ $47         ; sub-pixel accumulator (PR_PXNUM/PR_PXDEN per VBL)
+pr_tmp          equ $48         ; scratch (per-frame registration)
 
-* --- tunable layout constants (AC-5 live-gate tunes the composite) ---
-PR_CAD          equ 8           ; VBLs per leg frame (walk pace within a cycle)
-PR_STARTX       equ 2           ; left start byte-col
-PR_ENDX         equ 64          ; wrap point (re-enter from left) — isolated demo
-PR_STEP         equ 2           ; +2 byte-cols/cycle = 8px (GATE-1 native integer)
-PR_BASEROW      equ 60          ; top row of the composite (body/part6)
-PR_DY_LEG       equ 26          ; leg row offset  ($3E-$24)
-PR_DY_PART7     equ 41          ; part7 row offset ($4D-$24)
+* --- tunable layout constants (AC-5 live-gate) ---
+PR_CAD          equ 13          ; VBLs per leg frame — ORACLE-MEASURED (recon trace:
+                                ; ~52 VBLs/walk-cycle / 4 legs = 13 VBLs/leg) — TUNABLE
+PR_STARTPX      equ 8           ; left start, in pixels
+PR_ENDPX        equ 240         ; wrap point (re-enter from left) — isolated demo
+* position advances EVERY VBL by PR_PXNUM/PR_PXDEN px (decoupled from the leg
+* cadence -> continuous glide). 2/13 px/VBL x (4*PR_CAD=52) VBLs/cycle = 8px/cycle.
+* This is the oracle's MEASURED walk cadence (apple2e $3B-poll: +1 position byte
+* /~52 VBLs, ~9px/sec) — 8px/cycle spatial gait at the oracle's wall-clock pace.
+PR_PXNUM        equ 2
+PR_PXDEN        equ 13
+PR_BASEROW      equ 60          ; top row of the figure
 PR_CLR_LEFT     equ 4           ; dirty-rect margin left of pr_x (covers vacated)
-PR_CLR_W        equ 18          ; dirty-rect width (max part 13 + movement margin)
-PR_CLR_H        equ 46          ; dirty-rect height (full composite + margin)
+PR_CLR_W        equ 12          ; dirty-rect width (leg <=6 bytes + movement margin)
+PR_CLR_H        equ 20          ; dirty-rect height (leg 17 rows + margin)
 
 * ===============================================================
 * pr_init — initialise the walk-in controller + render frame 0.
 * ===============================================================
 pr_init:
         clr     <pr_leg
-        lda     #PR_STARTX
-        sta     <pr_x
+        clr     <pr_frac
+        lda     #PR_STARTPX
+        sta     <pr_px
         lda     #PR_CAD
         sta     <pr_cadctr
         jsr     pr_render
@@ -66,28 +74,39 @@ pr_init:
 *   PR_STEP (the oracle per-cycle position advance). Then render.
 * ===============================================================
 pr_tick:
+        ; --- (a) smooth position: every VBL add PR_PXNUM/PR_PXDEN px ---
+        lda     <pr_frac
+        adda    #PR_PXNUM
+        cmpa    #PR_PXDEN
+        blo     pr_frac_store
+        suba    #PR_PXDEN
+        sta     <pr_frac
+        ; carry one pixel (with wrap)
+        lda     <pr_px
+        inca
+        cmpa    #PR_ENDPX
+        blo     pr_px_store
+        lda     #PR_STARTPX             ; wrap: re-enter from left
+pr_px_store:
+        sta     <pr_px
+        bra     pr_leg_cad
+pr_frac_store:
+        sta     <pr_frac
+        ; --- (b) leg cadence: advance leg every PR_CAD VBLs ---
+pr_leg_cad:
         dec     <pr_cadctr
-        beq     pr_tick_adv
-        rts
-pr_tick_adv:
+        bne     pr_tick_render
         lda     #PR_CAD
         sta     <pr_cadctr
-        ; advance leg index, wrap 4->0
         lda     <pr_leg
         inca
         cmpa    #4
-        blo     pr_tick_store
+        blo     pr_leg_store
         clra                            ; completed 4-frame cycle -> wrap
-        ; --- per-cycle position step (GATE-1: +2 byte-cols) ---
-        ldb     <pr_x
-        addb    #PR_STEP
-        cmpb    #PR_ENDX
-        blo     pr_tick_setx
-        ldb     #PR_STARTX              ; wrap: re-enter from left ($3B free-runs)
-pr_tick_setx:
-        stb     <pr_x
-pr_tick_store:
+pr_leg_store:
         sta     <pr_leg
+        ; --- (c) render EVERY VBL -> continuous motion ---
+pr_tick_render:
         jsr     pr_render
         rts
 
@@ -96,6 +115,24 @@ pr_tick_store:
 *   (body + part6 + leg + part7) via the shared leaf, then present + flip.
 * ===============================================================
 pr_render:
+        ; (0) per-frame registration: the converter trims each leg frame's
+        ;     blank columns independently, so the body sits at body-left
+        ;     [1,0,1,1] px across frames 0-3. Subtract it so EVERY frame's body
+        ;     lands at pr_px (kills the 1px once-per-cycle back-forth hitch).
+        ldx     #pr_leg_align
+        lda     <pr_leg
+        lda     a,x                     ; A = +px to register this frame's torso
+        sta     <pr_tmp
+        lda     <pr_px
+        adda    <pr_tmp                 ; effective px = pr_px + align (torso to ref)
+        ; derive byte col (>>2) + sub-pixel (&3). CoCo3 4px/byte: subbyte 0-3.
+        tfr     a,b
+        andb    #$03
+        stb     <blit_subbyte           ; sub-pixel within byte
+        lsra
+        lsra
+        sta     <pr_x                   ; byte column (traced)
+
         ; (1) dirty-rect: clear a band at (pr_x - PR_CLR_LEFT, PR_BASEROW)
         lda     <pr_x
         suba    #PR_CLR_LEFT
@@ -111,27 +148,13 @@ pr_clr_x_ok:
         sta     <eng_clrh
         jsr     eng_clear_box
 
-        ; (2) composite blits (shared leaf). subbyte=0 (native-integer X).
-        clr     <blit_subbyte
-        ; body $1D00 (idx5) at (pr_x, PR_BASEROW)
-        ldx     #fig_1D00_coco3
-        lda     <pr_x
-        ldb     #PR_BASEROW
-        jsr     HAL_gfx_blit_sprite
-        ; part6 $1CD4 (idx6) at (pr_x, PR_BASEROW)
-        ldx     #fig_1CD4_coco3
-        lda     <pr_x
-        ldb     #PR_BASEROW
-        jsr     HAL_gfx_blit_sprite
-        ; leg (idx1-4) at (pr_x, PR_BASEROW + PR_DY_LEG)
+        ; (2) LEGS-ONLY (AC-5 step 1): the leg frame IS the walking figure
+        ;     (white dress + orange feet). The $1D00/$1CD4/$1CC4 composite
+        ;     parts are deferred until their offsets are tuned with Jay.
+        ;     blit_subbyte (set in step 0) gives smooth 1px horizontal motion.
         jsr     pr_leg_ptr              ; X = leg sprite ptr for pr_leg
         lda     <pr_x
-        ldb     #PR_BASEROW+PR_DY_LEG
-        jsr     HAL_gfx_blit_sprite
-        ; part7 $1CC4 (idx7) at (pr_x, PR_BASEROW + PR_DY_PART7)
-        ldx     #fig_1CC4_coco3
-        lda     <pr_x
-        ldb     #PR_BASEROW+PR_DY_PART7
+        ldb     #PR_BASEROW
         jsr     HAL_gfx_blit_sprite
 
         ; (3) reveal + flip (Option-I double buffer)
@@ -157,3 +180,10 @@ pr_leg_tbl:
         fdb     fig_1D5A_coco3          ; leg 1  ($39=2)
         fdb     fig_1D7E_coco3          ; leg 2  ($39=3)
         fdb     fig_1DA2_coco3          ; leg 3  ($39=4)
+
+* per-frame registration (+px) — added in pr_render so each frame's TORSO lands
+* at the same screen x (ref = frame-0 torso col 5). The converter trimmed each
+* frame's blanks independently -> torso-left was [5,1,2,4]px; offsets = 5-that =
+* [0,4,3,1] re-align the body so only the legs swing (kills the ~4px back-lurch).
+pr_leg_align:
+        fcb     0,4,3,1
