@@ -46,11 +46,12 @@ Converted unlabeled by address (`content/fig_XXXX/`); previews in
 
 ## Rest of scene-5 draws (from the trace)
 
-- **Akuma**: `sprite_98D3/9908/9956/988B` ($9800) + `akuma_throne_room_9EB8` +
-  `akuma_feet_9F8C` ($9B00) — converted (R-engine + cast scale-out).
-  **OPEN (Jay, 2026-06-13): Akuma's legs + feet still missing** from the set —
-  the per-frame poll may have missed them, or they're a separate record. TODO:
-  re-trace / walk $9B00 around $9F8C for the leg/feet sprites.
+- **Akuma** — COMPLETE (Jay-confirmed 2026-06-13): head/gloat
+  `sprite_988B/98D3/9908/9956`+ ($9800, 9 frames) + throne torso
+  `akuma_throne_room_9EB8` + **`akuma_feet_9F8C` = bottom of Akuma's robe + his
+  feet** (legs are under the robe; feet poke out — two feet spread wide, $9B00).
+  Note: `$974B` (43×24, mislabeled `floor_pattern_9743+8`) reads as an
+  outline/negative = a render MASK, not a needed visible sprite.
 - **Eagle**: `sprite_985C` (head) + `eagle_body_9FC4` + `eagle_head_9FD8`.
 - **Cell door**: `sprite_9980` (75×8). **Banner**: `sprite_9a74`.
 - **Floor / background**: `floor_pattern_95E4/964A/96CE/9743` ($8c67) — the big
