@@ -207,8 +207,23 @@ def convert_sprite_to_coco3(apple_ii_bytes, height, apple_width_bytes, start_col
         for c in range(1, width_pixels - 1):
             if src_indices[c] == 0:
                 left = src_indices[c - 1]
-                if left in (1, 2) and left == src_indices[c + 1]:
-                    row_indices[c] = left
+                right = src_indices[c + 1]
+                # INTERIOR ONLY: both neighbours must be ON (non-zero). Never fill
+                # a black with a 0 neighbour, so exterior transparency around the
+                # sprite is preserved and cannot block the floor behind it.
+                if left != 0 and right != 0:
+                    # Fill with the CHROMA (Blue=2 / Orange=1) of whichever neighbour
+                    # is a chroma; a White(3) neighbour yields to the chroma. This
+                    # covers BOTH the solid colour cell (blue-0-blue / orange-0-orange,
+                    # original rule) AND the chroma cell's leading black at a
+                    # white<->chroma boundary — the seam that left solid posts/rails
+                    # like floor_9600 / floor_964A with an unfilled (transparent)
+                    # slit between their white body and blue edge. White-0-white
+                    # (no chroma either side) is left as-is.
+                    if left in (1, 2):
+                        row_indices[c] = left
+                    elif right in (1, 2):
+                        row_indices[c] = right
 
         for byte_idx in range(coco3_width):
             packed = 0
