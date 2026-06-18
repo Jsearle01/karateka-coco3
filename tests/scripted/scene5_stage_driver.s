@@ -48,6 +48,7 @@ FB_B_LO         equ $C000
 * Coord model (design premise): Apple 280px window kept SAME SIZE on CoCo3,
 * CENTERED with 20px borders L/R. So CoCo3 px = Apple px + 20 (1:1 pixels);
 * Apple byte-col c -> CoCo3 px (c*7 + 20) -> byte ((c*7+20)>>2). Rows 1:1.
+RENDER_CELL     equ 1           ; 1 = scene-5 stage TWO (cell, 1a-2); 0 = throne (1a)
 SCENE_XOFF      equ 20          ; left border (px) to center the 280px window in 320
 FLOOR_COL       equ 12          ; Apple $04*7+20=48 -> byte 12
 FLOOR_W         equ 56          ; Apple $24*7+20=272 -> byte 68; width 68-12
@@ -125,10 +126,14 @@ draw_stage:
         sta     <eng_clrh
         clr     <eng_fillval            ; black background
         jsr     eng_clear_box
-        ; (2) floor: consistent horizontal-stripe fill (blue, every other row)
-        ;     across the floor rectangle (byte 12..68, rows 153..182).
+        ; (2) floor + (3) set-dressing — cell (stage two, 1a-2) or throne (1a)
+    ifne RENDER_CELL
+        jsr     draw_cell_floor
+        ldu     #cell_stage_tbl
+    else
         jsr     draw_floor_lines
-        ; (3) gate structures + near-gate floor sprites (floor_971D/floor_9743)
+        ldu     #stage_tbl
+    endc
         jsr     draw_setdressing
         rts
 
@@ -203,8 +208,7 @@ dfl_loop:
 *   (Mirror sprites are placed at the mirror column but NOT yet h-flipped —
 *    flip is a HAL follow-up; flagged for the gate.)
 * ===============================================================
-draw_setdressing:
-        ldu     #stage_tbl
+draw_setdressing:                       ; U = placement table (set by caller)
 ds_loop:
         ldx     ,u++                    ; X = sprite ptr (-> height,width,bitmap)
         cmpx    #0
@@ -398,6 +402,62 @@ stage_tbl:
         fcb     $24,$5F,0,0
         fdb     0                       ; terminator
 
+* ===============================================================
+* CELL stage (scene-5 stage TWO, 1a-2) — from the captured d06 program
+* (docs/project/scene5-cell-draw-program.md). Distinct from the throne.
+* ===============================================================
+* draw_cell_floor — the cell floor STRIP: 0A03 cols4-30 rows159-168 (apple)
+*   = CoCo3 byte12..57, blue ($AA) on alternating rows. (Floor textures
+*   fig_1200/fig_14BE in cell_stage_tbl add the rest.)
+draw_cell_floor:
+        lda     #8                      ; extend left to byte8 to MEET the left doorframe
+        sta     <eng_col                ;   (left post $96CE M); was byte12, leaving the
+        lda     #50                     ;   doorway-base black. byte 8..57.
+        sta     <eng_clrw
+        lda     #1
+        sta     <eng_clrh
+        lda     #$AA
+        sta     <eng_fillval
+        lda     #159
+dcf_loop:
+        sta     <eng_row
+        pshs    a
+        jsr     eng_clear_box
+        puls    a
+        adda    #2
+        cmpa    #169
+        blo     dcf_loop
+        rts
+
+* cell_stage_tbl — captured ORDER (opaque, so order matters), actor excluded.
+* entry: fdb ptr ; fcb apple_x, apple_y, mirror(0/1), opaque(0/1)
+* $96xx are MIRROR (apple_x = the NORMAL x; code reflects to $26-x); the
+* figs are NORMAL at their real x (converted at true-column parity, AC-3).
+cell_stage_tbl:
+        fdb     floor_9600_coco3        ; doorway lintel  M (x$20->$06) y$53
+        fcb     $20,$53,1,1
+        fdb     floor_964A_cell_coco3   ; doorway post    M (x$21->$05) y$5F (clean, no 1a pad)
+        fcb     $21,$5F,1,1
+        fdb     fig_1200_coco3          ; floor texture   N x$08 y$A9  (transparent: opaque
+        fcb     $08,$A9,0,0             ;   black/empty cols would gap the floor on CoCo3)
+        fdb     fig_12C8_coco3          ; bench (right)   N x$1E y$84  (transparent: opaque
+        fcb     $1E,$84,0,0             ;   black left-edge gapped the floor near the bench)
+        fdb     fig_14BE_coco3          ; floor texture   N x$0A y$99  (transparent)
+        fcb     $0A,$99,0,0
+* fig_18BF (wall structure, x$04 y$99) REMOVED — present in the collapse-phase
+* capture but NOT in the Apple II static cell reference (Jay gate 2026-06-18);
+* a collapse-transient, not part of the static backdrop.
+        fdb     floor_96CE_coco3        ; doorway post    M (x$24->$02) y$5F
+        fcb     $24,$5F,1,1
+        fdb     fig_18D0_coco3          ; small element   N x$02 y$A9
+        fcb     $02,$A9,0,1
+* CELL DOOR — a 1b ANIMATION element ($84=5 @ f5235, after walk-in / before
+* turn-around), previewed here in the static stage for Jay's visual check.
+* Drawn LAST (closes the doorway). M (x$22->$04), y$5B, transparent ($0F=00).
+        fdb     door_9980_coco3
+        fcb     $22,$5B,1,0
+        fdb     0                       ; terminator
+
 * --- REAL engine + HAL (single source, by include) ---
         include "../../src/engine/sprite_engine.s"
         include "../../src/hal/coco3-dsk/sys.s"
@@ -412,5 +472,12 @@ stage_tbl:
         include "../../content/floor/floor_96CE/converted.s"
         include "../../content/floor/floor_971D/converted.s"
         include "../../content/floor/floor_9743/converted.s"
+* --- cell (1a-2) set-dressing: floor textures, bench, wall, element ---
+        include "../../content/floor/fig_1200/converted.s"
+        include "../../content/scenery/fig_12C8/converted.s"
+        include "../../content/floor/fig_14BE/converted.s"
+        include "../../content/unsorted/fig_18D0/converted.s"
+        include "../../content/scenery/s5_9980_cell_door/converted.s"
+        include "../../content/floor/floor_964A_cell/converted.s"
 
         end     test_start
