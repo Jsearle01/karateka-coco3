@@ -409,19 +409,37 @@ stage_tbl:
 * draw_cell_floor — the cell floor STRIP: 0A03 cols4-30 rows159-168 (apple)
 *   = CoCo3 byte12..57, blue ($AA) on alternating rows. (Floor textures
 *   fig_1200/fig_14BE in cell_stage_tbl add the rest.)
+* Center strip: byte9..57 solid blue ($AA); byte8 = $2A ([0,2,2,2]) so the
+* LEFT edge has its leftmost pixel removed (1px back from the doorframe).
+* Floor strip byte11..57 ($AA) + 1px of the between-posts SLIVER: byte10=$02
+* ([0,0,0,2], rightmost pixel only, adjacent to the inner post). (Trimming the
+* whole sliver was too much; 1px restored per Jay.)
 draw_cell_floor:
-        lda     #8                      ; extend left to byte8 to MEET the left doorframe
-        sta     <eng_col                ;   (left post $96CE M); was byte12, leaving the
-        lda     #50                     ;   doorway-base black. byte 8..57.
+        lda     #159
+dcf_loop:
+        pshs    a
+        ; main expanse byte11..57 = $AA
+        sta     <eng_row
+        lda     #11
+        sta     <eng_col
+        lda     #47
         sta     <eng_clrw
         lda     #1
         sta     <eng_clrh
         lda     #$AA
         sta     <eng_fillval
-        lda     #159
-dcf_loop:
+        jsr     eng_clear_box
+        ; sliver byte10 = $2A ([0,2,2,2], 3px) — grown 2px leftward from 1px
+        lda     ,s
         sta     <eng_row
-        pshs    a
+        lda     #10
+        sta     <eng_col
+        lda     #1
+        sta     <eng_clrw
+        lda     #1
+        sta     <eng_clrh
+        lda     #$2A
+        sta     <eng_fillval
         jsr     eng_clear_box
         puls    a
         adda    #2
@@ -451,11 +469,8 @@ cell_stage_tbl:
         fcb     $24,$5F,1,1
         fdb     fig_18D0_coco3          ; small element   N x$02 y$A9
         fcb     $02,$A9,0,1
-* CELL DOOR — a 1b ANIMATION element ($84=5 @ f5235, after walk-in / before
-* turn-around), previewed here in the static stage for Jay's visual check.
-* Drawn LAST (closes the doorway). M (x$22->$04), y$5B, transparent ($0F=00).
-        fdb     door_9980_coco3
-        fcb     $22,$5B,1,0
+* CELL DOOR ($9980) NOT in the static stage — 1b animation element ($84=5 @
+* f5235, after walk-in / before turn-around); draw call in scene5-cell-draw-program.md.
         fdb     0                       ; terminator
 
 * --- REAL engine + HAL (single source, by include) ---
@@ -477,7 +492,6 @@ cell_stage_tbl:
         include "../../content/scenery/fig_12C8/converted.s"
         include "../../content/floor/fig_14BE/converted.s"
         include "../../content/unsorted/fig_18D0/converted.s"
-        include "../../content/scenery/s5_9980_cell_door/converted.s"
         include "../../content/floor/floor_964A_cell/converted.s"
 
         end     test_start
