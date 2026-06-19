@@ -49,10 +49,19 @@ PR_POSE_CAD     equ 11          ; turn & collapse cadence — ORACLE-MEASURED (~
 * Demo-loop holds (sandbox watchability). ORACLE VBL values in comments — the
 * scene-5 integration restores those; the per-frame animation CADENCES below
 * (PR_CAD / PR_POSE_CAD / PR_BOW_HOLD) stay oracle-exact.
-PR_TF_DELAY     equ 75          ; demo (oracle $169A/$39=12 = 173 VBLs/~2.9s)
+* PR_TF_DELAY/PR_TURN0_HOLD/PR_BOW_HOLD are ifndef-guarded so a stage driver can
+* swap the demo holds for the ORACLE durations (Gate 2: 173/173/~9, trace-confirmed
+* cell_arc.log). Undefined => the sandbox demo defaults below (watchability).
+    ifndef PR_TF_DELAY
+PR_TF_DELAY     equ 75          ; demo (oracle $169A/$39=0C = 173 VBLs/~2.9s)
+    endc
+    ifndef PR_TURN0_HOLD
 PR_TURN0_HOLD   equ 40          ; demo (oracle 1530/$39=8 = 173 VBLs/~2.9s)
+    endc
 PR_STAND_HOLD   equ 60          ; demo (oracle $1DD7/$39=0 = 383 VBLs/~6.4s)
-PR_BOW_HOLD     equ 30          ; demo-visible (oracle $1867/$39=$13 = 4 VBLs flash)
+    ifndef PR_BOW_HOLD
+PR_BOW_HOLD     equ 30          ; demo-visible (oracle $1867/$39=$13 = ~9 VBLs)
+    endc
 PR_FLOOR_HOLD   equ 60          ; hold collapsed before looping the demo
 * PR_STARTPX/PR_ENDPX/PR_BASEROW/PR_TORSO_ROW/PR_SHADOW_ROW/PR_FLOOR_FILL are
 * ifndef-guarded so a STAGE driver (e.g. the scene-5 throne composite) can
