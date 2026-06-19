@@ -52,6 +52,7 @@ test_start:
         jsr     HAL_time_vbl_wait
         jsr     draw_throne_stage
         jsr     draw_scene5_guard
+        jsr     draw_akuma_static
         jsr     HAL_gfx_present
         lda     <page_register
         eora    #$60
@@ -59,6 +60,7 @@ test_start:
         jsr     HAL_time_vbl_wait
         jsr     draw_throne_stage
         jsr     draw_scene5_guard
+        jsr     draw_akuma_static
         jsr     HAL_gfx_present
         lda     <page_register
         eora    #$60
@@ -78,5 +80,6 @@ hold_loop:
 * --- the gated throne stage module THEN the scene-5 composite (guard) ---
         include "scene5_throne_stage.s"
         include "scene5_composite.s"
+        include "scene5_akuma.s"
 
         end     test_start
