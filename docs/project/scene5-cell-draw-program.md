@@ -66,6 +66,16 @@ NOT appear in the static cell backdrop. Excluding it here is correct (Jay gate).
 This draw call is recorded for 1b. (Earlier mis-attributions putting `$9980`
 in the static stage — static-read in 1a — are wrong: it's a timed event.)
 
+## 1b §0 pre-flight (D) — throne→cell transition trigger CONFIRMED (2026-06-18)
+Traced the first scene_2 (`$7806`, the cell backdrop) fire (tools/probe_transition.do):
+`TRANS 3B=04 3D=01 84=00 39=01 3A=05 3C=06 8F=06`. The backdrop switches
+throne→cell at **`$3B=$04`** (`$3D=$01`) — the phase-1→phase-2 boundary
+(`$3B` resets `$22`→`$04`, f4905); scene_2 does not fire before this. The
+**DOOR is NOT the trigger** (`$84=00` at the switch; door `$84=5` is the
+separate f5235 beat). So 1b wires the transition to `$3B=$04`, not the door.
+Princess at the switch: `$39=01,$3A=05` (mid-walk) — must stay continuous
+across the switch (P3). HS-0 satisfied. Evidence: `C:\karateka-capture\trans.log`.
+
 Trace evidence: `C:\karateka-capture\cell.log` (probe_cell.do, f≈4905);
 `poll_door.log` + `doordraw.log` (the door event, f5235).
 Reference image: `build/logs/snapshots/scene5_ref/apple_cell_page1.png`
