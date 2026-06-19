@@ -54,14 +54,26 @@ PR_TURN0_HOLD   equ 40          ; demo (oracle 1530/$39=8 = 173 VBLs/~2.9s)
 PR_STAND_HOLD   equ 60          ; demo (oracle $1DD7/$39=0 = 383 VBLs/~6.4s)
 PR_BOW_HOLD     equ 30          ; demo-visible (oracle $1867/$39=$13 = 4 VBLs flash)
 PR_FLOOR_HOLD   equ 60          ; hold collapsed before looping the demo
+* PR_STARTPX/PR_ENDPX/PR_BASEROW/PR_TORSO_ROW/PR_SHADOW_ROW/PR_FLOOR_FILL are
+* ifndef-guarded so a STAGE driver (e.g. the scene-5 throne composite) can
+* override them BEFORE the include to place her on a real floor with a
+* real-backdrop restore. Undefined => the sandbox defaults below (unchanged).
+    ifndef PR_STARTPX
 PR_STARTPX      equ 8           ; walk start (px)
+    endc
+    ifndef PR_ENDPX
 PR_ENDPX        equ 220         ; walk-loop wrap (re-enter from left)
+    endc
 PR_CHAIN_BOWPX  equ 36          ; chain: walk this far, then BOW->turn (short demo walk)
 PR_DEMO_CX      equ 56          ; turn/fall demo: stationary center (px)
 PR_PXNUM        equ 2           ; walk speed = 2/13 px/VBL = 8px/cycle (oracle)
 PR_PXDEN        equ 13
+    ifndef PR_BASEROW
 PR_BASEROW      equ 60          ; walk: leg top row
+    endc
+    ifndef PR_TORSO_ROW
 PR_TORSO_ROW    equ 34          ; walk: torso top row
+    endc
 PR_TORSO_DX     equ 3           ; walk: torso centroid align (+px)
 PR_FLOOR_ROW    equ 78          ; FALL bottom-align reference (base stays on floor)
 PR_POSE_TOP     equ 34          ; TURN top-align row (43-row figures -> feet at floor)
@@ -70,11 +82,15 @@ PR_CLR_W        equ 24          ; dirty-rect width (figure + leading shadow)
 PR_CLR_H        equ 46          ; walk dirty-rect height
 PR_POSE_ROW     equ 28          ; pose dirty-rect top (covers 43-row figures)
 PR_POSE_H       equ 54          ; pose dirty-rect height (rows 28..~80)
+    ifndef PR_SHADOW_ROW
 PR_SHADOW_ROW   equ 76
+    endc
 PR_SHADOW_LEADPX equ 12
 PR_SHADOW_W     equ 13
 PR_SHADOW_H     equ 2
+    ifndef PR_FLOOR_FILL
 PR_FLOOR_FILL   equ $AA         ; sandbox floor = index-2 (blue); index-0 = black (shadow)
+    endc
 
 * ===============================================================
 * pr_set_state — A = entry state. Two driver entries:
@@ -331,9 +347,16 @@ pr_w_clrok:
         sta     <eng_clrw
         lda     #PR_CLR_H
         sta     <eng_clrh
+        ; dirty-rect restore: a STAGE driver supplies pr_throne_restore (real
+        ; backdrop: black above the floor + floor stripes on it). Sandbox =
+        ; flat PR_FLOOR_FILL. eng_col/row/clrw/clrh are set above.
+    ifdef PR_THRONE_RESTORE
+        jsr     pr_throne_restore
+    else
         lda     #PR_FLOOR_FILL
         sta     <eng_fillval
         jsr     eng_clear_box
+    endc
         jsr     pr_draw_shadow
         ; torso $1D00
         lda     <pr_px
@@ -354,6 +377,11 @@ pr_w_clrok:
         jsr     pr_leg_ptr
         puls    a
         jsr     HAL_gfx_blit_sprite
+        ; STAGE overlay: re-render foreground the figure/shadow may have drawn
+        ; over (e.g. a doorway post occludes her shadow). Sandbox = none.
+    ifdef PR_THRONE_RESTORE
+        jsr     pr_post_overlay
+    endc
         jmp     pr_flip
 
 * ===============================================================
