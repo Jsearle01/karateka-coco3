@@ -87,9 +87,26 @@ cell_stage_tbl:
         fcb     $02,$A9,0,1
         fdb     0                       ; terminator
 
+* ===============================================================
+* draw_cell_door — the cell stage WITH the door ($9980) composited in. The door
+*   is the 1b ANIMATION beat (appears at the turn trigger, f5235 / $84=5); it is
+*   NOT in the static backdrop. Drawn as a MIRROR sprite (apple_x=$22 -> the left
+*   doorway), y=$5B(91), transparent ($0F=0). [scene5-cell-draw-program.md]
+* ===============================================================
+draw_cell_door:
+        jsr     draw_cell_stage
+        ldu     #cell_door_tbl
+        jsr     draw_setdressing
+        rts
+cell_door_tbl:
+        fdb     door_9980_coco3
+        fcb     $22,$5B,1,0             ; mirror, transparent
+        fdb     0
+
 * --- CELL-unique content (floor_9600 / floor_96CE come from the throne module) ---
         include "../../content/floor/floor_964A_cell/converted.s"
         include "../../content/floor/fig_1200/converted.s"
         include "../../content/scenery/fig_12C8/converted.s"
         include "../../content/floor/fig_14BE/converted.s"
         include "../../content/unsorted/fig_18D0/converted.s"
+        include "../../content/scenery/s5_9980_cell_door/converted.s"

@@ -26,10 +26,15 @@ PR_SHADOW_ROW   equ 161
 PR_STARTPX      equ 80          ; throne start (as Gate 1) — walks $15->$22 (~px184)
 PR_ENDPX        equ 240         ; no walk-loop wrap before the arc completes
 PR_THRONE_RESTORE equ 1         ; clean-buffer restore + post-overlay (Gate 1)
-* oracle collapse holds (HS-1) — swap the controller's demo PR_*_HOLD (Milestone B)
+* oracle collapse holds (HS-1) — swap the controller's demo PR_*_HOLD
 PR_TURN0_HOLD   equ 173         ; $39=8  (1530) facing — oracle 173f
 PR_TF_DELAY     equ 173         ; $39=0C (169A) facing-left — oracle 173f
 PR_BOW_HOLD     equ 9           ; $39=13 (1867) bow — oracle ~9f
+PR_FLOOR_HOLD   equ 32000       ; HALT collapsed (no demo loop) for the gate window
+* turn/collapse poses on the CELL floor (+85, matching the walk Y)
+PR_POSE_TOP     equ 119         ; 34 + 85 (TURN top-align)
+PR_FLOOR_ROW    equ 163         ; 78 + 85 (FALL bottom-align ref = feet on cell floor)
+PR_POSE_ROW     equ 113         ; 28 + 85 (pose dirty-rect top)
 
         org     $0100
         rti
@@ -162,7 +167,7 @@ g2_cell:
         sta     <scene_clk
         cmpa    #CLK_CELL_TRIG
         bne     g2_next                 ; reached $0D (+ walk-complete)?
-        jsr     g2_do_stop              ; Milestone A: finish walk-in, STOP
+        jsr     g2_do_collapse          ; door appears + turn/bow/collapse fire (co-trigger)
 g2_next:
         bra     gate2_loop
 
@@ -229,15 +234,49 @@ g2sc_loop:
         blo     g2sc_loop
         rts
 
-* g2_do_stop — Milestone A: she has finished walking in (clock $0D + walk-complete);
-*   stop her in the rest STAND ($1DD7) pose. (Milestone B fires the collapse here.)
-g2_do_stop:
-        lda     #STATE_STAND
+* g2_do_collapse — clock $0D + walk-complete: the DOOR appears AND the turn fires
+*   (co-trigger, GATE D2). (1) re-render the cell WITH the door to both buffers +
+*   re-snapshot the clean buffer (so the restore preserves the door through the
+*   collapse), preserving the princess walk state; (2) kick the controller chain
+*   BOW -> TURN(173) -> 169A(173) -> FALL -> halt collapsed (PR_FLOOR_HOLD long).
+g2_do_collapse:
+        ; save princess state ($43-$4F)
+        ldx     #$43
+        ldy     #g2_save
+        ldb     #13
+dc_save:
+        lda     ,x+
+        sta     ,y+
+        decb
+        bne     dc_save
+        ; render cell + DOOR to both buffers
+        jsr     HAL_time_vbl_wait
+        jsr     draw_cell_door
+        jsr     HAL_gfx_present
+        lda     <page_register
+        eora    #$60
+        sta     <page_register
+        jsr     HAL_time_vbl_wait
+        jsr     draw_cell_door
+        jsr     HAL_gfx_present
+        lda     <page_register
+        eora    #$60
+        sta     <page_register
+        jsr     g2_snapshot_clean       ; clean = cell + door
+        ; restore princess state
+        ldx     #g2_save
+        ldy     #$43
+        ldb     #13
+dc_rest:
+        lda     ,x+
+        sta     ,y+
+        decb
+        bne     dc_rest
+        ; kick the collapse chain (BOW first, per the controller chain order)
+        lda     #STATE_BOW
         sta     <pr_state
-        lda     #4
-        sta     <pr_leg                 ; $1DD7 rest legs
-        ldd     #$FFFF
-        std     <pr_holdctr             ; hold (gate window)
+        ldd     #PR_BOW_HOLD
+        std     <pr_holdctr
         clr     <pr_shadow_lead
         rts
 

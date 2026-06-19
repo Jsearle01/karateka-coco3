@@ -15,7 +15,7 @@ local function load(p) local f=io.open(p,"rb"); if not f then return end
       for j=0,n-1 do mem:write_u8(a+j,string.byte(d,i+5+j)) end i=i+5+n
     elseif t==0xFF then ex=string.byte(d,i+3)*256+string.byte(d,i+4); break else break end end
   return ex end
-local SNAPS={ {600,false},{1600,false},{2200,false},{2900,false},{3300,false} }
+local SNAPS={ {600,false},{2200,false},{3120,false},{3380,false},{3780,false},{4060,false} }
 local st="wait"; local f0; local pkey
 _G._g2=emu.add_machine_frame_notifier(function()
   local f=scr:frame_number()
@@ -34,5 +34,5 @@ _G._g2=emu.add_machine_frame_notifier(function()
       pcall(function() scr:snapshot() end)
       log(string.format("  SNAP rel=%d CLK=%02X phase=%d state=%d px=%d",rel,c,ph,s,mem:read_u8(PX)))
     end end
-  if rel>=3400 then log("[g2] done"); logf:close(); manager.machine:exit() end
+  if rel>=4200 then log("[g2] done"); logf:close(); manager.machine:exit() end
 end)

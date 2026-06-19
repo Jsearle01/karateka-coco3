@@ -62,7 +62,10 @@ PR_STAND_HOLD   equ 60          ; demo (oracle $1DD7/$39=0 = 383 VBLs/~6.4s)
     ifndef PR_BOW_HOLD
 PR_BOW_HOLD     equ 30          ; demo-visible (oracle $1867/$39=$13 = ~9 VBLs)
     endc
-PR_FLOOR_HOLD   equ 60          ; hold collapsed before looping the demo
+    ifndef PR_FLOOR_HOLD
+PR_FLOOR_HOLD   equ 60          ; hold collapsed before looping the demo (stage driver
+                                ;   overrides to a long hold = HALT collapsed, no loop)
+    endc
 * PR_STARTPX/PR_ENDPX/PR_BASEROW/PR_TORSO_ROW/PR_SHADOW_ROW/PR_FLOOR_FILL are
 * ifndef-guarded so a STAGE driver (e.g. the scene-5 throne composite) can
 * override them BEFORE the include to place her on a real floor with a
@@ -84,12 +87,20 @@ PR_BASEROW      equ 60          ; walk: leg top row
 PR_TORSO_ROW    equ 34          ; walk: torso top row
     endc
 PR_TORSO_DX     equ 3           ; walk: torso centroid align (+px)
+* PR_FLOOR_ROW/PR_POSE_TOP/PR_POSE_ROW ifndef-guarded so a stage driver places
+* the turn/collapse poses on a real floor (Gate 2 cell: +85, matching the walk).
+    ifndef PR_FLOOR_ROW
 PR_FLOOR_ROW    equ 78          ; FALL bottom-align reference (base stays on floor)
+    endc
+    ifndef PR_POSE_TOP
 PR_POSE_TOP     equ 34          ; TURN top-align row (43-row figures -> feet at floor)
+    endc
 PR_CLR_LEFT     equ 4
 PR_CLR_W        equ 24          ; dirty-rect width (figure + leading shadow)
 PR_CLR_H        equ 46          ; walk dirty-rect height
+    ifndef PR_POSE_ROW
 PR_POSE_ROW     equ 28          ; pose dirty-rect top (covers 43-row figures)
+    endc
 PR_POSE_H       equ 54          ; pose dirty-rect height (rows 28..~80)
     ifndef PR_SHADOW_ROW
 PR_SHADOW_ROW   equ 76
@@ -414,9 +425,15 @@ pr_p_clrok:
         sta     <eng_clrw
         lda     #PR_POSE_H
         sta     <eng_clrh
+        ; dirty-rect restore (same hook as pr_render_walk): a stage driver
+        ; supplies pr_throne_restore (real backdrop); sandbox = flat fill.
+    ifdef PR_THRONE_RESTORE
+        jsr     pr_throne_restore
+    else
         lda     #PR_FLOOR_FILL
         sta     <eng_fillval
         jsr     eng_clear_box
+    endc
         ; Shadow (oracle draw_princess_frame, idx7 $1CC4): TURN draws it; FALL
         ; draws it for frames 0,1 ($16CC/$175E) only — $17D3/$1829 ($39 $11/$12)
         ; branch early in the oracle = NO shadow (she's hit the floor).
@@ -460,7 +477,17 @@ pr_p_noshadow:
         sta     <eng_clrw
         lda     #16
         sta     <eng_clrh               ; = 169A height (no over-clear / cut)
+        ; clear to the BACKDROP, not a leftover fill: on a stage that is the real
+        ; backdrop (black above the cell floor) via the clean copy — else flat fill.
+        ; (Sandbox bg is flat $AA so the old leftover-fill clear was invisible;
+        ;  over the cell's black bg it showed as blue bars around her head.)
+    ifdef PR_THRONE_RESTORE
+        jsr     pr_throne_restore
+    else
+        lda     #PR_FLOOR_FILL
+        sta     <eng_fillval
         jsr     eng_clear_box
+    endc
 pr_p_nobase:
         jsr     pr_pose_ptr             ; X = frame ptr, pr_tmp = signed X align
         lda     <pr_px
