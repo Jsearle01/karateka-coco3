@@ -700,6 +700,181 @@ blit_out_of_bounds:
         rts
 
 * ---------------------------------------------------------------
+* HAL_gfx_blit_sprite_mixed — per-REGION mixed-opacity blit (ADDITIVE).
+*   Splits a sprite into byte-COLUMN runs; each run is blitted OPAQUE (index-0
+*   stored solid) or TRANSPARENT (index-0 keyed) per a descriptor. It WRAPS the
+*   existing transparent + opaque blits — their optimized loops are UNCHANGED,
+*   so every existing caller stays byte-identical. Reusable: any sprite with
+*   region-separable opacity supplies its own run descriptor. NO pixel-format
+*   change (2bpp preserved) — the opacity lives in the descriptor, not the data.
+*
+* Args: X = sprite (height,width,bitmap); A = dest byte col; B = dest row;
+*       blit_subbyte ($0C) set; U = descriptor ptr.
+* Descriptor: repeating RECTANGLE entries
+*       fcb start_col, width, start_row, num_rows, opaque(0=transp,1=opaque)
+*       terminated by a width byte of 0. (Row-bands, column-runs, or cells.)
+* Per region: extract the rectangle [start_col..+width) x [start_row..+num_rows)
+*       to MIX_SCRATCH, then blit via the existing leaf at dest
+*       (A+start_col, B+start_row), same sub-byte.
+* Uses mix_* ZP ($14-$20) which the inner blits do not touch; blit_subbyte
+*       persists across regions (the blits read it, never write it).
+* ---------------------------------------------------------------
+mix_col         equ $14
+mix_row         equ $15
+mix_desc        equ $16                 ; 16-bit descriptor ptr
+mix_data        equ $18                 ; 16-bit source bitmap ptr
+mix_w           equ $1A                 ; source row stride (sprite width)
+mix_sc          equ $1B                 ; region start_col
+mix_rw          equ $1C                 ; region width
+mix_sr          equ $1D                 ; region start_row
+mix_nr          equ $1E                 ; region num_rows
+mix_op          equ $1F                 ; region opacity
+MIX_SCRATCH     equ $3E00               ; extracted sub-sprite scratch (free RAM; below FLIP_BUF)
+
+HAL_gfx_blit_sprite_mixed:
+        sta     <mix_col
+        stb     <mix_row
+        stu     <mix_desc
+        leax    1,x                     ; skip height byte
+        lda     ,x+                     ; width
+        sta     <mix_w
+        stx     <mix_data               ; X -> source bitmap
+mix_run:
+        ldu     <mix_desc
+        lda     ,u                      ; start_col
+        sta     <mix_sc
+        ldb     1,u                     ; width
+        bne     mix_have
+        rts                             ; width 0 -> done
+mix_have:
+        stb     <mix_rw
+        lda     2,u                     ; start_row
+        sta     <mix_sr
+        lda     3,u                     ; num_rows
+        sta     <mix_nr
+        lda     4,u                     ; opacity
+        sta     <mix_op
+        leau    5,u
+        stu     <mix_desc
+        ; build sub-sprite header (num_rows, width) at MIX_SCRATCH
+        ldx     #MIX_SCRATCH
+        lda     <mix_nr
+        sta     ,x+
+        lda     <mix_rw
+        sta     ,x+                     ; X -> scratch data
+        ; Y = mix_data + start_row*width + start_col
+        lda     <mix_sr
+        ldb     <mix_w
+        mul                             ; D = start_row * width
+        addd    <mix_data
+        addb    <mix_sc
+        adca    #0
+        tfr     d,y                     ; Y = rectangle top-left source byte
+        lda     <mix_nr                 ; row counter
+mix_erow:
+        pshs    a
+        ldb     <mix_rw
+mix_ebyte:
+        lda     ,y+
+        sta     ,x+
+        decb
+        bne     mix_ebyte
+        ldb     <mix_w                  ; skip to next row's region start: Y += (w - rw)
+        subb    <mix_rw
+        leay    b,y
+        puls    a
+        deca
+        bne     mix_erow
+        ; blit the extracted rectangle via the existing leaf at (col+sc, row+sr)
+        ldx     #MIX_SCRATCH
+        lda     <mix_row
+        adda    <mix_sr
+        pshs    a                       ; dest row
+        lda     <mix_col
+        adda    <mix_sc                 ; A = dest col
+        ldb     ,s+                     ; B = dest row
+        tst     <mix_op
+        bne     mix_blit_op
+        jsr     HAL_gfx_blit_sprite     ; transparent region
+        bra     mix_run
+mix_blit_op:
+        jsr     HAL_gfx_blit_sprite_opaque  ; opaque region
+        bra     mix_run
+
+* ---------------------------------------------------------------
+* HAL_gfx_blit_sprite_masked — opaque blit with a per-COLUMN POSITIONAL mask
+*   (ADDITIVE, sub-byte precision, NO format change). Where the existing mixed
+*   blit splits opacity at BYTE boundaries, this splits it at the PIXEL within a
+*   byte: each source byte is merged with the caller's mask byte for that column
+*   via the SAME engine the transparent/opaque blits use — result =
+*   (dest AND ~mask) OR source. mask bit-pair = 11 -> take source (opaque),
+*   00 -> keep dest (transparent). So a column can be opaque on some pixels and
+*   transparent on others (e.g. trim a 1px edge off an otherwise-solid byte).
+*
+*   Like the transparent blit, kept-dest (mask=00) pixels rely on source being
+*   index-0 there (the OR contributes 0) — true for black edges/keying.
+*
+* Args: X = sprite (height,width,bitmap); A = dest byte col; B = dest row;
+*       U = mask array ptr (one mask byte per source column, width bytes).
+* BYTE-ALIGNED ONLY (no sub-byte shift) — the feet use blit_subbyte=0.
+* Reuses blit_height/width/col/row/tmp + mix_data ($18) for the mask base.
+* Preserves nothing extra; clobbers A,B,X,Y,U,CC. Bounds-checked like the others.
+* ---------------------------------------------------------------
+emask_ptr       equ mix_data            ; reuse $18 (16-bit) — disjoint from a mixed-blit call
+HAL_gfx_blit_sprite_masked:
+        stu     <emask_ptr              ; mask array base (reloaded per row)
+        sta     <blit_col
+        stb     <blit_row
+        lda     ,x+                     ; height
+        sta     <blit_height
+        lda     ,x+                     ; width
+        sta     <blit_width
+        lda     <blit_col               ; bounds: col+width <= 80
+        adda    <blit_width
+        bcs     emask_oob
+        cmpa    #81
+        bhs     emask_oob
+        lda     <blit_row               ; bounds: row+height <= 192
+        adda    <blit_height
+        bcs     emask_oob
+        cmpa    #193
+        bhs     emask_oob
+        lda     <page_register
+        cmpa    #PAGE_A_TOKEN
+        beq     emask_base_a
+        ldy     #GFX_FB_B_BASE
+        bra     emask_got_base
+emask_base_a:
+        ldy     #GFX_FB_A_BASE
+emask_got_base:
+        lda     #80
+        ldb     <blit_row
+        mul
+        leay    d,y                     ; Y = base + row*80
+        ldb     <blit_col
+        leay    b,y                     ; Y = dest top-left
+emask_row:
+        ldu     <emask_ptr              ; U = mask array (reset each row)
+        ldb     <blit_width
+emask_byte:
+        lda     ,x+                     ; source byte
+        sta     <blit_tmp               ; stash source
+        lda     ,u+                     ; positional mask for this column
+        coma                            ; ~mask
+        anda    ,y                      ; dest AND ~mask  (keep dest where mask=00)
+        ora     <blit_tmp               ; OR source       (take source where mask=11)
+        sta     ,y+                     ; write, advance
+        decb
+        bne     emask_byte
+        ldb     #80
+        subb    <blit_width
+        leay    b,y                     ; next row
+        dec     <blit_height
+        bne     emask_row
+emask_oob:
+        rts
+
+* ---------------------------------------------------------------
 * HAL_gfx_blit_scroll  [R-p26 — full-region scroll blit]
 *
 * Like HAL_gfx_blit_sprite, but targets a 16-bit physical row (0-391)
