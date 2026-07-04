@@ -99,7 +99,8 @@ test_start:
         jsr     HAL_time_vbl_wait
         jsr     draw_throne_stage       ; NOTE: this writes sc_mir ($42) = scene_clk
         jsr     draw_scene5_guard       ; STATIC guard at the left doorway (into CLEAN_BUF too)
-        ldx     #$8000                  ; snapshot the PRISTINE THRONE+GUARD -> CLEAN_BUF
+        jsr     draw_scene5_eagle_body  ; STATIC eagle body on Akuma's shoulder (into CLEAN_BUF too)
+        ldx     #$8000                  ; snapshot the PRISTINE THRONE+GUARD+EAGLE-BODY -> CLEAN_BUF
         ldy     #CLEAN_BUF              ;   (throne only: she restores to it, walks
 ak_snapcpy:                             ;    the floor; Akuma is drawn OVER her each
         ldd     ,x++                    ;    frame so he always occludes her)
@@ -117,6 +118,7 @@ ak_snapcpy:                             ;    the floor; Akuma is drawn OVER her 
         jsr     HAL_time_vbl_wait
         jsr     draw_throne_stage
         jsr     draw_scene5_guard       ; STATIC guard at the left doorway (buffer B)
+        jsr     draw_scene5_eagle_body  ; STATIC eagle body (buffer B)
         lda     #CLK_PHASE1_START       ; re-set (throne render clobbered $42)
         sta     <scene_clk
         jsr     draw_akuma_full
@@ -187,6 +189,8 @@ pr_post_overlay:
         jsr     restore_right_doorway   ; redraw the doorway posts OVER her leading shadow
         jsr     punch_akuma_stencil     ; occlude her behind Akuma's EXACT figure (fig_974B
         jsr     draw_akuma_full         ;   silhouette), THEN paint his colors over it. She
+        jsr     draw_scene5_eagle_body  ; eagle OVER the princess (she was overwriting the static body)
+        jsr     draw_scene5_eagle_head  ; perched eagle: one-shot head-swap 9FD8->985C
         rts                             ;   shows through his gaps; not a rectangle.
 
 * restore_right_doorway — her wide leading shadow (opaque black, rows 161-162)
