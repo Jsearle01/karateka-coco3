@@ -74,6 +74,10 @@ lwasm --decb -o tests/scripted/scene5_akuma_ctrl.bin tests/scripted/scene5_akuma
 if errorlevel 1 goto :error
 call :size tests/scripted/scene5_akuma_ctrl.bin
 
+lwasm --decb -o tests/scripted/scene5_e2e.bin tests/scripted/scene5_e2e_driver.s
+if errorlevel 1 goto :error
+call :size tests/scripted/scene5_e2e.bin
+
 echo === BUILD COMPLETE ===
 exit /b 0
 
