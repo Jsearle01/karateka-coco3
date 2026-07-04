@@ -245,8 +245,11 @@ boot:
         jsr     scene4_scroll
         bcs     scene1_input_break      ; press during scroll → "pressed" early break
 
-* Reached the scene-4 → scene-5 cut ($B7DB). Scene 5 = R-p27+.
-        bra     boot_halt
+* Reached the scene-4 → scene-5 cut ($B7DB). Scene 5 (R-p27+): the continuous
+* throne → transition → cell → collapse arc (scene5_run, tests/scripted/
+* scene5_e2e_driver.s appended to the prod build). draw_throne_stage self-clears
+* both buffers at the seam. scene5_run never returns (halts collapsed).
+        jmp     scene5_run
 
 * Input detected during any hold (= LB7DE): set the game-start flags, then
 * show the shared "pressed" screen. The real game-start consumer is STUBBED

@@ -40,6 +40,9 @@ PR_POSE_TOP     equ 119
 PR_FLOOR_ROW    equ 163
 PR_POSE_ROW     equ 113
 
+* SCENE5_STANDALONE (lwasm -D) = the sandbox build (own boot + HAL + globals).
+* PROD boot include has none of that (boot.s owns it) — only scene5_run + the arc.
+    ifdef SCENE5_STANDALONE
         org     $0100
         rti
         nop
@@ -64,6 +67,7 @@ PR_POSE_ROW     equ 113
         setdp   0
 
         include "../../src/engine/globals.s"
+    endc
 
 scene_clk       equ $42                 ; canonical $3B-analog (princess writes, Akuma reads)
 g1_prevleg      equ $3C
@@ -77,9 +81,14 @@ CLK_CELL_START  equ $04
 CLK_CELL_TRIG   equ $0D                 ; cell: collapse fires at $3B>=$0D AND walk-complete
 CELL_ENTRY_PX   equ 36                  ; cell: she re-enters in the doorway, walks inward
 G2_STAND_VBL    equ 60                  ; short pre-walk stand (Jay: oracle 383 too slow to watch)
-CLEAN_BUF       equ $4400               ; clean backdrop snapshot (re-taken at each stage switch)
+* CLEAN_BUF/FLIP_BUF relocated BELOW the framebuffers ($8000) so scene 5 coexists
+* with the PROD boot image (code grew to ~$483A; the old $4000/$4400 scratch
+* collided with it). CLEAN holds rows 0-167 (13440 B; max restore row = 166 =
+* PR_POSE_ROW 113 + PR_POSE_H 54). FLIP_BUF at $7E80 (biggest mirrored sprite 327 B).
+CLEAN_BUF       equ $4A00               ; clean backdrop snapshot (rows 0-167, ends $7E80)
 
-test_start:
+    ifdef SCENE5_STANDALONE
+test_start:                             ; sandbox entry: boot + HAL init, then the arc
         orcc    #$50
         lds     #$01FF
         clra
@@ -90,7 +99,13 @@ test_start:
         lda     #$00
         jsr     HAL_gfx_init
         jsr     HAL_input_init
+        jmp     scene5_run
+    endc
 
+* scene5_run — the callable scene-5 arc (PROD entry: boot.s jsr's here at the
+*   scene-4->scene-5 seam, HAL already inited). Never returns (halts collapsed).
+*   draw_throne_stage self-clears both buffers, so the seam needs no extra clear.
+scene5_run:
         lda     #PAGE_A_TOKEN
         sta     <page_register
         andcc   #$EF
@@ -285,14 +300,16 @@ dc_rest:
 
 g2_save:        rmb     16              ; saved princess state across a stage switch
 
-* g2_snapshot_clean — buffer A ($8000) -> CLEAN_BUF (15360 bytes $8000..$BC00).
+* g2_snapshot_clean — buffer A ($8000) -> CLEAN_BUF (rows 0-167 = 13440 B,
+*   $8000..$B480). Only the actor band (max restore row 166) is needed; the tail
+*   rows 168-191 are never restored, so trimming them lets CLEAN fit below $8000.
 g2_snapshot_clean:
         ldx     #$8000
         ldy     #CLEAN_BUF
 g2sc_loop:
         ldd     ,x++
         std     ,y++
-        cmpx    #$BC00
+        cmpx    #$B480
         blo     g2sc_loop
         rts
 
@@ -384,14 +401,17 @@ pcc_byte:
         bne     pcc_row
         rts
 
-* --- REAL engine + controller + HAL (single source, by include) ---
+* --- engine + controller (prod lacks these — always included here) ---
         include "../../src/engine/sprite_engine.s"
         include "../../src/engine/princess_controller.s"
+* --- HAL: sandbox only (prod already links it) ---
+    ifdef SCENE5_STANDALONE
         include "../../src/hal/coco3-dsk/sys.s"
         include "../../src/hal/coco3-dsk/irq_vbl.s"
         include "../../src/hal/coco3-dsk/gfx.s"
         include "../../src/hal/coco3-dsk/time.s"
         include "../../src/hal/coco3-dsk/input.s"
+    endc
 
 * --- throne stage (shared draw_setdressing/make_flipped/ZP) THEN the actors THEN cell ---
         include "scene5_throne_stage.s"
@@ -418,4 +438,6 @@ pcc_byte:
         include "../../content/princess/fig_1DD7/converted.s"
         include "../../content/princess/fig_1867/converted.s"
 
+    ifdef SCENE5_STANDALONE
         end     test_start
+    endc

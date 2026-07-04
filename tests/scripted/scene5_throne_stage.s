@@ -28,7 +28,9 @@ sc_ax           equ $47         ; current entry apple_x
 sc_npx          equ $48         ; 16-bit: normal CoCo3 px (for mirror reflection)
 sc_opq          equ $4F         ; per-entry opaque flag (0=transparent,1=opaque)
 sc_pad          equ $51         ; leading transparent pad bytes (964A=1); $50=page_register
-FLIP_BUF        equ $4000       ; scratch for horizontally-flipped sprite (mirror)
+FLIP_BUF        equ $7E80       ; scratch for horizontally-flipped sprite (mirror; below $8000,
+                                ; relocated from $4000 so it clears the PROD boot code — see
+                                ; scene5_e2e_driver.s CLEAN_BUF note. Biggest mirrored sprite 327 B.
 
 * ===============================================================
 * draw_throne_stage — paint the static throne-room stage to the back buffer.
