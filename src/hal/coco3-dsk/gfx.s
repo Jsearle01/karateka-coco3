@@ -875,6 +875,65 @@ emask_oob:
         rts
 
 * ---------------------------------------------------------------
+* HAL_gfx_blit_stencil_punch — punch a per-PIXEL 2D silhouette to black.
+*   (ADDITIVE.) Unlike HAL_gfx_blit_sprite_masked (per-COLUMN mask, reset each
+*   row), this walks a FULL 2D mask (width*height bytes, advancing continuously)
+*   and writes: dest = dest AND ~mask. Mask bit-pair 11 -> force pixel black
+*   (occlude), 00 -> keep dest. Used to occlude a moving actor behind Akuma's
+*   exact figure silhouette (mask from fig_974B: 11=figure, 00=surround+gaps),
+*   trimmed to his shape (not a rectangle) incl. the interior armpit gaps.
+* Args: X = stencil (height,width,maskbytes); A = dest byte col; B = dest row.
+* BYTE-ALIGNED. Bounds-checked like the others. Clobbers A,B,X,Y,CC.
+* ---------------------------------------------------------------
+HAL_gfx_blit_stencil_punch:
+        sta     <blit_col
+        stb     <blit_row
+        lda     ,x+                     ; height
+        sta     <blit_height
+        lda     ,x+                     ; width
+        sta     <blit_width
+        lda     <blit_col               ; bounds: col+width <= 80
+        adda    <blit_width
+        bcs     epun_oob
+        cmpa    #81
+        bhs     epun_oob
+        lda     <blit_row               ; bounds: row+height <= 192
+        adda    <blit_height
+        bcs     epun_oob
+        cmpa    #193
+        bhs     epun_oob
+        lda     <page_register
+        cmpa    #PAGE_A_TOKEN
+        beq     epun_base_a
+        ldy     #GFX_FB_B_BASE
+        bra     epun_got_base
+epun_base_a:
+        ldy     #GFX_FB_A_BASE
+epun_got_base:
+        lda     #80
+        ldb     <blit_row
+        mul
+        leay    d,y                     ; Y = base + row*80
+        ldb     <blit_col
+        leay    b,y                     ; Y = dest top-left
+epun_row:
+        ldb     <blit_width
+epun_byte:
+        lda     ,x+                     ; 2D mask byte (advances continuously)
+        coma                            ; ~mask
+        anda    ,y                      ; dest AND ~mask  (11 -> black, 00 -> keep)
+        sta     ,y+
+        decb
+        bne     epun_byte
+        ldb     #80
+        subb    <blit_width
+        leay    b,y                     ; next row
+        dec     <blit_height
+        bne     epun_row
+epun_oob:
+        rts
+
+* ---------------------------------------------------------------
 * HAL_gfx_blit_scroll  [R-p26 — full-region scroll blit]
 *
 * Like HAL_gfx_blit_sprite, but targets a 16-bit physical row (0-391)

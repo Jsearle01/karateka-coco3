@@ -70,6 +70,10 @@ lwasm --decb -o tests/scripted/vbl_irq_test_driver.bin tests/scripted/vbl_irq_te
 if errorlevel 1 goto :error
 call :size tests/scripted/vbl_irq_test_driver.bin
 
+lwasm --decb -o tests/scripted/scene5_akuma_ctrl.bin tests/scripted/scene5_akuma_ctrl_driver.s
+if errorlevel 1 goto :error
+call :size tests/scripted/scene5_akuma_ctrl.bin
+
 echo === BUILD COMPLETE ===
 exit /b 0
 

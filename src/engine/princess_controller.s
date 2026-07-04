@@ -44,7 +44,9 @@ STATE_STAND     equ 4           ; $1DD7 rest pose (pre-walk + chain lead-in)
 STATE_BOW       equ 5           ; $1867 head-bow (collapse lead-in)
 
 * --- tunables (live-gate) ---
+    ifndef PR_CAD
 PR_CAD          equ 13          ; walk-leg cadence — ORACLE-MEASURED (phase-1, 13 VBLs/leg)
+    endc                        ; ifndef-guarded so a demo driver can speed the walk up
 PR_POSE_CAD     equ 11          ; turn & collapse cadence — ORACLE-MEASURED (~11 VBLs/frame)
 * Demo-loop holds (sandbox watchability). ORACLE VBL values in comments — the
 * scene-5 integration restores those; the per-frame animation CADENCES below
@@ -78,8 +80,12 @@ PR_ENDPX        equ 220         ; walk-loop wrap (re-enter from left)
     endc
 PR_CHAIN_BOWPX  equ 36          ; chain: walk this far, then BOW->turn (short demo walk)
 PR_DEMO_CX      equ 56          ; turn/fall demo: stationary center (px)
+    ifndef PR_PXNUM
 PR_PXNUM        equ 2           ; walk speed = 2/13 px/VBL = 8px/cycle (oracle)
-PR_PXDEN        equ 13
+    endc
+    ifndef PR_PXDEN
+PR_PXDEN        equ 13          ; ifndef-guarded: a demo driver can raise the glide rate
+    endc                        ; to match a faster PR_CAD (keep PXNUM/PXDEN*PR_CAD = 2px/leg)
     ifndef PR_BASEROW
 PR_BASEROW      equ 60          ; walk: leg top row
     endc

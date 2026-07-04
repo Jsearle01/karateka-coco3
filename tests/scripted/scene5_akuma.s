@@ -19,7 +19,23 @@
 *     (23,125) ; torso/arm 98D3 (25,124) ; feet 9F8C (30,163) ; head 988B (23,113)
 * ===============================================================
 AKUMA_SHADOW    equ 1                   ; shadow ON — the 2 floor lines right of his feet (Jay)
-draw_akuma_static:
+
+* --- CONTROLLER state + tunables (HS-1 arms-ambient / HS-2 head-tracks-princess) ---
+    ifndef scene_clk
+scene_clk       equ $42                 ; canonical $3B-analog (princess WRITES, Akuma READS)
+    endc
+akuma_arm_idx   equ $52                 ; arm pose 0/1/2 -> frame_5/6/7
+akuma_arm_ctr   equ $53                 ; arm-cadence down-counter
+akuma_arm_done  equ $54                 ; 0=animating (one-shot), 1=held raised
+akuma_clr_ctr   equ $55                 ; frames left to clear the arm box (=2 on a pose change: both buffers)
+AKUMA_ARM_CAD   equ 12                  ; VBLs per arm pose (demo: matches the faster walk)
+AKUMA_ARM_RAISED equ 2                  ; last index = fully-raised (frame_7); seq f5(hip)->f6(mid)->f7
+AKUMA_CLK_DEFAULT equ $15               ; static default -> head frame_1 (mid-left)
+
+* draw_akuma_lower — the STATIC lower/base figure (shadow, feet, robe outline,
+*   floor-ext, body 9EB8). The arm + head overlay this; it goes in the clean
+*   snapshot so per-frame arm/head redraws land on a clean body.
+draw_akuma_lower:
         ; ground shadow — opaque black bar over the TWO floor lines immediately to
         ; the RIGHT of his feet (rows 162 & 165; below 165 the floor is already
         ; black). Starts at the feet's right edge and runs right. Drawn before the
@@ -150,35 +166,179 @@ draw_akuma_static:
         lda     #54
         ldb     #165
         jsr     HAL_gfx_blit_sprite_masked
-        ; body + torso/arm + head — placed by PIXEL, all 1px LEFT of their apple-grid
-        ; positions (Jay). The feet (above) stay put. (Apple-cols are 7px steps, so
-        ; 1px needs sub-byte placement; the controller swaps the head FRAME, px fixed.)
-        clr     <blit_subbyte           ; body 9EB8: px180 (byte45 sub0) — was apple x23 (px181)
+        ; body 9EB8 (torso/robe) — TRANSPARENT. Occlusion of the princess behind
+        ; Akuma is done by punch_akuma_stencil (fig_974B silhouette) BEFORE this;
+        ; here we just paint his colors over the punched-black figure.
+        clr     <blit_subbyte           ; body 9EB8: px180 (byte45 sub0)
         lda     #45
         ldb     #125
         ldx     #akuma_throne_room_9EB8_coco3
         jsr     HAL_gfx_blit_sprite
-        clr     <blit_subbyte           ; torso/arm 98D3: px208 (byte52 sub0) — was apple x27 (px209)
+        rts                             ; --- end draw_akuma_lower ---
+
+* draw_akuma_static — STATIC full figure, default pose (arm=frame_5, head=frame_1).
+*   Backward-compat entry (the static composite driver calls this). The CONTROLLER
+*   driver instead calls draw_akuma_body once + draw_akuma_arm/head per frame.
+draw_akuma_static:
+        jsr     draw_akuma_lower
+        clr     <akuma_arm_idx          ; default arm pose 0 = frame_5
+        lda     #AKUMA_CLK_DEFAULT      ; default clock -> head frame_1
+        sta     <scene_clk
+        jsr     draw_akuma_arm
+        jsr     draw_akuma_head
+        jsr     draw_pauldron
+        rts
+
+* draw_akuma_body — the static composite MINUS the arm/head.
+draw_akuma_body:
+        jsr     draw_akuma_lower
+        jsr     draw_pauldron
+        rts
+
+* draw_akuma_full — the WHOLE figure (body + current arm + head). The controller
+*   draws this OVER the princess each frame so Akuma always occludes her (she
+*   shows through his transparent gaps = she is behind him). The body redraw
+*   covers the arm region; the head clears its own cell (no ghosts).
+draw_akuma_full:
+        jsr     clear_akuma_arm         ; erase the PREVIOUS arm pose (union of f5/f6/f7)
+        jsr     draw_akuma_body         ;   before the body repaints its robe edge over it
+        jsr     draw_akuma_arm
+        jsr     draw_akuma_head
+        rts
+
+* clear_akuma_arm — zero the arm's full swept bbox to black so a retreating pose
+*   (e.g. frame_6 -> frame_7) leaves no ghost. Union of the three arm frames at
+*   byte52/row128: f5(17x4) f6(19x6) f7(8x9) -> byte52-60 (w=9), row128-146 (h=19).
+*   Behind the arm here is black backdrop + the robe's right edge (byte52-53), which
+*   draw_akuma_body repaints immediately after.
+*   ONLY fires on a pose CHANGE (akuma_clr_ctr, set to 2 by the tick, one per
+*   double-buffer). The arm is a ONE-SHOT that raises early (princess still far
+*   left) then HOLDS frame_7 static -> no clear once held, so the black box never
+*   blacks the princess where she stands under his (now-static) arm at walk's end.
+clear_akuma_arm:
+        tst     <akuma_clr_ctr
+        beq     cka_done                ; no recent pose change -> don't black under the arm
+        dec     <akuma_clr_ctr
+        lda     #52
+        sta     <eng_col
+        lda     #128
+        sta     <eng_row
+        lda     #9
+        sta     <eng_clrw
+        lda     #19
+        sta     <eng_clrh
+        clr     <eng_fillval
+        jsr     eng_clear_box
+cka_done:
+        rts
+
+* punch_akuma_stencil — occlude whatever is BEHIND Akuma (the princess) to black,
+*   trimmed to his EXACT figure via the fig_974B silhouette mask (11=figure ->
+*   punch black, 00=surround/interior-gap -> keep). Call this BEFORE draw_akuma_*
+*   paints his colors, so she is hidden only where his shape actually is (arms,
+*   pauldrons, body) and still shows through the gaps between his arms and body.
+*   Anchor derived fresh (fig_974B trace pos byte~50/row119) — Jay-gate tunable.
+AKUMA_STENCIL_COL equ 45
+AKUMA_STENCIL_ROW equ 125
+punch_akuma_stencil:
+        ldx     #akuma_stencil
+        lda     #AKUMA_STENCIL_COL
+        ldb     #AKUMA_STENCIL_ROW
+        jsr     HAL_gfx_blit_stencil_punch
+        rts
+
+* draw_akuma_arm — AMBIENT arm pose (HS-1, free loop). akuma_arm_idx 0/1/2 ->
+*   frame_5(98D3 hip)/frame_6(9908 raised)/frame_7(9956 pointing). Fixed spot
+*   byte52 row128 (the gated frame_5 position).
+draw_akuma_arm:
+        clr     <blit_subbyte
+        lda     <akuma_arm_idx
+        asla                            ; word index
+        ldx     #akuma_arm_tbl
+        ldx     a,x                     ; X = arm frame ptr
         lda     #52
         ldb     #128
-        ldx     #akuma_frame_5_coco3
-        jsr     HAL_gfx_blit_sprite
-        lda     #2                      ; head 988B: px198 (byte49 sub2) — was px199 (1px left)
+        jsr     HAL_gfx_blit_sprite     ; transparent; occlusion via punch_akuma_stencil
+        rts
+
+* draw_akuma_head — head tracks the princess (HS-2 single-source): read scene_clk
+*   ($42, the $3B-analog she writes) and pick the frame per the 5-zone table
+*   (15-17->f1, 18-19->f2, 1A-1B->f3, 1C-1D->f4, 1E-22->f8). Fixed byte49 row117 sub2.
+draw_akuma_head:
+        ; --- opaque-trim only the two HIGH frames (f4/f8): by the time scene_clk
+        ;     reaches $1C+ the princess is in front of Akuma, so her body would show
+        ;     through the head's black. Punch the head silhouette (span-fill stencil,
+        ;     2px-shifted to match sub-byte 2) BEFORE drawing the head. f1/f2/f3 are
+        ;     early (she's far left) and need no trim. ---
+        lda     <scene_clk
+        cmpa    #$1C
+        blo     dah_nopunch
+        ldx     #akuma_head4_stencil
+        cmpa    #$1E
+        blo     dah_dopunch
+        ldx     #akuma_head8_stencil
+dah_dopunch:
+        lda     #49                     ; byte-aligned (shift baked into the stencil)
+        ldb     #117
+        jsr     HAL_gfx_blit_stencil_punch
+        lda     <scene_clk              ; reload (punch clobbered A)
+dah_nopunch:
+        ldx     #akuma_frame_1_coco3
+        cmpa    #$18
+        blo     dah_go
+        ldx     #akuma_frame_2_coco3
+        cmpa    #$1A
+        blo     dah_go
+        ldx     #akuma_frame_3_coco3
+        cmpa    #$1C
+        blo     dah_go
+        ldx     #akuma_frame_4_coco3
+        cmpa    #$1E
+        blo     dah_go
+        ldx     #akuma_frame_8_coco3
+dah_go:
+        lda     #2
         sta     <blit_subbyte
         lda     #49
         ldb     #117
-        ldx     #akuma_frame_1_coco3
-        jsr     HAL_gfx_blit_sprite
-        ; Right pauldron (Jay): extend it out to px218 in ORANGE (rows 125-126),
-        ; plus a single orange pixel (r124/px218) to make a point at the top line.
-        ; Leaves the existing white highlight (px210-212) untouched (mask skips px212).
+        jsr     HAL_gfx_blit_sprite     ; transparent; occlusion via the head stencil punch
+        rts
+
+* draw_pauldron — the right-shoulder pauldron overlay (static; masked blit).
+draw_pauldron:
         clr     <blit_subbyte
         ldu     #paul_pt_mask
         ldx     #paul_pt
-        lda     #53                     ; byte53 -> px212 ; fills px213-218 + point
+        lda     #53                     ; px213-218 orange + point (white px210-212 kept)
         ldb     #125
         jsr     HAL_gfx_blit_sprite_masked
         rts
+
+* akuma_ctrl_tick — per-VBL: ONE-SHOT arm animation (Jay): step through the poses
+*   (frame_5 -> 6 -> 7) once, then HOLD at the RAISED pose (frame_6) and stop.
+akuma_ctrl_tick:
+        tst     <akuma_arm_done
+        bne     act_done                ; already held raised — stay put
+        dec     <akuma_arm_ctr
+        bne     act_done
+        lda     #AKUMA_ARM_CAD
+        sta     <akuma_arm_ctr
+        lda     <akuma_arm_idx
+        inca                            ; 0(hip) -> 1(raised)
+        sta     <akuma_arm_idx
+        ldb     #2                      ; pose CHANGED -> clear the old arm box for 2 frames
+        stb     <akuma_clr_ctr          ;   (both double-buffers), then stop (no princess-blacking)
+        cmpa    #AKUMA_ARM_RAISED       ; reached the raised pose (no overshoot to frame_7)?
+        blo     act_done                ; not yet -> keep animating
+        lda     #1
+        sta     <akuma_arm_done         ; raised -> hold here (stop before frame_7)
+act_done:
+        rts
+
+akuma_arm_tbl:                          ; one-shot raise (Jay: f6=mid, f7=fully raised)
+        fdb     akuma_frame_5_coco3     ; 0: 98D3 hand-on-hip (start)
+        fdb     akuma_frame_6_coco3     ; 1: 9908 mid arm-raise (middle)
+        fdb     akuma_frame_7_coco3     ; 2: 9956 fully raised (final, held)
 
 * entry: fdb ptr ; fcb apple_x, apple_y, mirror(0/1), opaque(0/1)
 * AUTHORITATIVE positions + draw order from the blit-entry trace (akuma_trace.log,
@@ -196,6 +356,84 @@ draw_akuma_static:
 *   cols1-9 $FF              -> fully solid
 akuma_feet_mask:
         fcb     $3F,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$F0
+* akuma_stencil — the fig_974B silhouette as a 2D punch mask (generated from
+* content/akuma/fig_974B: per pixel 11 where NOT white, 00 where white). White in
+* fig_974B is precisely "not-Akuma" (outer surround AND the interior armpit gaps),
+* so this trims the princess-occlusion to his exact figure. Used by
+* punch_akuma_stencil via HAL_gfx_blit_stencil_punch.
+akuma_stencil:
+        fcb     43,11                ; stencil 43x11: 11=Akuma figure, 00=not-Akuma
+*   (col10/byte10 forced 00 — trimmed the fig_974B doubled far-right artifact that
+*    read as a spurious opaque vertical line over the princess's end position.)
+        fcb     $0F,$FF,$FF,$FC,$3F,$FF,$F0,$00,$00,$00,$00  ; row 0
+        fcb     $0F,$FF,$FF,$FC,$3F,$FF,$F0,$00,$00,$00,$00  ; row 1
+        fcb     $FF,$0F,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$00  ; row 2
+        fcb     $00,$0F,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$F0,$00  ; row 3
+        fcb     $00,$03,$FF,$FF,$FF,$FF,$FF,$FF,$F0,$00,$00  ; row 4
+        fcb     $00,$0F,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$00  ; row 5
+        fcb     $00,$3F,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$00  ; row 6
+        fcb     $00,$00,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$00  ; row 7
+        fcb     $00,$00,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$00  ; row 8
+        fcb     $00,$00,$3F,$FF,$FF,$FF,$FF,$FF,$00,$03,$00  ; row 9
+        fcb     $00,$00,$03,$FF,$FF,$FF,$FF,$FF,$00,$00,$00  ; row 10
+        fcb     $00,$00,$03,$FF,$FF,$FF,$FF,$F0,$00,$00,$00  ; row 11
+        fcb     $00,$00,$00,$3F,$FF,$FF,$FF,$F0,$00,$00,$00  ; row 12
+        fcb     $00,$00,$00,$3F,$FF,$FF,$FF,$F0,$00,$00,$00  ; row 13
+        fcb     $00,$00,$00,$03,$FF,$FF,$FF,$00,$00,$00,$00  ; row 14
+        fcb     $00,$00,$00,$03,$FF,$FF,$FF,$00,$00,$00,$00  ; row 15
+        fcb     $00,$00,$00,$00,$FF,$FF,$F0,$00,$00,$00,$00  ; row 16
+        fcb     $00,$00,$00,$00,$FF,$FF,$F0,$00,$00,$00,$00  ; row 17
+        fcb     $00,$00,$0F,$FF,$FF,$FF,$FF,$00,$00,$00,$00  ; row 18
+        fcb     $00,$00,$0F,$FF,$FF,$FF,$FF,$00,$00,$00,$00  ; row 19
+        fcb     $00,$00,$FF,$FF,$FF,$FF,$FF,$F0,$00,$00,$00  ; row 20
+        fcb     $00,$03,$FF,$FF,$FF,$FF,$FF,$F0,$00,$00,$00  ; row 21
+        fcb     $00,$00,$00,$3F,$FF,$FF,$FF,$F0,$00,$00,$00  ; row 22
+        fcb     $00,$00,$00,$3F,$FF,$FF,$FF,$F0,$00,$00,$00  ; row 23
+        fcb     $00,$00,$00,$3F,$FF,$FF,$FF,$F0,$00,$00,$00  ; row 24
+        fcb     $00,$00,$00,$3F,$FF,$FF,$FF,$F0,$00,$00,$00  ; row 25
+        fcb     $00,$00,$03,$FF,$FF,$FF,$FF,$FF,$00,$00,$00  ; row 26
+        fcb     $00,$00,$03,$FF,$FF,$FF,$FF,$FF,$00,$00,$00  ; row 27
+        fcb     $00,$00,$03,$FF,$FF,$FF,$FF,$FF,$00,$00,$00  ; row 28
+        fcb     $00,$00,$03,$FF,$FF,$FF,$FF,$FF,$00,$00,$00  ; row 29
+        fcb     $00,$00,$03,$FF,$FF,$FF,$FF,$FF,$00,$00,$00  ; row 30
+        fcb     $00,$00,$03,$FF,$FF,$FF,$FF,$FF,$00,$00,$00  ; row 31
+        fcb     $00,$00,$3F,$FF,$FF,$FF,$FF,$FF,$F0,$00,$00  ; row 32
+        fcb     $00,$00,$3F,$FF,$FF,$FF,$FF,$FF,$F0,$00,$00  ; row 33
+        fcb     $00,$00,$3F,$FF,$FF,$FF,$FF,$FF,$F0,$00,$00  ; row 34
+        fcb     $00,$00,$3F,$FF,$FF,$FF,$FF,$FF,$F0,$00,$00  ; row 35
+        fcb     $00,$00,$3F,$FF,$FF,$FF,$FF,$FF,$F0,$00,$00  ; row 36
+        fcb     $00,$00,$3F,$FF,$FF,$FF,$FF,$FF,$F0,$00,$00  ; row 37
+        fcb     $00,$03,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$00,$00  ; row 38
+        fcb     $00,$03,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$00,$00  ; row 39
+        fcb     $00,$03,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$00,$00  ; row 40
+        fcb     $00,$03,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$00,$00  ; row 41
+        fcb     $00,$03,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$00,$00  ; row 42
+* akuma_head4/head8 stencil — FILLED silhouette of the two HIGH head frames:
+* opaque where (row-span OR col-span) of the non-black pixels, so the eye AND the
+* per-row notches between wider rows are filled (no princess show-through there),
+* while the true outer corners stay trimmed. Shifted right 2px so a byte-aligned
+* punch at byte49 lands under the sub-byte-2 head blit. Punched by draw_akuma_head
+* for scene_clk >= $1C, AFTER the princess is drawn -> her body can't show through.
+akuma_head4_stencil:
+        fcb     8,4
+        fcb     $00,$0F,$F0,$00  ; row 0
+        fcb     $00,$0F,$FF,$00  ; row 1
+        fcb     $00,$0F,$FF,$C0  ; row 2
+        fcb     $00,$3F,$FF,$C0  ; row 3
+        fcb     $00,$3F,$FF,$C0  ; row 4
+        fcb     $00,$3F,$FF,$C0  ; row 5
+        fcb     $00,$0F,$FF,$C0  ; row 6
+        fcb     $00,$0F,$FF,$C0  ; row 7
+akuma_head8_stencil:
+        fcb     8,4
+        fcb     $00,$3F,$C0,$00  ; row 0
+        fcb     $00,$3F,$FF,$00  ; row 1
+        fcb     $00,$3F,$FF,$C0  ; row 2
+        fcb     $00,$3F,$FF,$C0  ; row 3
+        fcb     $00,$3F,$FF,$C0  ; row 4
+        fcb     $00,$3F,$FF,$C0  ; row 5
+        fcb     $00,$0F,$FF,$C0  ; row 6
+        fcb     $00,$0F,$FF,$C0  ; row 7
 * 2px robe outline (Jay): all-$00 (black) blocks, blitted via positional masks
 * to stairstep a 2px border up the robe's flaring sides. Heights = band sizes
 * (bottom rows161-164=4, mid 155-160=6, top 153-154=2); widths 1 or 2 bytes.
