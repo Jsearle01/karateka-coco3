@@ -124,6 +124,10 @@ Busy→0) signals completion; reading Status clears INTRQ.
 > overreach. Corrected below: the FAIL is **empirical/margin, not arithmetic**, and
 > the 1.78 MHz "fix" is **contradicted by the CoCo3 authority** — it is a contested
 > branch, not the resolution. The safe default is a **single-density loader disk**.
+> **FURTHER REFINED (see "Space budget and single-density viability" below):** the
+> single-density-whole-disk option is subsequently **ruled out** by capacity
+> (~87.5 KB SD < ~128 KB content) **and** the DD-only DECB bootstrap — so the live
+> branches reduce to (b) DD+HALT and (c) DD+1.78. Read that section for the reversal.
 
 Byte period = DRQ service window (must read Data before the next byte assembles or
 **Lost Data**). 5.25″ 300 RPM: FM 125 kbps → **64 µs/byte**; MFM 250 kbps →
@@ -226,3 +230,107 @@ recon's original "open" note is superseded.) Still a bare-metal reader per
   note; OCR if their raw text is ever needed. (The WD1773 PDF sufficed.)
 - DECB uses command `$D0` (Force Interrupt) at init to reset the controller
   (Unravelled `LC0F0`) — useful for the primitive's init/abort, datasheet Type IV.
+
+---
+
+# Space budget and single-density viability
+
+**Read-only follow-up (t0 `2026-07-05T04:01:01`).** Three measurements that decide
+the single-vs-double-density loader branch: (1) how much data the original game
+occupies, (2) CoCo single-density capacity, (3) whether stock RSDOS can read
+single-density at all. **This partly reverses the previous "single-density is the
+safe default" lean — see the synthesis.** No code/disk modified.
+
+## Authorities + image + tooling (AC-1)
+- Docs: `WD 1773 Floppy Disk Controller.pdf`, `WD177x-00.pdf`,
+  `disk-basic-unravelled.pdf` (Disk BASIC Unravelled II — covers 1.0 + 1.1, WD1793
+  controller). HS-1/HS-2 cleared.
+- Disk images (oracle, read-only): `../karateka_dissasembly_claude/refs/Karateka.woz`
+  (233 451 B, WOZ1 flux-level — preserves the copy protection);
+  `../karateka_dissasembly_claude/dumps/karateka.dsk` (143 360 B = 35×16×256, the
+  cracked sector image the disassembly uses).
+- Tooling: `imgtool` present; no wozardry / applecommander / a2rimage.
+
+## Oracle footprint (AC-2, P1 — MATCHED; raw-occupancy method per HS-3)
+`imgtool dir apple2_dos33 karateka.dsk` → **"Unrecognized format"**: the disk has
+**no standard DOS 3.3 catalog** (copy-protected/custom, as HS-3 anticipated). So the
+split is by **raw track-occupancy** (data vs blank/low-entropy), *not* a VTOC read —
+"couldn't read the catalog" is distinguished from "measured empty":
+- **32 of 35 tracks carry data** (nonzero + high distinct-byte count); **1** low-
+  entropy fill track (T6, single repeated byte); **2** blank (T33-34, all-zero).
+- **Content ≈ 128 KB** (32 data tracks × 4096 B); free/unformatted ≈ 12 KB (3 tracks).
+- **The game essentially fills its disk** (91 % of tracks). F1 (mostly-empty) did
+  **not** fire.
+- **PROXY CAVEAT (P1):** this is the *Apple* footprint. The CoCo port's graphics
+  (320×192×2bpp, different palette/sprite format) and code (6809 vs 6502) differ, so
+  128 KB is a **ballpark for content volume, not a byte-for-byte transfer**. Also
+  it's the *cracked* image (data possibly consolidated vs the protected original).
+
+## Single-density capacity (AC-3, P2 — MATCHED est.)
+From the WD1773 data rates (datasheet line 147: **125 kbit/s FM / 250 kbit/s MFM**;
+line 666: 128/256/512/1024-B sectors in either FM or MFM, "For FM, DDEN=1") + 5.25″
+300 RPM track geometry:
+| Density | Track cap (300 RPM) | Sectors/trk (256 B) | Disk (35 trk) | |
+|---------|--------------------|--------------------|---------------|--|
+| **DD (MFM)** | ~6250 B | **18** (RSDOS std) | **35×18×256 = 161 280 = 157.5 KB** | cited (RSDOS) |
+| **SD (FM)** | ~3125 B | ~**10** | **35×10×256 = 89 600 ≈ 87.5 KB** | **ESTIMATE** |
+**SD ≈ 56 % of DD.** *(HS-4: the SD figure is an estimate — FM ≈ half the bit
+density → ~half the sectors; exact SD sectors/track depends on the format/gap choice
+(datasheet line 1314: 30 B gap FM / 43 B MFM). Arithmetic shown; flagged estimate.
+DD 18-sector figure is the RSDOS standard.)*
+
+## RSDOS single-density read capability (AC-4, P3 — MATCHED: DD-only)
+DECB/RSDOS **operates in double density.** Unravelled §FDC (line 400): *"…operate
+the disk drives in **double density** mode at the low (.89 MHz) clock speed"* — and
+the entire transfer mechanism (the DRQ→HALT trick) is described *"when operating at
+double density."* The standard RSDOS disk is 35×18×256 **double density**, and the
+DECB directory (track 17) + boot structures are DD. **No single-density read path is
+documented** in the standard DECB entry; the DSKREG density bit (b5) is set to double
+for normal operation. *(Honesty note: I confirmed the explicit double-density
+operation statement and the absence of any documented SD path; I did not locate a
+single "SD unsupported" instruction — the finding rests on DD-operation being
+explicit and no SD path existing. F2 (RSDOS reads SD) did NOT fire.)*
+
+## Bootstrap implication (AC-5) — the catch
+Because stock DECB reads **DD only**, an **SD boot disk cannot be loaded by the
+standard DECB entry.** So SD is usable **only for game-DATA tracks read by our own
+polled primitive** (which sets DSKREG b5=0 itself) — **never for the DECB-loadable
+stage-1.** And the first stage (getting *any* custom loader into RAM) must come
+through the ROM/DECB, which reads DD → **the boot-visible portion of the disk must
+be DD**, regardless of what the data tracks are.
+
+## Space-budget synthesis + fit verdict (AC-6)
+| | capacity | fits ~128 KB content? |
+|--|----------|----------------------|
+| SD whole-disk | ~87.5 KB | **NO** (128 > 87.5) |
+| DD whole-disk | ~157.5 KB | **YES** (~30 KB headroom) |
+
+**The ~128 KB proxy content does NOT fit a single SD side, but DOES fit a single DD
+side.** Combined with the bootstrap catch, this **narrows/reverses the previous
+task's "single-density is the safe default" lean (`bb3c3a3`, branch a):**
+- **Branch (a) "single-density WHOLE disk" is NOT viable** — it fails on *both*
+  counts: too small for the content **and** unbootstrappable by DECB.
+- **The disk is double-density** (mandatory for the DECB bootstrap; required for the
+  content to fit one side). So **our primitive must read DD tracks** — which pushes
+  back to **branch (b) DD+HALT @ 0.89** or **branch (c) DD+1.78 (contested)** for the
+  data reads. The comfortable-polled-FM-read benefit of SD is *only* reachable via a
+  **mixed-density disk** (DD boot/stage-1 + a few SD data tracks), and even that
+  can't hold ~110 KB of data in SD on the remaining tracks — so SD cannot carry the
+  bulk. **SD is effectively ruled out as the storage strategy.**
+- **Net for the loader design:** plan on **DD storage**, and resolve the DD-read
+  mechanism via branch (b) HALT (revisits HS-4) or by settling the branch-(c)
+  fast-speed A-vs-B question with a MAME/hardware test. The single-density escape
+  hatch is closed by capacity + bootstrap.
+
+*(If the CoCo port's actual content turns out materially smaller than the 128 KB
+proxy — plausible, different asset format — SD whole-disk is still dead on the
+bootstrap catch alone; only a mixed-density design could use SD, and only for a data
+subset.)*
+
+## CANDIDATES (report-note)
+- This section **refines `bb3c3a3`**: the prior "branch (a) single-density = safe
+  default" is withdrawn — SD is ruled out by capacity (~87.5 KB < ~128 KB) **and**
+  the DD-only DECB bootstrap. The live branches are (b) DD+HALT and (c) DD+1.78.
+- `../karateka_dissasembly_claude/refs/Karateka.woz` (flux) vs `dumps/karateka.dsk`
+  (cracked sector image) — the footprint used the cracked `.dsk`; a flux analysis
+  (needs wozardry, absent) could refine the original data/free split.
