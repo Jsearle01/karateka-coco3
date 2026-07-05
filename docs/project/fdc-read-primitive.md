@@ -334,3 +334,102 @@ subset.)*
 - `../karateka_dissasembly_claude/refs/Karateka.woz` (flux) vs `dumps/karateka.dsk`
   (cracked sector image) — the footprint used the cracked `.dsk`; a flux analysis
   (needs wozardry, absent) could refine the original data/free split.
+
+---
+
+# DD-at-slow-speed feasibility (tight-loop timing)
+
+**Analytic-first (t0 `2026-07-05T04:21:17`).** Single-density is ruled out
+(`667eb05`), so the disk is DD and the primitive must solve DD-at-0.89. This
+cycle-counts the **tightest** bare-metal poll loop (not DECB's fatter ROM loop)
+against the DD byte window, accounting for GIME DRAM-refresh. **Verdict: paper-PASS
+but thin → route to branch (b) HALT** per the asymmetric decision rule; (a-DD) is a
+viable thin-margin fallback, not dead. No code/disk touched; analytic-conclusive
+(MAME not used).
+
+## Authorities (AC-1)
+- 6809 cycle counts: `MC6809-MC6809E … Programming Manual (Motorola 1981).pdf`
+  (text-extractable) — Table F-1 (base cycles) + **Table F-2 "Indexed Addressing
+  Mode Data"** (indexed adders). (Leventhal PDF is image-only, unused.)
+- GIME/SAM refresh: `Lomont_CoCoHardware.pdf` (text-extractable). HS-1 **cleared** —
+  the refresh behavior IS documented (below).
+
+## Budget anchor
+DD (MFM) = 250 kbit/s → **1 byte / 32 µs**. At 0.895 MHz, 1 cycle = 1.117 µs →
+**window = 32 / 1.117 = 28.6 cycles per byte.**
+
+## GIME DRAM-refresh cycle-steal (AC-3, HS-1) — the decider, and it's clean
+**At 0.89 MHz, refresh is TRANSPARENT — zero CPU cycle-steal.** Lomont (SAM clock
+register `$FFD6-$FFD9`, R1-R0): *"00-0.89 MHZ only, 01-0.89/1.78 MHZ ⟸ **both
+transparent refresh**, 10-1.78 MHZ only, 11-1.78 MHZ."* The two slow/AD modes do
+transparent refresh (the video fetch interleaves on the opposite clock phase and
+refreshes DRAM as a byproduct — Lomont p.8: the SAM does "DRAM control and refresh").
+So the 6809E runs **cycle-exact at 0.895 MHz with no refresh wait-states**, and the
+margin has **no refresh term to subtract**. **F2 (refresh eats the margin) does NOT
+fire — this removes the exact mechanism the prior recon suspected.** *(Note: the
+1.78-only modes are NOT annotated transparent — consistent with fast-mode disk
+trouble from `bb3c3a3`, but that's branch (c), out of scope here.)*
+
+## Tightest poll loop, cycle-counted (AC-2, HS-4)
+Per byte: poll DRQ (status bit 1) → read Data → store → count → loop. DP=`$FF` points
+the direct page at the I/O page so status/data reads are **direct (4)** not extended
+(5).
+| Instruction | Mode | Cycles | Source |
+|-------------|------|--------|--------|
+| `LDA <$48` (Status) | direct | **4** | F-1 LDA direct |
+| `BITA #$02` (test DRQ) | immediate | **2** | F-1 BITA imm |
+| `BEQ poll` (not-taken when DRQ set) | relative | **3** | F-1 branch |
+| `LDA <$4B` (Data) | direct | **4** | F-1 LDA direct |
+| `STA ,X+` (store) | indexed +1 | **6** | F-1 STA idx (4) + F-2 "Increment By 1" (+2) |
+| `DECB` (count, B=0→256 iters) | inherent | **2** | F-1 DECB |
+| `BNE poll` | relative | **3** | F-1 branch |
+| **Total (DP-optimized)** | | **24** | |
+
+**Non-DP variant** (I/O via extended addressing, DP free for other use): `LDA $FF48`
+= 5, `LDA $FF4B` = 5 → **26 cycles**.
+
+## Margin (AC-4)
+`margin = 28.6 − loop_cycles − refresh(=0)`:
+| Loop variant | cycles | refresh | **margin** | |
+|--------------|--------|---------|-----------|--|
+| **DP-optimized** | 24 | 0 | **+4.6 cyc (~16 %)** | passes on paper |
+| non-DP | 26 | 0 | **+2.6 cyc (~9 %)** | passes, thinner |
+
+Both are **positive** — the tight loop makes the DD window on paper, unlike DECB's
+ROM loop. This is a genuine improvement over the prior recon's "DD-slow FAILS."
+
+## Verdict — route to branch (b) per the asymmetric rule (AC-5, HS-5)
+**PAPER-PASS, but thin → recommend branch (b) DD+HALT.** Reasoning, honestly applying
+HS-5 (recommend (a-DD) only on a *comfortable* margin; thin/uncertain → (b)):
+- The margin is **positive but small**: +4.6 cyc (~16 %) and only with the **DP=`$FF`
+  hack** (which pins the direct page to the I/O page — every other DP-relative access
+  in the read path must move with it, a real constraint). Non-DP is +2.6 cyc (~9 %).
+- **Effective-window uncertainty:** the WD1773's DRQ-to-Lost-Data window is close to
+  but not crisply pinned at the full 32 µs byte period (datasheet gives no exact µs
+  figure); a ~1-3 cycle erosion is plausible, which would take non-DP to ~breakeven.
+- The **refresh finding is clean** (zero steal), so the margin is *real* — but "real
+  and thin" is exactly the case HS-5 routes to (b), which has **no margin problem by
+  construction** (DRQ→HALT lets the FDC pace the CPU).
+- **Do not stake the loader on a ~4-cycle margin + a DP hack when (b) is guaranteed.**
+
+**(a-DD) is NOT dead** — it passes on paper with the DP optimization and zero refresh,
+materially better than "fails." It remains a viable **fallback** if branch (b)'s
+NMI/HALT coupling later conflicts with the banking/interrupt design (revisits HS-4);
+at that point a **hardware Lost-Data test** (not MAME — see below) would validate the
+thin margin. But the **recommendation now is (b)**.
+
+## MAME (AC-6)
+**Not used — analytic-conclusive.** Per HS-2, MAME cannot arbitrate a marginal case:
+the whole question is refresh/window margin, and MAME's DRAM-refresh-steal fidelity is
+exactly the uncertain part — a MAME read showing no Lost Data with unmodeled refresh
+would prove nothing about silicon. Since the analysis routes to (b) on the thin
+margin, no MAME confirmation is needed (a clear pass is what MAME could confirm; this
+is not one).
+
+## CANDIDATES (report-note)
+- **Key new fact:** GIME/SAM refresh is **transparent (zero steal) at 0.89 MHz**
+  (Lomont, SAM R1R0=00/01) → the CoCo3 6809E is cycle-exact at slow speed; F2 does
+  not fire. This **reclassifies (a-DD)** from the prior recon's "FAILS" to
+  **"thin paper-PASS"** — a refinement worth carrying: (a-DD) is a live fallback.
+- The branch ordering stands: **(b) DD+HALT is the recommendation**; (a-DD) is the
+  thin-margin fallback; (c) DD+1.78 remains contested (`bb3c3a3`, unresolved A-vs-B).
