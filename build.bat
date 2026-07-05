@@ -78,6 +78,10 @@ lwasm --decb -D SCENE5_STANDALONE -o tests/scripted/scene5_e2e.bin tests/scripte
 if errorlevel 1 goto :error
 call :size tests/scripted/scene5_e2e.bin
 
+lwasm --decb -I src/hal/coco3-dsk -o tests/scripted/disk_sandbox.bin tests/scripted/disk_sandbox_driver.s
+if errorlevel 1 goto :error
+call :size tests/scripted/disk_sandbox.bin
+
 echo === BUILD COMPLETE ===
 exit /b 0
 
