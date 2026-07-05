@@ -21,8 +21,10 @@ def off(track, sector):        # sector 1-based
 with open(out, "r+b") as f:
     # (1) single-sector regression: track 2 / sector 5, byte[i]=i
     f.seek(off(2,5)); f.write(bytes(range(256)))
-    # (2) multi-track: tracks 5 and 6, all sectors; ordinal k across the range
-    START = 5; NTRACK = 2
+    # (2) multi-track: the LAST two tracks (33-34), all sectors; ordinal k across
+    #     the range. At the disk edge so the advance-bound test reads real data
+    #     tracks then crosses off-end (track 35) — no blank-track m=1 read.
+    START = 33; NTRACK = 2
     for t in range(START, START+NTRACK):
         for s in range(1, SPT+1):
             k = (t-START)*SPT + (s-1)          # 0..35

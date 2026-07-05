@@ -41,12 +41,14 @@ _G._n = emu.add_machine_frame_notifier(function()
     log("== BUILD #1 regression (single sector) ==")
     log(string.format("  single-sector PASS[$2200]=$%02X  nmi[$2202]=$%02X  badsec RNF[$2204]=$%02X cc[$2205]=$%02X",
         rd(0x2200), rd(0x2202), rd(0x2204), rd(0x2205)))
-    log("== BUILD #2 multi-track range (tracks 5-6, 36 sectors) ==")
-    log(string.format("  RANGE PASS[$2206]=$%02X (A5=match)  status[$2207]=$%02X  bad-track CC[$2208]=$%02X (00=RNF-benign, no hang)",
-        rd(0x2206), rd(0x2207), rd(0x2208)))
+    log("== BUILD #2 multi-track range (tracks 33-34, 36 sectors) ==")
+    log(string.format("  RANGE PASS[$2206]=$%02X (A5=match)  status[$2207]=$%02X",
+        rd(0x2206), rd(0x2207)))
+    log(string.format("  OFF-END catch (correction): off-end track40 CC[$2208]=$%02X (expect $01 = caught, was $00 silent in Build #2)",
+        rd(0x2208)))
     -- track-boundary contiguity: first byte of ordinals 16,17,18,19 (=$4000+k*256)
     local bnd={} for _,k in ipairs({16,17,18,19}) do bnd[#bnd+1]=string.format("ord%d=%02X",k,rd(0x4000+k*256)) end
-    log("  boundary first-bytes (expect =ordinal; T5/S18=ord17, T6/S1=ord18): "..table.concat(bnd," "))
+    log("  boundary first-bytes (expect =ordinal; T33/S18=ord17, T34/S1=ord18): "..table.concat(bnd," "))
     log("== mechanism trace ==")
     log("  FDC cmd writes: "..tally(_G._cmd).."  (90=Read m=1, 10=Seek, D0=ForceInt, 00=Restore, 80=Read m=0)")
     log("  DSKREG writes:  "..tally(_G._dskreg).."  (A9=HALT b7 armed, 29=positioning)")

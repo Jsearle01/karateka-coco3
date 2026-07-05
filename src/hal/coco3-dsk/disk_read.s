@@ -60,14 +60,20 @@ FDC_ERRMASK_M equ $0C        ; CRC(b3)|Lost-Data(b2) only — whole-track m=1: t
                              ; trailing RNF (sector reg > track) is the EXPECTED
                              ; end-of-track terminator (datasheet), not an error
 SECS_TRACK  equ 18           ; sectors per track (RSDOS DD)
+MAX_TRACK   equ 35           ; valid tracks 0..34 (a standard 35-track disk); a
+                             ; range Seek to track >= MAX_TRACK is off-end -> error
 
-* --- caller-set parameters (fixed low-RAM block; client reserves $0170-$0174) ---
-dr_track    equ $0170        ; target track  0..34 (also: current track in a range)
-dr_sector   equ $0171        ; target sector 1..18
-dr_dest     equ $0172        ; destination pointer (2 bytes)
-dr_status   equ $0174        ; final WD1773 status byte
-dr_r_track  equ $0175        ; range: start track
-dr_r_count  equ $0176        ; range: sector count remaining (multiple of SECS_TRACK)
+* --- caller-set parameters (primitive-owned scratch block) ---
+* Relocated off $0170-$0176: that range is DECB/BASIC low-RAM (ROM writes there
+* during boot — trace-confirmed in the $0100-verify). $2100 is DECB-clear in the
+* sandbox's high working region (above the $01xx vector/BASIC-var page, above the
+* $2000 buffer). A real client may re-point this block; the primitive owns it.
+dr_track    equ $2100        ; target track  0..34 (also: current track in a range)
+dr_sector   equ $2101        ; target sector 1..18
+dr_dest     equ $2102        ; destination pointer (2 bytes)
+dr_status   equ $2104        ; final WD1773 status byte
+dr_r_track  equ $2105        ; range: start track
+dr_r_count  equ $2106        ; range: sector count remaining (multiple of SECS_TRACK)
 
 * --- NMI landing in the constant Vector Page ($FE00-$FEED, safe siting) ---
 dr_nmi_done equ $FE00        ; completion flag (1 byte, below secondary vectors)
@@ -172,8 +178,12 @@ disk_read_range:
         lda     dr_r_track
         sta     dr_track             ; current track
 rr_track:
-        lda     dr_track             ; --- Seek to the current track ---
-        sta     FDC_DATA
+        lda     dr_track             ; --- off-end guard (BEFORE seeking) ---
+        cmpa    #MAX_TRACK           ; track >= MAX_TRACK is past the last valid track
+        bhs     rr_err               ; -> error (carry set), never seek off the end.
+        *                              Closes Build #2's silent-zeros gap; deterministic,
+        *                              MAME-edge-independent (we never reach the edge).
+        sta     FDC_DATA             ; --- Seek to the current track (A = dr_track) ---
         lda     #FDC_SEEK
         sta     FDC_CMDST
         jsr     dr_settle

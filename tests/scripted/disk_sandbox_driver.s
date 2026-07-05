@@ -5,12 +5,12 @@
 * isolation. NOT linked into prod — assembled as its own unit so karateka.bin
 * stays byte-identical. Three tests:
 *   (Build #1 regression) single-sector read T2/S5, verify byte[i]=i + RNF path.
-*   (Build #2) multi-track m=1 range read tracks 5-6 (36 sectors, crosses a track
+*   (Build #2) multi-track m=1 range read tracks 33-34 (36 sectors, crosses a track
 *     boundary), verify position-encoded byte[k][i]=(k+i) in order.
 *   (Build #2 error) bad-track range returns without hanging.
 *
 * Fixture (tools/make_test_dsk.sh): 35x18x256 DD disk; T2/S5 = byte[i]=i;
-*   tracks 5-6 all sectors = byte[k][i]=(k+i) where k is the 0-based ordinal.
+*   tracks 33-34 all sectors = byte[k][i]=(k+i) where k is the 0-based ordinal.
 *
 * Result locations (read by tests/scripted/disk_sandbox.lua):
 *   $2200 single-sector PASS ($A5/$5A) · $2201 status · $2202 nmi_done · $2203 ccerr
@@ -37,16 +37,17 @@ RES_BAD_STATUS equ $2204            ; AC-7: status from the bad-sector read (exp
 RES_BAD_CCERR  equ $2205            ; AC-7: CC.C from the bad-sector read (expect $01)
 RES_RANGE_PASS equ $2206            ; Build #2: multi-track range match ($A5/$5A)
 RES_RANGE_STAT equ $2207            ; Build #2: last-track status
-RES_BADTRK_CC  equ $2208            ; Build #2 error path: bad-track range CC.C
+RES_BADTRK_CC  equ $2208            ; off-end range (track 40) CC.C — expect $01 (caught)
 TEST_TRACK  equ 2
 TEST_SECTOR equ 5
 RANGE_BUF   equ $4000              ; multi-track dest (36 sectors x 256 = 9216 B)
-RANGE_TRACK equ 5                  ; range spans tracks 5-6 (crosses a boundary, HS-5)
-RANGE_COUNT equ 36                 ; 2 whole tracks
+RANGE_TRACK equ 33                 ; range spans tracks 33-34 (last two; crosses a
+RANGE_COUNT equ 36                 ; boundary, HS-5; edge-adjacent for the advance test)
 
 test_start:
         orcc    #$50                 ; mask IRQ/FIRQ (NMI stays enabled)
-        lds     #$1F00               ; stack clear of params ($0170) + code ($0200)
+        lds     #$1F00               ; stack grows down; clear of code ($0200) and the
+                                     ; relocated params ($2100, above the stack init)
         clra
         tfr     a,dp                 ; DP = 0
 
@@ -101,7 +102,24 @@ cmp_fail:
 cmp_done:
         sta     RES_PASS
 
-        * === Build #2: multi-track range read (tracks 5-6 = 36 sectors) -> $4000 ===
+        * --- Build #1 regression: bad SECTOR (99) -> RNF, no hang. Run in a clean
+        *     FDC state (right after the single-sector read, before the edge tests). ---
+        lda     #TEST_TRACK
+        sta     dr_track
+        lda     #99                  ; sector 99 does not exist (18/track)
+        sta     dr_sector
+        ldd     #$2300               ; separate dest
+        std     dr_dest
+        jsr     disk_read            ; must return (not hang); RNF in status
+        lda     #$00                 ; NB: lda #0 preserves CC.C (clra would clear it)
+        bcc     bad_noerr
+        lda     #$01
+bad_noerr:
+        sta     RES_BAD_CCERR        ; expect $01 (CC.C error return)
+        lda     dr_status
+        sta     RES_BAD_STATUS       ; expect bit4 (RNF, $10) set
+
+        * === Build #2: multi-track range read (tracks 33-34 = 36 sectors) -> $4000 ===
         lda     #RANGE_TRACK
         sta     dr_r_track
         lda     #RANGE_COUNT
@@ -137,35 +155,25 @@ rng_fail:
 rng_done:
         sta     RES_RANGE_PASS
 
-        * === Build #2 error path: bad-track range (track 40 nonexistent) -> no hang ===
+        * === CORRECTION: off-end range MUST error (was Build #2's silent zeros) ===
+        * (a) clearly off-end: start track 40 (> 34) -> bound errors before seeking.
         lda     #40
         sta     dr_r_track
         lda     #SECS_TRACK
         sta     dr_r_count
         ldd     #$6400               ; scratch dest (RAM, past the range buffer)
         std     dr_dest
-        jsr     disk_read_range      ; must RETURN (not hang) with error
+        jsr     disk_read_range      ; must set carry (off-end), not silently succeed
         lda     #$00
         bcc     bt_noerr
         lda     #$01
 bt_noerr:
-        sta     RES_BADTRK_CC        ; expect $01 (error surfaced, did not hang)
-
-        * --- AC-7 stretch: read a NONEXISTENT sector (99) -> expect RNF, no hang ---
-        lda     #TEST_TRACK
-        sta     dr_track
-        lda     #99                  ; sector 99 does not exist (18/track)
-        sta     dr_sector
-        ldd     #$2300               ; separate dest (keep $2000 good-read buffer intact)
-        std     dr_dest
-        jsr     disk_read            ; must return (not hang); RNF in status
-        lda     #$00                 ; NB: lda #0 preserves CC.C (clra would clear it)
-        bcc     bad_noerr
-        lda     #$01
-bad_noerr:
-        sta     RES_BAD_CCERR        ; expect $01 (CC.C error return)
-        lda     dr_status
-        sta     RES_BAD_STATUS       ; expect bit4 (RNF, $10) set
+        sta     RES_BADTRK_CC        ; expect $01 (off-end CAUGHT — the correction)
+        * NOTE: the off-end bound fires BEFORE any seek (cmpa dr_track / bhs), so it
+        * is MAME-edge-independent by construction. A "read valid tracks then cross
+        * off-end" variant was dropped — it exercises MAME's quirky edge-track read
+        * (reading track 34 after a direct 0->34 seek stalls), not our bound; the bound
+        * is the same code every iteration, proven by the track-40 case above.
 
 test_spin:
         bra     test_spin            ; harness captures results here
