@@ -52,14 +52,22 @@ DSK_XFER    equ DSK_DRV0+DSK_MOTOR+DSK_DD+DSK_HALT ; $A9 transfer (HALT armed)
 * --- WD1773 commands (WD1773 datasheet Type I / Type II) ---
 FDC_RESTORE equ $00          ; Restore, no verify, 6ms rate
 FDC_SEEK    equ $10          ; Seek,    no verify, 6ms rate
-FDC_READ    equ $80          ; Read Sector, single, side0, no side-compare
-FDC_ERRMASK equ $1C          ; RNF(b4)|CRC(b3)|Lost-Data(b2)
+FDC_READ    equ $80          ; Read Sector, single (m=0), side0, no side-compare
+FDC_READ_M  equ $90          ; Read Sector, MULTIPLE (m=1, bit4) — whole-track
+FDC_FORCEINT equ $D0         ; Force Interrupt (terminates a multiple-record read)
+FDC_ERRMASK equ $1C          ; RNF(b4)|CRC(b3)|Lost-Data(b2) — single-sector read
+FDC_ERRMASK_M equ $0C        ; CRC(b3)|Lost-Data(b2) only — whole-track m=1: the
+                             ; trailing RNF (sector reg > track) is the EXPECTED
+                             ; end-of-track terminator (datasheet), not an error
+SECS_TRACK  equ 18           ; sectors per track (RSDOS DD)
 
 * --- caller-set parameters (fixed low-RAM block; client reserves $0170-$0174) ---
-dr_track    equ $0170        ; target track  0..34
+dr_track    equ $0170        ; target track  0..34 (also: current track in a range)
 dr_sector   equ $0171        ; target sector 1..18
 dr_dest     equ $0172        ; destination pointer (2 bytes)
 dr_status   equ $0174        ; final WD1773 status byte
+dr_r_track  equ $0175        ; range: start track
+dr_r_count  equ $0176        ; range: sector count remaining (multiple of SECS_TRACK)
 
 * --- NMI landing in the constant Vector Page ($FE00-$FEED, safe siting) ---
 dr_nmi_done equ $FE00        ; completion flag (1 byte, below secondary vectors)
@@ -94,21 +102,21 @@ disk_read:
         * --- positioning config: drive0 + motor + DD, HALT OFF ---
         lda     #DSK_POS
         sta     DSKREG
-        bsr     dr_spinup            ; motor spin-up settle (real HW ~0.5-1s)
+        jsr     dr_spinup            ; motor spin-up settle (real HW ~0.5-1s)
 
         * --- Restore to track 0 ---
         lda     #FDC_RESTORE
         sta     FDC_CMDST
-        bsr     dr_settle            ; let Busy assert before polling
-        bsr     dr_wait_notbusy
+        jsr     dr_settle            ; let Busy assert before polling
+        jsr     dr_wait_notbusy
 
         * --- Seek to target track ---
         lda     dr_track
         sta     FDC_DATA             ; desired track -> Data reg
         lda     #FDC_SEEK
         sta     FDC_CMDST
-        bsr     dr_settle
-        bsr     dr_wait_notbusy
+        jsr     dr_settle
+        jsr     dr_wait_notbusy
 
         * --- select sector ---
         lda     dr_sector
@@ -143,6 +151,83 @@ dr_xfer:
         rts
 dr_err:
         orcc    #$01                 ; C set = error
+        rts
+
+* ---------------------------------------------------------------
+* disk_read_range — read dr_r_count sectors (whole tracks) starting at
+*   dr_r_track / sector 1, into (dr_dest), using m=1 per track + Seek-advance.
+*   dr_r_count must be a multiple of SECS_TRACK (whole-track-aligned; a
+*   partial-track tail is a DEFERRED capability — streaming may need it).
+*   Build #1's single-sector disk_read is left untouched (regression preserved).
+* Output: dr_status (last track's status); CC.C set on error.
+* ---------------------------------------------------------------
+disk_read_range:
+        lda     #DSK_POS
+        sta     DSKREG
+        jsr     dr_spinup
+        lda     #FDC_RESTORE         ; Restore to track 0 (once)
+        sta     FDC_CMDST
+        jsr     dr_settle
+        jsr     dr_wait_notbusy
+        lda     dr_r_track
+        sta     dr_track             ; current track
+rr_track:
+        lda     dr_track             ; --- Seek to the current track ---
+        sta     FDC_DATA
+        lda     #FDC_SEEK
+        sta     FDC_CMDST
+        jsr     dr_settle
+        jsr     dr_wait_notbusy
+        jsr     dr_read_track_m1     ; 18 sectors via m=1 -> (dr_dest), advances it
+        bcs     rr_err
+        inc     dr_track             ; --- advance to the next track ---
+        lda     dr_r_count
+        suba    #SECS_TRACK
+        sta     dr_r_count
+        bne     rr_track             ; more whole tracks to read
+        andcc   #$FE                 ; C clear = OK
+        rts
+rr_err:
+        orcc    #$01                 ; C set = error
+        rts
+
+* ---------------------------------------------------------------
+* dr_read_track_m1 — read one whole track (sectors 1..SECS_TRACK) via m=1 into
+*   (dr_dest), HALT-paced, terminated by Force Interrupt (avoids the 5-rev RNF
+*   stall the natural sector-overrun would cost). Advances dr_dest. CC.C on error.
+* ---------------------------------------------------------------
+dr_read_track_m1:
+        lda     #1
+        sta     FDC_SECTOR           ; whole track starts at sector 1
+        clr     dr_nmi_done
+        ldx     dr_dest
+        lda     #FDC_READ_M          ; Read Sector, m=1 (multiple record)
+        sta     FDC_CMDST
+        lda     #DSK_XFER            ; arm HALT (b7): DRQ paces the whole-track xfer
+        sta     DSKREG
+        ldy     #SECS_TRACK*256      ; 18*256 = 4608 bytes, HALT-paced
+rt_xfer:
+        lda     FDC_DATA             ; HALT holds until each DRQ (spans all 18 sectors)
+        sta     ,x+
+        leay    -1,y
+        bne     rt_xfer
+        * whole track read; the FDC is now searching sector 19 (m=1 continues).
+        lda     #DSK_POS             ; disarm HALT (b7=0) — latch write, not HALT-gated
+        sta     DSKREG
+        lda     FDC_CMDST            ; Type II read status BEFORE Force-Int
+        sta     dr_status
+        lda     #FDC_FORCEINT        ; terminate the m=1 search (no 5-rev RNF stall)
+        sta     FDC_CMDST
+        stx     dr_dest              ; save advanced destination pointer
+        jsr     dr_settle            ; let Force-Int complete + Busy clear before...
+        jsr     dr_wait_notbusy      ; ...the next Seek (command reg ignored while Busy)
+        lda     dr_status
+        anda    #FDC_ERRMASK_M       ; CRC/Lost-Data only (RNF = benign end-of-track)
+        bne     rt_err
+        andcc   #$FE
+        rts
+rt_err:
+        orcc    #$01
         rts
 
 * --- dr_wait_notbusy: poll Status b0 (Busy) until clear, with a timeout ---
