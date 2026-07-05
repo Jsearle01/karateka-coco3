@@ -119,26 +119,71 @@ Record Not Found** · bit 5 Record Type · bit 6 (0) · bit 7 Not Ready. INTRQ (
 Busy→0) signals completion; reading Status clears INTRQ.
 
 ## DRQ service-window arithmetic (AC-7, F3 — the feasibility gate)
+> **CORRECTION (post-review, verdict on `ab02228`):** the first draft marked
+> MFM@0.89 as an *arithmetic* FAIL and recommended "run at 1.78 MHz." Both were
+> overreach. Corrected below: the FAIL is **empirical/margin, not arithmetic**, and
+> the 1.78 MHz "fix" is **contradicted by the CoCo3 authority** — it is a contested
+> branch, not the resolution. The safe default is a **single-density loader disk**.
+
 Byte period = DRQ service window (must read Data before the next byte assembles or
 **Lost Data**). 5.25″ 300 RPM: FM 125 kbps → **64 µs/byte**; MFM 250 kbps →
 **32 µs/byte**. A minimal 6809 per-byte poll loop (read Status, rotate DRQ→carry,
 branch, read Data, store, count, loop) ≈ **24 cycles**:
 | CPU | cyc time | per-byte loop | FM (64 µs) | MFM (32 µs) |
 |-----|----------|---------------|-----------|-------------|
-| **0.89 MHz** | 1.12 µs | ~27 µs | ✅ **MAKES** (2.4× margin) | ⚠️ **FAILS** (only 5 µs margin; SAM DRAM-refresh + video DMA jitter → Lost Data) |
-| **1.78 MHz** | 0.56 µs | ~13.5 µs | ✅ comfortable | ✅ **MAKES** (2.4× margin) |
+| **0.89 MHz** | 1.12 µs | ~27 µs | ✅ **MAKES** (2.4× margin) | ⚠️ **makes on paper (27<32) but margin ~5 µs — fails in practice** |
+| **1.78 MHz** | 0.56 µs | ~13.5 µs | ✅ comfortable | (arithmetically fine, but see fast-speed contra below) |
 
-**MFM @ 0.89 MHz is the one that fails** — and this is **authoritative, not just
-arithmetic**: DECB Unravelled states plainly *"The slow clock speed of the Color
-Computer will not allow data to be transferred in the 'normal' method … there is
-just not enough time for this when operating at double density"* — the exact reason
-DECB invented the DRQ→HALT trick. **Verdict:** a polled read is feasible for
-**(a) single density (FM) at either CPU speed, or (b) double density (MFM) only at
-1.78 MHz.** Since `imgtool coco_jvc_rsdos` makes a **standard double-density RSDOS
-disk (MFM)**, the primitive must **switch the CPU to 1.78 MHz (`$FFD9`) for the
-transfer** (safe bare-metal, interrupts masked) — or the loader disk is authored
-single-density. This is a real design constraint, surfaced (F3 = FALSE for
-MFM@0.89, TRUE otherwise).
+**On the MFM@0.89 cell — state it correctly:** by the arithmetic, 27 µs < 32 µs, so
+it *makes the window on paper* by ~5 µs (~4-5 cycles). The FAIL is **not** carried by
+the numbers; it is carried by (a) that margin being too thin to survive SAM
+DRAM-refresh / video-DMA cycle-stealing, and (b) DECB Unravelled's empirical
+testimony — *"the slow clock speed … will not allow data to be transferred in the
+'normal' method … not enough time … when operating at double density"* — the exact
+reason DECB built the DRQ→HALT trick. **A defensible FAIL, but an empirical/margin
+FAIL, not an arithmetic one.**
+
+**On "just run at 1.78 MHz" — CONTESTED, do not build against it.** The arithmetic
+says fast speed makes the MFM window, but **whether the WD1773 is even accessible at
+1.78 MHz on the CoCo3 is unverified and contradicted by the authority:**
+- **Lomont p.11 (CoCo3-aware):** *"a lot of the timing-dependent things in the CoCo
+  BASIC ROMs won't work right at any speed other than 'slow', like reading or writing
+  cassettes and **disks**."* This aligns with Jay's stated instinct that the
+  controller does not work at fast speed.
+- **Mechanism, unresolved (A vs B):** Lomont attributes the breakage to *"the ROMs"*
+  → suggests **(A) software delay-calibration** (the ROM's cycle-counted FDC
+  status-valid delays — e.g. DECB's `EXG A,A` pauses at `LC0F0` — run half-length at
+  2×, so the ROM misreads status). Our own primitive would be *immune* to (A) (we
+  recalibrate delays). But the docs do **not** rule out **(B) cartridge-port
+  SCS/register-strobe timing** going marginal at 1.78 MHz — which no software fixes.
+  A→a custom fast driver might work; B→it can't. **The in-repo docs do not decide
+  A vs B**; only a MAME/hardware test (or the CoCo3 Service Manual schematics, which
+  are image-only) can. **Until decided, treat fast-speed FDC access as unsafe.**
+- **Reframing the HALT trick (independence):** its existence is *also* evidence that
+  fast speed was **not** a usable option — running the CPU at 2× is strictly simpler
+  than wiring DRQ→HALT through the cartridge; DECB chose the hardware handshake, which
+  is what you do only when fast speed isn't available/safe. (CoCo1/2 had no fast mode
+  at all, so this is suggestive, not conclusive — but it points away from "go fast.")
+
+**On Q1 (does RSDOS force slow for I/O?):** the Unravelled disassembly is **CoCo1/2**
+Disk BASIC — it never touches `$FFD8/$FFD9` because those SAM speed registers didn't
+exist on the CoCo1/2; its disk code is **slow-only by construction**. On the CoCo3 the
+disk ROM is the same code (`disk11.rom`) and never switches to fast — so RSDOS disk
+I/O runs at **0.89 MHz**, convergent with "slow is the sanctioned disk-I/O speed."
+
+## Decision tree for the boot read (design step chooses; not a reviewer/recon call)
+- **(a) Single-density (FM) loader disk @ 0.89 MHz — SAFE DEFAULT.** 64 µs window vs
+  ~27 µs loop → comfortable polled read, **no HALT, no fast-speed dependency**. Costs
+  standard-RSDOS double-density compatibility — but **we control the `.dsk` build**
+  (`imgtool` / our own format, per `disk-boot-decb-overlap.md`), so a custom
+  single-density boot format is ours to make. **Sidesteps both the fast-speed question
+  and the HALT trick.** Strongest candidate if Jay's fast-speed concern holds.
+- **(b) Double-density (MFM) + DRQ→HALT handshake @ 0.89 MHz.** Accept DECB's
+  mechanism; **revisits HS-4** (the pure-polled goal is abandoned for the transfer
+  inner loop). Works at slow speed; more complex; couples to the NMI/HALT path.
+- **(c) Double-density (MFM) + 1.78 MHz polled — CONTESTED.** Requires fast-speed FDC
+  access to be proven safe (Q2 above), which is unverified and Jay-doubted. **Do not
+  build against this until a MAME/hardware test settles A vs B.**
 
 ## Prior-art sweep (AC-9, P7 — MATCHED: no reusable code)
 - **pop-coco3:** repo **not present** in this topology (`../pop-coco3` absent) —
@@ -163,15 +208,15 @@ disk_read(track, sector, count, dest) -> (bytes_read, error)
        dest   (X)          destination buffer pointer
   out: bytes_read          bytes transferred
        error  (CC.C + A)   0=ok; else RNF(bit4)/CRC(bit3)/LostData(bit2) surfaced
-  pre: interrupts masked; DSKREG motor-on + density set; CPU 1.78 MHz if MFM
+  pre: interrupts masked; DSKREG motor-on + density set; CPU 0.89 MHz
+       (per the decision tree: FM single-density @ 0.89 = safe default; the
+        MFM@1.78 path is CONTESTED — do not assume it)
 ```
-**OPEN (do not resolve — for the design step):** the **boot-vs-runtime home** of
-this code. A cold boot needs the reader resident *before* any RAM image loads
-(boot-sector loader / ROM-call), yet the runtime engine also wants a reader —
-**shared resident copy vs the loader chaining through a resident copy** is
-unresolved. Named here; belongs to the loader-design task (ref
-`disk-boot-decb-overlap.md`: naive DECB LOADM is unusable, so a bare-metal reader
-like this is exactly what a real loader needs).
+**Boot-vs-runtime home — RESOLVED out-of-band by Jay (post-review):** a **shared
+source routine**, assembled into **both** the framebuffer stage-1 loader **and** the
+resident game image at their respective load addresses — **no PIC requirement**. (The
+recon's original "open" note is superseded.) Still a bare-metal reader per
+`disk-boot-decb-overlap.md` (naive DECB LOADM is unusable).
 
 ## CANDIDATES (report-note only)
 - `src/hal/coco3-dsk/file.s:5-7` — `HAL_file_init` no-op stub with `[no-ref: CoCo3
