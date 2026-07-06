@@ -28,6 +28,9 @@
 
 GAME_LOAD    equ $0100          ; game resident base (segment 1 / dispatch block)
 GAME_ENTRY   equ $0200          ; game exec entry (fixed constant)
+    ifndef GAME_TRACK
+GAME_TRACK   equ 1              ; game raw tracks start (3b-3: tracks 1-4, clear of BOOT@trk0
+    endif                       ; and the track-17 directory; -D GAME_TRACK=0 for the 3b-2 standalone)
 LOAD_TRACKS  equ 4              ; 4 whole tracks (72 sectors = 18432 B -> $0100-$48FF)
 BL_STACK     equ $7F00          ; loader stack: above the game load ($48FF), below us
 INIT0        equ $FF90
@@ -69,8 +72,8 @@ bl_mmu:
         clr     BL_RESULT               ; 0 = not done
         jsr     disk_read_init
 
-        lda     #0
-        sta     dr_r_track              ; start track 0
+        lda     #GAME_TRACK
+        sta     dr_r_track              ; game raw tracks start (3b-3: track 1)
         lda     #LOAD_TRACKS*SECS_TRACK ; 72 sectors (whole tracks)
         sta     dr_r_count
         ldd     #GAME_LOAD
