@@ -48,9 +48,18 @@ separated by ~214 empty bytes — no near-collision.
 1. **Deeper gameplay content.** This measured scenes 1-4 (the current prod image). The
    combat/throne-fight paths (not in this image) may nest deeper — re-run the probe when
    that content lands; 214 bytes is ample but not proven for unmeasured code.
-2. **Disk-during-play (streaming).** If a future build reads from disk DURING gameplay, the
-   disk NMI would then push onto the game's $01xx stack (not the bootloader's) — that eats
-   ~12+ bytes of the margin per in-flight NMI; re-measure with the disk-during-play path.
+2. **Disk-during-play (streaming) — PRE-CLEARED (measured 2026-07-06).** The disk-access
+   path's worst-case stack DEPTH was measured base-independently (`tests/scripted/
+   disk_stack_depth_probe.lua`, worst-case 8-track m=1 read, ≥2 runs): **D = 14 bytes**
+   below `disk_read_range` entry = a **12-byte NMI frame + 2-byte synchronous call depth**
+   (they ADD — the NMI fires HALT-frozen in the read loop, one `jsr` level deep; NMIs do
+   NOT stack, each RTIs before the next). Prediction if the disk NMI+read shared the `$01xx`
+   game stack: game worst (24 B, reach $01E7) + disk (14 B) = **38 B**, vs the **238 B**
+   budget ($01FF−$0111) → reaches ~$01D9, **~200 B clear of the $0111 data floor**.
+   **Streaming-during-play is PRE-CLEARED on this page** — no dedicated disk stack required
+   (the bootloader's $7F00 pattern remains available but is unnecessary for the margin).
+   Re-measure only if a future streaming design nests `disk_read_range` far deeper in the
+   game's call tree than the measured 24-B game worst.
 3. **DECB LOADM front-end (next build).** Resolve alongside the LOADM-vs-$0100-$01FF
    contention (whether DECB/BASIC touches this page during LOADM) — same 256-byte page.
 
