@@ -31,7 +31,7 @@ the disk in a non-sequential physical order silently reverts it to ~27 s (correc
 | **2b. dmk2sdf → SDF** | ? | **UNVERIFIED** | Tool absent (no dmk2sdf; imgtool/floptool cannot *write* SDF). SDF stores raw tracks by design → doc-expectation preserve, not proven |
 | **3. Real floppy (Greaseweazle/KryoFlux flux-write)** | YES (exp) | **YES** (raw flux) | DOC — flux-writers lay raw tracks → preserve by construction; hardware-flagged (not silicon-confirmed) |
 | **4. DECB `BACKUP` (CoCo-to-CoCo)** | **YES** | **NO** — dest format wins → default skip-4 spread → ~25-30 s | DECB SOURCE (definitive) + measured-sweep anchor |
-| **4-escape. `DSKINI drive,0` then BACKUP** | YES | **YES** (skip-0 = sequential) | DECB SOURCE — skip-0 → spacing 1.0 |
+| **4-escape. `DSKINI drive,0` then BACKUP** | ~~YES~~ | ~~YES (skip-0 = seq)~~ **REFUTED** | **SUPERSEDED** — measured in `mame-backup-escape-measured.md`: skip-0 → UNREADABLE (Lost-Data). No stock-tool escape exists. |
 
 ---
 
