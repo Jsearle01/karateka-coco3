@@ -198,13 +198,20 @@ compatible formatting (~1.55×, guaranteed-readable). No non-shipping branch.
   piles (the Part-3 Clyde dispatch, gated on 3b-3 clean).
 - **window-block-map.md stale line:** still carries "$FC00-$FFFF I/O 1KB";
   io-space-map (bb64b22) corrected it — $FE00-$FEFF is RAM vector page, only
-  $FF00-$FFFF is I/O. Open follow-up.
+  $FF00-$FFFF is I/O. CLOSED: window-block-map.md corrected to match (ff75e5e).
 - **Working-tree churn:** tools/ dir deletions/recreations, tools/→harness/tools/
   move, ground-truth PDFs (two image-only — WD177x-00, WD179X — need OCR if ever
   cited verbatim). Jay's to reconcile.
-- **disk_sandbox_view.lua:** the windowed viewer that produced the 25.3-V gate
-  observation — recommended tracked (it's the reproducible operator-gate harness,
-  not a throwaway).
+- **Operator-gate MAME convention (corrects the stale "disk_sandbox_view.lua"
+  note):** NO `disk_sandbox_view.lua` file exists or ever existed — it was a
+  misremembered artifact. The disk-arc visual gate was a *windowed MAME run with
+  display flags*, not a dedicated lua. Standing convention: runs meant for Jay's
+  eyes (the 25.3-V visual gates) are **windowed + slowed + scaled** for easy
+  viewing; headless/automated ([E]/[T]) gate runs need no display. All run scripts
+  already pass `-window`; the operator-gate viewing adds a *slow* speed + a window
+  scale on top. Proposed standard (values pending Jay's confirm): `-window
+  -speed 0.5 -prescale 3` (`-speed 0.5` = half-speed so animation is watchable —
+  NOT `-speed 8`, which is 8x FAST; `-prescale 3` enlarges the window 3x).
 
 ---
 

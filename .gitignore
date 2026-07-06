@@ -51,3 +51,10 @@ content/wave3-previews/
 
 # R-engine / scene-5 sandbox PNG previews (review scratch; untracked)
 content/engine-previews/
+
+# MAME-generated runtime artifacts (config + snapshots, regenerable)
+cfg/
+snap/
+
+# One-off session-note scratch (this note only; other session-notes/ are tracked)
+session-notes/2026-05-16-p2-3a-2-harness-tap-fix.md
