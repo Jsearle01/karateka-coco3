@@ -64,6 +64,21 @@ FI_STATUS   equ $2524              ; last dr_status
 FI_BASE     equ $2525              ; running (chunk_start_track*18)&$FF expected-byte base
 FI_SECCNT   equ $2526              ; per-chunk verify sector counter
 
+* --- BUILD #3b-1-REDUX: WORST-CASE single-CALL scene load (m=1 reliability + timing) ---
+* The REAL workload shape: 32 KB = 4 x 8 KB GIME blocks, covered by 8 WHOLE tracks
+* (144 sec = 36 KB) read in ONE disk_read_range call — ONE Restore, one session (HS-3)
+* — into a CONTIGUOUS CPU-window dest ($3000-$BFFF). This is 3b-1's chunk 0 (proven
+* clean) at full worst-case SIZE; the 3b-1 chunked multi-Restore stall (a chunking
+* artifact) does NOT apply — there is no 2nd call. A stall HERE would be a real m=1
+* failure (F1), reported, NOT dodged by chunking.
+WC_NTRACK   equ 8                  ; 8 whole tracks -> 144 sectors (< 252 byte dr_r_count)
+WC_BUF      equ $3000              ; contiguous dest $3000..$BFFF (144*256=36864B), clear of all
+WC_PHASE    equ $2530              ; 1=reading / 2=done (lua timestamps emulated time here)
+WC_MATCH    equ $2531              ; $A5 all-144-match / $5A read-fail or mismatch
+WC_STATUS   equ $2532              ; dr_status from the single call
+WC_FAILSEC  equ $2533              ; first failing sector ordinal (0..143) if mismatch
+WC_SECCNT   equ $2534              ; verify sector counter
+
 test_start:
         orcc    #$50                 ; mask IRQ/FIRQ (NMI stays enabled)
         lds     #$1F00               ; stack grows down; clear of code ($0200) and the
@@ -89,8 +104,12 @@ test_start:
 
         jsr     disk_read_init       ; install our NMI vector + handler ($FEFD/$FE20)
 
+    ifdef WORSTCASE
+        jmp     do_worstcase         ; WORSTCASE build: single-call 8-track worst-case scene load
+    endif
+
     ifdef FULLIMAGE
-        jmp     do_fullimage         ; FULLIMAGE build: full-image-sized long read (clean FDC state)
+        jmp     do_fullimage         ; FULLIMAGE build: RETIRED chunked full-image test (3b-1 artifact)
     endif
 
     ifdef READJUMP
@@ -336,6 +355,75 @@ fi_vbyte:
         rts
 fi_vfail:
         puls    b                    ; balance stack
+        orcc    #$01                 ; mismatch
+        rts
+
+* ============================================================
+* BUILD #3b-1-REDUX: WORST-CASE SINGLE-CALL SCENE LOAD (m=1 reliability + timing)
+*   Reached only in the WORSTCASE build. The REAL workload shape: read 8 whole
+*   tracks (144 sec = 36 KB, covering the 32 KB/4-block target) in ONE
+*   disk_read_range call — ONE Restore, one continuous session (HS-3) — into the
+*   contiguous dest $3000..$BFFF, then verify byte-for-byte. WC_PHASE marks
+*   read-start/done for the lua's emulated-time measurement (HS-5).
+* ============================================================
+do_worstcase:
+        clr     WC_PHASE
+        clr     WC_STATUS
+        clr     WC_FAILSEC
+        lda     #$A5
+        sta     WC_MATCH             ; assume match until a read-fail / mismatch
+        lda     #1
+        sta     WC_PHASE             ; phase 1: read STARTS (lua stamps emulated t0)
+        clra                         ; start track 0
+        sta     dr_r_track
+        lda     #WC_NTRACK*SECS_TRACK ; 144 sectors, ONE call (< 252 byte limit)
+        sta     dr_r_count
+        ldd     #WC_BUF
+        std     dr_dest              ; contiguous 36 KB dest (disk_read_range advances it)
+        jsr     disk_read_range      ; SINGLE call, ONE Restore, 8 Seeks, 8 m=1 reads (HS-3)
+        lda     dr_status
+        sta     WC_STATUS
+        bcs     wc_fail              ; read errored / timed-out
+        jsr     wc_verify            ; all 144 sectors byte-for-byte (carry = mismatch)
+        bcs     wc_fail
+        bra     wc_end               ; WC_MATCH stays $A5
+wc_fail:
+        lda     #$5A
+        sta     WC_MATCH
+wc_end:
+        lda     #2
+        sta     WC_PHASE             ; phase 2: DONE (lua stamps emulated t1 -> load time)
+wc_spin:
+        bra     wc_spin
+
+* --- wc_verify: check WC_BUF's 144 sectors; sector n byte j == (n+j)&$FF (base 0,
+*     tracks 0-7 contiguous from track 0). C set = mismatch; WC_FAILSEC = fail sector.
+wc_verify:
+        ldx     #WC_BUF
+        clrb                         ; B = expected start value of the current sector (= n)
+        clr     WC_SECCNT
+wc_vsec:
+        pshs    b
+        tfr     b,a                  ; A = expected first byte of this sector
+        clrb                         ; inner 256-byte counter (wraps 255->0)
+wc_vbyte:
+        cmpa    ,x+
+        bne     wc_vfail
+        inca
+        decb
+        bne     wc_vbyte
+        puls    b                    ; restore this sector's start value
+        incb                         ; next sector start = +1
+        inc     WC_SECCNT
+        lda     WC_SECCNT
+        cmpa    #WC_NTRACK*SECS_TRACK ; all 144 sectors checked?
+        bne     wc_vsec
+        andcc   #$FE                 ; whole 8-track load matched
+        rts
+wc_vfail:
+        puls    b                    ; balance stack
+        lda     WC_SECCNT            ; the failing sector ordinal (sectors passed so far)
+        sta     WC_FAILSEC
         orcc    #$01                 ; mismatch
         rts
 

@@ -90,6 +90,10 @@ lwasm --decb -D FULLIMAGE -I src/hal/coco3-dsk -o tests/scripted/disk_sandbox_fi
 if errorlevel 1 goto :error
 call :size tests/scripted/disk_sandbox_fi.bin
 
+lwasm --decb -D WORSTCASE -I src/hal/coco3-dsk -o tests/scripted/disk_sandbox_wc.bin tests/scripted/disk_sandbox_driver.s
+if errorlevel 1 goto :error
+call :size tests/scripted/disk_sandbox_wc.bin
+
 echo === BUILD COMPLETE ===
 exit /b 0
 
