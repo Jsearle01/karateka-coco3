@@ -49,6 +49,13 @@ grep -q 'match WC_MATCH\[\$2531\]=\$A5' "$LOG_WC" && grep -q 'WC_PHASE\[\$2530\]
   && echo "WORST-CASE LOAD: PASS (single-call 8-track m=1 read reliable at worst-case size)" \
   || echo "WORST-CASE LOAD: DID NOT COMPLETE / MISMATCH — see log (F1 real m=1 failure, or F2/F4)"
 
+echo "=== (DECOMP) worst-case load-time decomposition — non-invasive FDC-timestamp probe (primitive UNCHANGED) ==="
+"$LWASM" --decb -D WORSTCASE -I "$ROOT/src/hal/coco3-dsk" -o "$ROOT/tests/scripted/disk_sandbox_wc.bin" "$SRC"
+DECOMP_SKEW="1:1" DECOMP_LOG="$ROOT/build/logs/unit/disk_worstcase_decomp.log" \
+  run "$FIX_WC" "$ROOT/tests/scripted/disk_worstcase_decomp.lua" 45
+grep -E "spin-up|MARGINAL|ROTATIONAL|SEEK fraction" "$ROOT/build/logs/unit/disk_worstcase_decomp.log"
+echo "(decomposition: ~95.7% rotational read, seek 0.2%, spin-up ~0.44s one-time; skew sweep needs DMK — see docs/project/load-time-decomposition-interleave-probe.md)"
+
 echo "=== (FULLIMAGE) RETIRED chunked full-image test — 3b-1 chunking artifact, kept for reference ==="
 "$LWASM" --decb -D FULLIMAGE -I "$ROOT/src/hal/coco3-dsk" -o "$ROOT/tests/scripted/disk_sandbox_fi.bin" "$SRC"
 run "$FIX_FI" "$LUA_FI" 22; grep -E "chunks completed|STALL" "$LOG_FI"
