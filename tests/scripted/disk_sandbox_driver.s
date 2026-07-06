@@ -47,6 +47,23 @@ RANGE_BUF   equ $4000              ; multi-track dest (36 sectors x 256 = 9216 B
 RANGE_TRACK equ 33                 ; range spans tracks 33-34 (last two; crosses a
 RANGE_COUNT equ 36                 ; boundary, HS-5; edge-adjacent for the advance test)
 
+* --- BUILD #3b-1: full-image-SIZED single-session multi-read (m=1 compat + timing) ---
+* Reads the real image's TRACK COUNT (32 of 35 = space-budget recon), NOT the real
+* bytes (HS-4). 64K address space + byte dr_r_count (<=252 sec) force a CHUNKED read:
+* 8 chunks x 4 tracks, each disk_read_range'd into a REUSED buffer + verified before
+* overwrite — ALL IN ONE CONTINUOUS SESSION (HS-3). A stall shows as FI_DONE < 8 with
+* PC in the m=1 read loop (the 3a FDC-state pathology at scale = the compatibility find).
+FI_NCHUNK   equ 8                  ; 8 chunks -> 32 data tracks
+FI_CHUNKTRK equ 4                  ; tracks/chunk (4*18=72 sec <= byte dr_r_count max 252)
+FI_BUF      equ $3000              ; reused per-chunk buffer (72*256=18432B -> ends $77FF)
+FI_PHASE    equ $2520              ; 1=reading / 2=done (lua timestamps emulated time here)
+FI_DONE     equ $2521              ; chunks completed 0..8 ( <8 + PC in read loop = STALL )
+FI_MATCH    equ $2522              ; $A5 all-match / $5A mismatch-or-failed-read
+FI_FAILCHK  equ $2523              ; first failing/failed chunk index (if not all-match)
+FI_STATUS   equ $2524              ; last dr_status
+FI_BASE     equ $2525              ; running (chunk_start_track*18)&$FF expected-byte base
+FI_SECCNT   equ $2526              ; per-chunk verify sector counter
+
 test_start:
         orcc    #$50                 ; mask IRQ/FIRQ (NMI stays enabled)
         lds     #$1F00               ; stack grows down; clear of code ($0200) and the
@@ -71,6 +88,10 @@ test_start:
         clr     RES_JUMP_BAD
 
         jsr     disk_read_init       ; install our NMI vector + handler ($FEFD/$FE20)
+
+    ifdef FULLIMAGE
+        jmp     do_fullimage         ; FULLIMAGE build: full-image-sized long read (clean FDC state)
+    endif
 
     ifdef READJUMP
         jmp     do_readjump          ; READJUMP build: prove read-and-jump in a CLEAN FDC state
@@ -234,6 +255,89 @@ try_read_and_jump:
         jmp     ,x                   ; jump into the loaded code (does not return)
 rj_fail:
         rts                          ; return with carry set (no jump taken)
+
+* ============================================================
+* BUILD #3b-1: FULL-IMAGE-SIZED SINGLE-SESSION MULTI-READ (m=1 compat + timing)
+*   Reached only in the FULLIMAGE build (jmp'd from just after disk_read_init, a
+*   CLEAN FDC state — a straight sequential read with NO off-end/Restore interleave,
+*   per P3). Reads 32 data tracks (0..31) in 8 chunks of 4 tracks, each chunk into
+*   the REUSED buffer FI_BUF and verified before the next overwrites it — one
+*   continuous session (HS-3). FI_PHASE marks read-start/done for the lua's emulated-
+*   time measurement (HS-5). A stall leaves FI_PHASE=1 and FI_DONE < 8 (the finding).
+* ============================================================
+do_fullimage:
+        clr     FI_PHASE
+        clr     FI_DONE              ; doubles as the chunk INDEX (chunks done = next chunk)
+        clr     FI_FAILCHK
+        clr     FI_STATUS
+        clr     FI_BASE              ; chunk 0 expected base = (0*18)&$FF = 0
+        lda     #$A5
+        sta     FI_MATCH             ; assume all-match until a mismatch/failed read
+        lda     #1
+        sta     FI_PHASE             ; phase 1: reading STARTS (lua stamps emulated t0)
+        * NB: the chunk index lives in FI_DONE (memory), NOT a register — fi_verify
+        * clobbers B, so a register loop counter would run away (harness bug, fixed).
+fi_loop:
+        lda     FI_DONE              ; current chunk index = chunks completed so far
+        cmpa    #FI_NCHUNK
+        beq     fi_end               ; all 8 chunks read + verified (FI_MATCH stays $A5)
+        lsla                         ; start track = chunk * FI_CHUNKTRK
+        lsla                         ; *4 (max chunk 7 -> track 28; +4 tracks -> 31 < 35)
+        sta     dr_r_track
+        lda     #FI_CHUNKTRK*SECS_TRACK   ; 72 sectors this chunk
+        sta     dr_r_count
+        ldd     #FI_BUF
+        std     dr_dest              ; reused buffer (disk_read_range advances it)
+        jsr     disk_read_range      ; m=1 per track + Seek-advance (UNCHANGED primitive)
+        lda     dr_status
+        sta     FI_STATUS
+        bcs     fi_fail              ; read errored / timed-out -> stop, record chunk
+        jsr     fi_verify            ; byte-for-byte check this chunk (carry set = mismatch)
+        bcs     fi_fail
+        inc     FI_DONE              ; chunk OK -> chunks completed++ (live stall indicator)
+        lda     FI_BASE
+        adda    #FI_CHUNKTRK*SECS_TRACK   ; next chunk base += 72 (mod 256)
+        sta     FI_BASE
+        bra     fi_loop
+fi_fail:
+        lda     #$5A                 ; read failed OR verify mismatched at this chunk
+        sta     FI_MATCH
+        lda     FI_DONE              ; the failing chunk index (chunks completed = this one)
+        sta     FI_FAILCHK
+fi_end:
+        lda     #2
+        sta     FI_PHASE             ; phase 2: DONE (lua stamps emulated t1 -> load time)
+fi_spin:
+        bra     fi_spin
+
+* --- fi_verify: check FI_BUF's 72 sectors; sector n byte j == (FI_BASE+n+j)&$FF.
+*     Same position-encoded scheme as the range test, at chunk scale. C set = mismatch.
+fi_verify:
+        ldx     #FI_BUF
+        ldb     FI_BASE              ; B = expected start value of the current sector
+        clr     FI_SECCNT
+fi_vsec:
+        pshs    b
+        tfr     b,a                  ; A = expected first byte of this sector
+        clrb                         ; inner 256-byte counter (wraps 255->0)
+fi_vbyte:
+        cmpa    ,x+                  ; expected(A) vs actual
+        bne     fi_vfail
+        inca                         ; next expected = (base+n+j+1) mod 256
+        decb
+        bne     fi_vbyte
+        puls    b                    ; restore this sector's start value
+        incb                         ; next sector start = +1
+        inc     FI_SECCNT
+        lda     FI_SECCNT
+        cmpa    #FI_CHUNKTRK*SECS_TRACK   ; all 72 sectors of the chunk checked?
+        bne     fi_vsec
+        andcc   #$FE                 ; whole chunk matched
+        rts
+fi_vfail:
+        puls    b                    ; balance stack
+        orcc    #$01                 ; mismatch
+        rts
 
 * --- the primitive under test (shared source) ---
         include "disk_read.s"
