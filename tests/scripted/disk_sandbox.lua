@@ -52,6 +52,13 @@ _G._n = emu.add_machine_frame_notifier(function()
     log("== mechanism trace ==")
     log("  FDC cmd writes: "..tally(_G._cmd).."  (90=Read m=1, 10=Seek, D0=ForceInt, 00=Restore, 80=Read m=0)")
     log("  DSKREG writes:  "..tally(_G._dskreg).."  (A9=HALT b7 armed, 29=positioning)")
+    log("== BUILD #3a read-and-jump ==")
+    log(string.format("  FAILED-READ guard[$220B]=$%02X (A5=no-jump on bad read) ; unexpected[$220C]=$%02X (want 00)",
+        rd(0x220B), rd(0x220C)))
+    log(string.format("  JUMP proof: signature $2500=$%02X%02X (want CAFE) ; $2502=$%02X (want A5) ; PC=$%04X (want $300B=loaded stub)",
+        rd(0x2500), rd(0x2501), rd(0x2502), cpu.state["PC"].value))
+    log(string.format("  loaded payload: $3000=$%02X (want CC=stub) $300C=$%02X (want FE) $300D=$%02X (want EE=filler)",
+        rd(0x3000), rd(0x300C), rd(0x300D)))
     logf:close(); manager.machine:exit()
   end
 end)

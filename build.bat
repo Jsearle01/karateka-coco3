@@ -82,6 +82,10 @@ lwasm --decb -I src/hal/coco3-dsk -o tests/scripted/disk_sandbox.bin tests/scrip
 if errorlevel 1 goto :error
 call :size tests/scripted/disk_sandbox.bin
 
+lwasm --decb -D READJUMP -I src/hal/coco3-dsk -o tests/scripted/disk_sandbox_rj.bin tests/scripted/disk_sandbox_driver.s
+if errorlevel 1 goto :error
+call :size tests/scripted/disk_sandbox_rj.bin
+
 echo === BUILD COMPLETE ===
 exit /b 0
 

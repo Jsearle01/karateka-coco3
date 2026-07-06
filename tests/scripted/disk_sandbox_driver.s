@@ -38,6 +38,9 @@ RES_BAD_CCERR  equ $2205            ; AC-7: CC.C from the bad-sector read (expec
 RES_RANGE_PASS equ $2206            ; Build #2: multi-track range match ($A5/$5A)
 RES_RANGE_STAT equ $2207            ; Build #2: last-track status
 RES_BADTRK_CC  equ $2208            ; off-end range (track 40) CC.C — expect $01 (caught)
+RES_FAILGUARD  equ $220B            ; 3a: $A5 => a failed read did NOT jump (boot-safety)
+RES_JUMP_BAD   equ $220C            ; 3a: $5A => the good read unexpectedly failed (should stay $00)
+RJ_LOADADDR    equ $220D            ; 3a: saved load address (disk_read_range advances dr_dest)
 TEST_TRACK  equ 2
 TEST_SECTOR equ 5
 RANGE_BUF   equ $4000              ; multi-track dest (36 sectors x 256 = 9216 B)
@@ -64,8 +67,14 @@ test_start:
         clr     RES_RANGE_PASS       ; stays $00 if the range read HANGS (finding)
         clr     RES_RANGE_STAT
         clr     RES_BADTRK_CC
+        clr     RES_FAILGUARD        ; stays $00 if a failed read wrongly jumped (finding)
+        clr     RES_JUMP_BAD
 
         jsr     disk_read_init       ; install our NMI vector + handler ($FEFD/$FE20)
+
+    ifdef READJUMP
+        jmp     do_readjump          ; READJUMP build: prove read-and-jump in a CLEAN FDC state
+    endif
 
         * --- drive the primitive: read track 2 / sector 5 -> $2000 ---
         lda     #TEST_TRACK
@@ -177,6 +186,54 @@ bt_noerr:
 
 test_spin:
         bra     test_spin            ; harness captures results here
+
+* ============================================================
+* BUILD #3a: READ-AND-JUMP (the one new loader mechanism)
+*   Reached only in the READJUMP build (jmp'd from just after disk_read_init, in a
+*   CLEAN FDC state). A separate build so MAME's coco_fdc state quirk — where m=1
+*   reads stall after the regressions' off-end/failed-guard Restore sequence — does
+*   not mask the mechanism. Same pattern as SCENE5_STANDALONE.
+* ============================================================
+do_readjump:
+        * (a) FAILED-READ GUARD (HS-6): a bad (off-end) range must NOT jump into a
+        *     half-loaded/garbage payload — try_read_and_jump must RETURN.
+        lda     #40                  ; off-end -> disk_read_range sets carry
+        sta     dr_r_track
+        lda     #SECS_TRACK
+        sta     dr_r_count
+        ldd     #$6400               ; harmless dest
+        std     dr_dest
+        jsr     try_read_and_jump    ; must return (rj_fail), NOT jump
+        lda     #$A5
+        sta     RES_FAILGUARD        ; $A5 => we returned = no jump on a failed read
+
+        * (b) SUCCESSFUL READ-AND-JUMP: load the image-shaped payload (tracks 5-6)
+        *     to $3000 (NOT the framebuffer), then jump into it. The loaded stub
+        *     writes its signature ($CAFE->$2500, $A5->$2502) and halts at $300B.
+        clr     $2500                ; clear the signature area — the STUB alone
+        clr     $2501                ; writes it, so a nonzero value proves it ran
+        clr     $2502
+        lda     #5                   ; payload on tracks 5-6
+        sta     dr_r_track
+        lda     #36                  ; 2 whole tracks
+        sta     dr_r_count
+        ldd     #$3000               ; controllable load address (HS-4: not $8000+)
+        std     dr_dest
+        std     RJ_LOADADDR          ; SAVE it — disk_read_range advances dr_dest past the payload
+        jsr     try_read_and_jump    ; success -> jmp $3000 (loaded stub); NEVER returns
+        lda     #$5A                 ; only reached if the good read unexpectedly failed
+        sta     RES_JUMP_BAD
+rj_spin:
+        bra     rj_spin
+
+* --- try_read_and_jump: read the range; jump into it ONLY on success ---
+try_read_and_jump:
+        jsr     disk_read_range      ; the proven primitive (unchanged)
+        bcs     rj_fail              ; read FAILED -> do NOT jump (boot-safety, HS-6)
+        ldx     RJ_LOADADDR          ; X = ORIGINAL load address (dr_dest is now advanced)
+        jmp     ,x                   ; jump into the loaded code (does not return)
+rj_fail:
+        rts                          ; return with carry set (no jump taken)
 
 * --- the primitive under test (shared source) ---
         include "disk_read.s"

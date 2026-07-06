@@ -30,7 +30,17 @@ with open(out, "r+b") as f:
             k = (t-START)*SPT + (s-1)          # 0..35
             f.seek(off(t,s))
             f.write(bytes((k+i) & 0xFF for i in range(256)))
+    # (3) Build #3a read-and-jump payload: tracks 5-6 (whole-track-aligned).
+    #     First bytes = a 6809 stub (loaded at $3000) that PROVES IT RAN:
+    #       ldd #$CAFE ; std $2500 ; lda #$A5 ; sta $2502 ; bra * (halt at $300B)
+    #     rest = $EE filler (so the whole-payload load is byte-verifiable).
+    STUB = bytes([0xCC,0xCA,0xFE, 0xFD,0x25,0x00, 0x86,0xA5, 0xB7,0x25,0x02, 0x20,0xFE])
+    PSTART = 5; PNTRACK = 2
+    payload = STUB + bytes([0xEE]) * (PNTRACK*SPT*256 - len(STUB))
+    f.seek(off(PSTART,1)); f.write(payload)
     print(f"single-sector @T2/S5 (off {off(2,5)}); range tracks {START}-{START+NTRACK-1} "
           f"({NTRACK*SPT} sectors, off {off(START,1)}..{off(START+NTRACK-1,SPT)+255})")
+    print(f"read-and-jump payload @tracks {PSTART}-{PSTART+PNTRACK-1} (off {off(PSTART,1)}), "
+          f"stub {len(STUB)}B + $EE filler = {len(payload)}B")
 PY
 echo "fixture: $OUT ($(stat -c%s "$OUT") bytes)"
