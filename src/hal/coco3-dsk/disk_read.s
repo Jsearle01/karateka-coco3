@@ -68,12 +68,18 @@ MAX_TRACK   equ 35           ; valid tracks 0..34 (a standard 35-track disk); a
 * during boot — trace-confirmed in the $0100-verify). $2100 is DECB-clear in the
 * sandbox's high working region (above the $01xx vector/BASIC-var page, above the
 * $2000 buffer). A real client may re-point this block; the primitive owns it.
-dr_track    equ $2100        ; target track  0..34 (also: current track in a range)
-dr_sector   equ $2101        ; target sector 1..18
-dr_dest     equ $2102        ; destination pointer (2 bytes)
-dr_status   equ $2104        ; final WD1773 status byte
-dr_r_track  equ $2105        ; range: start track
-dr_r_count  equ $2106        ; range: sector count remaining (multiple of SECS_TRACK)
+* Variable base is overridable (-D DR_VARBASE=...) so a client whose load region
+* covers the default $2100 (e.g. the boot loader placing the game at $0100-$48FF)
+* can relocate these 7 RAM bytes clear of its load. Default $2100 = the sandbox.
+    ifndef DR_VARBASE
+DR_VARBASE  equ $2100
+    endif
+dr_track    equ DR_VARBASE+0 ; target track  0..34 (also: current track in a range)
+dr_sector   equ DR_VARBASE+1 ; target sector 1..18
+dr_dest     equ DR_VARBASE+2 ; destination pointer (2 bytes)
+dr_status   equ DR_VARBASE+4 ; final WD1773 status byte
+dr_r_track  equ DR_VARBASE+5 ; range: start track
+dr_r_count  equ DR_VARBASE+6 ; range: sector count remaining (multiple of SECS_TRACK)
 
 * --- NMI landing in the constant Vector Page ($FE00-$FEED, safe siting) ---
 dr_nmi_done equ $FE00        ; completion flag (1 byte, below secondary vectors)

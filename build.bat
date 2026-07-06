@@ -94,6 +94,11 @@ lwasm --decb -D WORSTCASE -I src/hal/coco3-dsk -o tests/scripted/disk_sandbox_wc
 if errorlevel 1 goto :error
 call :size tests/scripted/disk_sandbox_wc.bin
 
+REM BUILD #3b-2 boot loader (framebuffer-resident; DR_VARBASE relocates primitive vars clear of the $0100 game load)
+lwasm --decb -D DR_VARBASE=$BF00 -I src/hal/coco3-dsk -o tests/scripted/bootloader.bin src/boot/bootloader.s
+if errorlevel 1 goto :error
+call :size tests/scripted/bootloader.bin
+
 echo === BUILD COMPLETE ===
 exit /b 0
 
