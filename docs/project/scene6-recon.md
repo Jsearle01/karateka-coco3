@@ -1,114 +1,139 @@
-# Scene-6 Oracle Recon — the attract fight-demo (asset + timing/placement spec)
+# Scene-6 Oracle Recon — the attract fight-demo (motion-layer + cast spec)
 
 **Execution-grounded recon.** Scene 6 (the CoCo port's next scene) = the Apple oracle's
-**attract "one fight" demo** (intro-cycle scene 8: hero vs one guard, in the gameplay space,
-scripted, hero wins). Scene 6 is **past the scene-4 oracle wall**, so the spine is: **the
-running game is authority; the oracle `.s` is a HYPOTHESIS source.** Every entry below is
-tagged `[CONFIRMED]` (execution-observed) or `[HYP]` (hypothesis — oracle label / bank
-cross-ref, pending Jay's live-MAME adjudication). Identity/color/position is **Jay's call**
-(HS-4) — this doc LOCALIZES (source→object→frame→column) and hands Jay a targeted list.
-**t0:** 2026-07-06T15:46:32. Read-only (oracle repo + prod `88eba89…` untouched; no
-conversion/code/build). Trace tools: `karateka_dissasembly_claude/tools/attract_scene6_trace.lua`,
-`scene6_sprite_localize.lua` (untracked in the oracle repo).
+**attract "one fight" demo** (intro-cycle scene 8: hero vs one guard, scripted, hero wins).
+Scene 6 is **past the scene-4 oracle wall**, so the spine is: **the running game is authority;
+the oracle `.s` labels are a HYPOTHESIS source** — used here only to *name* execution-localized
+sources. Every entry is tagged `[CONFIRMED]` (execution-observed) or `[HYP]` (oracle
+label / bank cross-ref, pending Jay's live-MAME adjudication). Identity/color/position is
+**Jay's call** (HS-4); this doc LOCALIZES (source→object→frame) and hands Jay a targeted list.
+**t0:** 2026-07-06T21:35:09. Read-only (oracle repo + prod `88eba89…` untouched; no
+conversion into the port, no code/build). Trace tools (untracked in the oracle repo):
+`tools/scene6_layer_separate.lua` (this pass — bank-classified draw-entry tap),
+`tools/attract_scene6_trace.lua`, `tools/scene6_sprite_localize.lua` (prior passes).
+
+> **CORRECTION (this pass, from Jay's live-MAME gate).** The prior recon mislabeled the
+> **scrolling background** (`$A684`-bank tiles) as "the dominant MOVER / likely the hero,"
+> and hypothesized the `$0B1x` cluster as a "second combatant." Both were the "moving =
+> actor" trap: per-frame `$03/$04` sampling caught the *most-drawn* thing (the scroll) and
+> mid-blit ZP noise, not the cast. **This pass classifies by sprite-BANK at the actual draw
+> entry `L1903` ($1903)** — which separates the three real motion layers cleanly and finds
+> the characters via their oracle labels. See "Superseded findings" at the end.
 
 ---
 
-## Phase A — reach, hold, repeatability, trace vocabulary
+## The three motion layers `[CONFIRMED by bank-classified draw tap]`
 
-### Reach + hold `[CONFIRMED]`
-Boot `apple2e -flop1 dumps/karateka.dsk` and let the intro+attract cycle run **from RAM,
-no key press**. Timeline (per-second cluster sample):
-- **0-6.5 s** black (boot load). **~7 s** scene 1 appears. **~7-64 s** intro scenes (cluster
-  static `$52=00`). **~65-107 s** a held-cluster cinematic (`$52=30 $51=FE` static — scene 5
-  imprison `[HYP]`). **~108 s+** the **FIGHT DEMO** — the full coordinate cluster starts
-  actively decrementing (`$52`: 30→2C→27→22→1E…, `$51/$62/$72/$91` moving in lockstep).
-- The **active-cluster signature** (whole cluster moving = character positions changing)
-  distinguishes the fight demo from the static-cluster scene 5. Onset frame ≈ **6480 (~108 s)**.
+Method: read-tap `L1903` ($1903, the video.s sprite-draw entry — the blit reads `$03/$04`
+as the source, per the ZP-tap-vs-blit-entry note). Over the fight window (f6400-7400,
+deterministic single run), every draw's source `$04·256+$03` is bucketed by bank. Draw
+counts are per-window totals.
 
-### Repeatability `[CONFIRMED]` — HS-2 gate PASSES (deterministic)
-**3 runs land byte-identical at the fight-demo onset** (t108 `$50=05 $51=FA $52=2C $62=0F
-$72=2C`; t110 `$50=05 $51=20 $52=22 $62=10 $72=22 $91=42` — identical run 1/2/3). This game's
-attract cycle plays **frame-for-frame deterministically** from a fixed boot — the
-"demonstration fight" is scripted, **no RNG divergence**. So the reach is fully repeatable
-(boot + wait to ~108 s). *(Notable: contradicts the general "attract loop non-deterministic"
-assumption — the ≥3-run gate REVEALED determinism, which simplifies all downstream work.)*
+### Layer 1 — LOCKED SCROLL (player-driven background) `[CONFIRMED]`
+The `$A400-$ACFF` bank, drawn **hundreds-to-thousands of times per window** — a tiled layer
+redrawn every frame across the play width (the signature of a scrolling floor/scenery group,
+NOT a single actor):
 
-### Trace vocabulary `[CONFIRMED by observed change]` (HS-3)
-Which candidates are LIVE during the cycle (change-count over 125 s), and their role `[HYP]`:
-- **`$03/$04` (67/59 changes) — the SPRITE-SOURCE POINTER** (`src = $04·256 + $03`), most
-  active; drives which sprite is blitted. The primary localization handle.
-- **`$50/$51/$52/$62/$72/$91` — the q016 coordinate cluster** (10-18 changes): `$51` column
-  counter, `$52` a group/column, `$62/$72/$91` the x/y coordinate triple; maintained in
-  lockstep by `attract_state.s` batch primitives `[HYP: q016]`. Active-decrement = the fight
-  demo's character motion.
-- **`$39/$3A/$3B` (16-17) — animation-state** candidates. **`$3D` (4) — barely active** (not
-  a fight-demo driver).
+| source | frames | draws | oracle label `[HYP]` |
+|--------|--------|------:|---|
+| `$A684` | f6528-7392 | **2756** | `sprite_A684` (a400 bank, "unidentified") — dominant scroll tile |
+| `$A68A` | f6519-7400 | 1113 | `sprite_A68A` |
+| `$A703` | f6519-7384 | 988 | `sprite_A703` |
+| `$A85F` | f6519-7168 | 280 | `sprite_A85F` |
+| `$AB8E` | f6421-6573 | 252 | a400 floor pattern |
+| `$AA11 / $AA23 / $AA31` | f6455-7166 | 216/86/84 | a400 floor patterns |
 
----
+This is the layer Jay described as one **locked group** that stays still while the player
+moves through a **dead-band**, then scrolls once he passes the margin. The lock/dead-band
+*mechanism* is a Stage-2 (scroll-engine) concern — not built here — but the layer is now
+correctly identified as the scroll, not the hero. (27 distinct scroll sources total.)
 
-## Phase B — asset inventory (LOCALIZED; identity OPEN, pending Jay — HS-4/HS-5)
+### Layer 2 — INDEPENDENT CHARACTERS (the real cast) `[CONFIRMED sources; identity HYP]`
+Combatant figures in the `$8xxx/$9xxx` sprite banks, drawn a **handful of times each** (one
+figure, not a tiled fill), reconciled to oracle labels (HS-4 — by structure, not draw-count):
 
-Distinct sprite sources sampled per-frame across the fight demo (frames 6400-7400): **286
-distinct** — an OPEN inventory (many are transient animation cels/scenery). Top sources by
-dwell (frames present), with the oracle bank as `[HYP]` data-location:
+**PLAYER — run cycle `[HYP: oracle player_run_* labels]`** (early in the window, f6423-6613):
+| source | frames | oracle label |
+|--------|--------|---|
+| `$9B00 $9B6B $9BE5 $9C1B $9CAF $9CD7` | f6423-6612 | `player_run_legs_*` (8-frame leg cycle, `$9B00-$9D1E`) |
+| `$9D68 $9D97 $9DD5 $9E05` | f6438-6613 | `player_run_torso_*` (8-frame torso cycle, `$9D68-$9EB7`) |
 
-| # | source | frames | dwell | col@first | bank / oracle note `[HYP]` |
-|--:|--------|--------|------:|:---:|---|
-| 1 | **`$A684`** | f6529-7399 | 165 | `$28`→dec | `$A400` combat/climbing bank — **dominant MOVER** (walks across) |
-| 2 | `$AA11` | f6458-7165 | 60 | `$2F` | `$A400` — oracle: **floor pattern** (scenery) |
-| 3-… | `$A686 $A688 $A68A $A68C $A68E $A690 $A703 $A705` | f6529-7400 | 10-32 | `$24-$1D` | `$A400` — **2-byte-stepped cels = one combatant's animation cycle** |
-| 4-… | `$0B12-$0B1B` (cluster) | f6423-7390 | 14-30 | `$2C-$30` | `gameplay_state_0b00.s` — **2nd combatant / gameplay-driven object** |
-| 12 | `$A688` | f6636-7061 | 21 | `$20` | `$A400` combat |
-| 13 | `$8ACB` | f6400-6419 | 20 | `$30` | `$8300` bank — brief at the scene-5→6 transition |
-| 20-21 | `$AB90 $AB4A` | f6420-6537 | 6 | `$30` | `$A400` — oracle: **floor patterns** (scenery, early) |
-| 19,23,28 | `$83DA $8EC3 $83B2` | f6499-7354 | 4-6 | `$1B-$2B` | `$8300` bank sprites |
-| 29 | `$9A3B` | f7210-7376 | 4 | `$21` | `$9800` bank — scenery `[HYP]` |
+The player is a **composite** (legs + torso drawn as separate cels), consistent with the
+oracle bank map ("separate leg sprites composited with torso below"). Companion parts
+`$83A8 $81BD $90D7` draw in lockstep with the later character cluster (f6733+).
 
-**Catalog structure (OPEN — HS-5):**
-- **LOCALIZED-BUT-UNRESOLVED** (identity pending Jay): every source above — trace-localized
-  (source→frames→column), but who/what/color is Jay's live-MAME call.
-- **Strong hypotheses for Jay** `[HYP]`: (a) the `$A68x-$A70x` 2-byte-stepped cluster = **one
-  combatant's animation cels**, moving col `$28→$1D` = walking across — likely the **hero**
-  (the dominant mover); (b) the `$0B1x` cluster = the **second combatant (guard?)** or a
-  gameplay-state object, near-static column; (c) `$AA11/$AB4A/$AB90` = **floor/scenery**
-  (oracle floor-pattern labels); (d) the `$8300/$9800`-bank sources = additional scenery/cels.
-- **The remaining ~256 sources** = transient cels/scenery — SEEN-BUT-UNRESOLVED; not falsely
-  closed.
+**ENEMY / GUARD `[HYP: oracle enemy_head label]`** (present throughout, right side):
+| source | frames | draws | oracle label |
+|--------|--------|------:|---|
+| `$8E9B` | f6424-7386 | 62 | `enemy_head_8E9B` — "enemy head/body variant" |
+| `$8EC1` | f6424-7386 | 62 | `feet_shadow_8EC1` (the enemy's feet-shadow) |
 
-### TARGETED adjudication list for Jay (HS-8) — bounded per-object questions
-Run the demo (boot, wait to ~108 s, watch ~108-125 s; use the operator-gate flags `-window
--speed 0.5 -prescale 3`) and adjudicate:
-1. The **dominant mover** (`$A684`+`$A68x` cels, col `$28`→decreasing): is it the **hero**?
-   its color? which cel = which action (walk/kick/punch/block)?
-2. The **`$0B1x` object** (near col `$30/$50`, static-ish): is it the **guard**? scenery? UI?
-3. `$AA11`, `$AB4A`, `$AB90`: **floor/scenery** confirm? colors?
-4. Any on-screen object NOT in the top-30 above (e.g. a hit-spark, a background element)?
+The enemy head+shadow persist the entire window at the right (`$51≈$FE` at first sighting),
+matching Jay's "GUARD enters from the right, moves independently of the scroll."
+
+**EFFECTS (gameplay sprites — confirm a real fight) `[HYP]`:**
+`feet_shadow_930F / 9323 / 942A` (shadows under the combatants) and `hit_marker_93AB`
+(impact spark, appears f7246 in the contact phase) — both hardcoded in `gameplay_7000.s`.
+
+**AMBIGUOUS — cluster-L dominant `[HYP: oracle 'visual ambiguous']`:**
+`$9A2A` (34 draws, f6733-7352, `$51≈$1B`) + `$9A18` — oracle `sprite_9a2a/9a18` (chain-2,
+labeled "visual ambiguous", also used in scene 5). The most-drawn *character* source in the
+contact phase; whether it's a player pose, the guard's body, or a shared prop is **Jay's call**.
+
+> **Not characters, despite the `$9xxx` bank:** `$9524 $9550 $958E $95B8` are `floor_pattern_*`
+> (scenery that lives in the `$95xx` region) — reconciled out by label, not swept in by range.
+
+### Layer 3 — STATIC BACKDROP `[HYP]`
+The Mt-Fuji stack + blue sky Jay described is a **fixed background fill**, not a per-frame
+`L1903` sprite blit (it did not appear as a high-count draw source) — so it is NOT in the
+draw-tap inventory above; it is drawn once/rarely as a background. Flagged for Jay to confirm
+it is fixed (no scroll coupling) during the live gate.
 
 ---
 
-## Phase C — timing & placement (mechanism CONFIRMED; per-object pending Jay)
+## Corrections / superseded findings
+- **`$A684` is the SCROLL, not the hero.** 2756 draws/window = a tiled redraw, the scroll
+  layer's signature. The prior "dominant mover = hero" was the moving-object trap.
+- **The `$0B1x` cluster is NOT a combatant.** `handler_0b35/0b7c` (which set `$03/$04=$0B12`
+  and draw that 7×1 element `$B6`/`$B7` times) **fired 0 times** in the fight window — they
+  are gameplay-state handlers, not attract. The prior "second combatant / $0B1x" was
+  per-frame ZP noise. (The disassembly's "$B6 enemy / $B7 player sprite" comments are
+  Hypothesis/TBD and do NOT describe the attract cast.)
+- **Method fix:** classify by bank at the `L1903` draw entry, then reconcile to oracle labels
+  — do not rank by per-frame `$03/$04` dwell (which is dominated by the scroll + mid-blit noise).
 
-- **Motion mechanism `[CONFIRMED]`:** the coordinate cluster (`$52/$51/$62/$72/$91`) is
-  batch-updated in lockstep (per q016 `[HYP]`), so a combatant's column moves smoothly (the
-  dominant mover: col `$28`→`$1D` over f6529-7399 ≈ walking left/across the gameplay space).
-- **Appearance timing `[CONFIRMED]`:** fight-demo onset f≈6480 (~108 s); the mover (`$A684`)
-  enters f6529; the `$0B1x` object is present from f6423 (spans the transition); floor sprites
-  early (f6420-6537).
-- **Per-object position/cadence `[pending Jay]`:** the trace localizes each source's
-  column@first and frame span (table above); the exact per-frame position + the animation
-  cadence that makes the fight "read" right is trace-derivable for the IDENTIFIED assets once
-  Jay names them — a follow-up trace scoped to the confirmed sources.
-- **Variance `[CONFIRMED none]`:** deterministic — the ≥3-run byte-identity means timing
-  captured in one run IS the timing (no attract variance for this game).
+---
+
+## Repeatability `[CONFIRMED]` — HS-2 gate PASSES (deterministic)
+3 runs land byte-identical at the fight-demo onset (f≈6480, ~108 s). The attract cycle plays
+frame-for-frame with no RNG, so the reach is fully repeatable (boot `apple2e -flop1
+dumps/karateka.dsk`, wait to ~108 s) and one run's timing IS the timing.
+
+---
+
+## TARGETED adjudication list for Jay (HS-8)
+Run the demo (boot, wait to ~108 s, watch ~108-125 s; operator-gate flags `-window -speed
+0.5 -prescale 3`) and adjudicate — see `build/scene6-id-sheet/scene6-id-sheet.png` for the
+rough character cels (shape-only; colors/registration not trustworthy):
+1. **PLAYER** = the `player_run_legs/torso` composite (run cycle, f6423-6613): correct
+   character? which side does he run in from, and which cel = which action?
+2. **GUARD** = `enemy_head_8E9B` (+ its feet-shadow), right side, present throughout:
+   correct? Does he move independently of the scroll (as expected)?
+3. **AMBIGUOUS `$9A2A`** (dominant in the contact phase, f6733+): player pose, guard body,
+   or a shared/transition sprite?
+4. **SCROLL** = the `$A684` tile group — confirm it is the moving *background* (not a
+   character), and describe the dead-band (player moves / scroll still → then scrolls)?
+5. **BACKDROP** — is the Mt-Fuji + sky stack fixed (no scroll coupling)?
+6. Any on-screen object NOT above (a prop, a UI element, a second enemy)?
 
 ---
 
 ## Status / open items
-- **25.3-V is the core gate:** Jay's live-MAME adjudication is the SOURCE of asset identity —
-  the LOCALIZED-BUT-UNRESOLVED entries stay open until he watches the demo and answers the
-  targeted list. Clyde localized; Jay identifies.
-- **Data-location `[HYP]`:** identified sprites' data lives in the `$A400`/`$0B00`/`$8300`/
-  `$9800` oracle banks (cross-ref above) — mark confirmed only once a trace confirms the
-  source address IS the actual sprite data (not just a pointer value) at conversion time.
-- **NOT done (later dispatches):** conversion, the scene-6 CoCo hook, the sandbox — this recon
-  is the spec they consume.
+- **25.3-V is the core gate:** Jay's live-MAME adjudication is the SOURCE of asset identity;
+  the `[HYP]` entries stay open until he watches the demo and answers the list above.
+- **Stage 1 scope (this pass):** find + classify the motion layers and localize the cast.
+  Delivered. **NOT done (later stages):** conversion into the port, the sequence-timing epic,
+  the scroll-engine (dead-band/lock) build, the scene-6 CoCo hook — this recon is their spec.
+- **Data-location `[HYP]`:** cast data lives in the `$8300`/`$8c67`/`$9b00`/`$A400` oracle
+  banks (labels above) — mark CONFIRMED only once a conversion-time trace confirms the source
+  address IS the sprite data at draw time.
