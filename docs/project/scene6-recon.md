@@ -150,6 +150,21 @@ rough character cels (shape-only; colors/registration not trustworthy):
 ---
 
 ## Guard entry + opening exchange `[CONFIRMED by all-entry trace 2026-07-09]`
+
+> **JAY GATE — AC-7 — 2026-07-09 `[CONFIRMED by Jay]`** (off the guard sheets): **all the
+> orange sprites EXCEPT the guard's head are PLAYER RUN ANIMATION.** So the right-side (via-By)
+> figure IS the guard, but its **body is reused player-run-animation cels** — only the **head
+> `$8ECB` is a guard-distinct sprite**. The body cels I clustered as "guard" (`$8EC1`, `$9A18`,
+> `$899C`, `$8ACB`, `$90F5` — all ODD→orange) are **shared player-run cels**, not guard-specific.
+> **CEL-IDENTITY ≠ ACTOR-IDENTITY** — this is exactly the HS-9 shared-shape case: the sort by
+> entry-path/X-side correctly found the guard *figure*, but cel labels/data are shared, so the
+> guard's cast contribution is **just its head** ($8ECB, blue); the rest is the player's run set
+> drawn at the guard's position. (Supersedes the scene-5 cast-map "$899C/$8ACB = guard body" and
+> my body-cel attribution — §2/§4, Jay's visual gate is authority.)
+> **Consequence:** the actor discriminator is the **head + position**, NOT the body cels (which
+> the two karateka share). Guard-distinct asset to convert = the head `$8ECB` (+ any head variants);
+> the body reuses the already-known player run animation.
+
 Traced `harness/tools/scene6_full_descriptor.lua` (now taps ALL FOUR jmptable_1900 draw entries);
 window f6450-7000; deterministic ×2; CSV `build/logs/guard.csv`.
 - **CRITICAL CORRECTION — the guard is drawn via draw-B Y-offset `$190C`, NOT `$1903`.** Every
