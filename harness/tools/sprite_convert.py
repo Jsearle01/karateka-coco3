@@ -249,7 +249,7 @@ def write_s_file(output_path, label, height, coco3_width, coco3_bitmap,
         f"* Color model: adjacency + screen-col parity + color-cell fill (MAME-verified",
         f"*   TASK 1/2 gate 2026-05-16; color-cell fill P4 gate 2026-06-13).",
         f"*   0=Black 1=Orange(odd screen col) 2=Blue(even screen col) 3=White",
-        f"*   start_col={start_col}",
+        f"*   start_col={start_col}  screen-col parity={'ODD' if start_col % 2 else 'EVEN'}",
         f"* [ref: karateka-coco3 docs/project/karateka-coco3-design-v0.1.md §6.7]",
         f"",
         f"{coco_label}:",
@@ -276,12 +276,27 @@ def main():
                         help='Apple II screen pixel column of sprite left edge '
                              '(required for correct isolated-pixel color). '
                              'Karateka: Logo1=119, Logo2=84.')
+    parser.add_argument('--render-col-byte', type=int, default=None,
+                        help='Trace-driven column origin: the sprite draw byte '
+                             'column ($05 at the L1903 entry). If given, the pixel '
+                             'start_col is computed as byte*7 + shift, overriding '
+                             '--start-col. Feed the traced $05 directly. '
+                             '[scene-6 trace-driven-column fix, 2026-07-09]')
+    parser.add_argument('--render-shift', type=int, default=0,
+                        help='Trace-driven sub-byte pixel shift ($10 at the L1903 '
+                             'entry, 0-6). Combined with --render-col-byte.')
     parser.add_argument('--flip-parity', action='store_true',
                         help='Swap the blue/orange assignment (color-only, no '
                              'shape change). Use when a sprite was converted at '
                              "the wrong column parity and its blues/oranges are "
                              'reversed. [column-parity fix, 2026-06-14]')
     args = parser.parse_args()
+
+    # Trace-driven column origin: screen pixel col = byte*7 + shift (from routine_1927,
+    # where $05 = horizontal byte column and $10 = sub-byte pixel shift). Overrides
+    # --start-col so the origin is trace-sourced by construction (not fed blind).
+    if args.render_col_byte is not None:
+        args.start_col = args.render_col_byte * 7 + args.render_shift
 
     coco_label = args.coco_label or (args.label + '_coco3')
     raw = extract_sprite_bytes(args.source, args.label)

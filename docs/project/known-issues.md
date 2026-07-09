@@ -4,6 +4,47 @@ Tracked defects in the CoCo3 port and their resolution status. Most recent first
 
 ---
 
+## RESOLVED (converter) / OPEN (per-candidate parity) — Scene-6 cast color-swap: blind column origin
+**Date:** 2026-07-09 · **Area:** `harness/tools/sprite_convert.py`, scene-6 cast candidates
+
+### Symptom
+Scene-6 cast candidates converted with a **blind/default column origin** (`--start-col 0`
+in the prior id-sheet pass) baked the wrong blue/orange for any candidate whose true
+on-screen parity is ODD — the same column-parity reversal as the scene-5 cast (below),
+but for the scene-6 actors. Jay's ruling: the color-swap fix is **inert without the real
+per-sprite render column** — the converter cannot pick parity blind.
+
+### Root cause
+Hue is baked from `screen_col = start_col + col` parity (see the scene-5 entry). The
+converter already parameterized `--start-col` correctly (there was **no hardcoded ~133
+assumption** — code is authority over that premise), but the scene-6 pass fed it `0`.
+The missing input was the **actual render column**, which past the scene-4 oracle wall
+must come from the **running game, not `attract_state.s` labels**.
+
+### Fix (trace-driven column origin)
+1. Traced the **L1903 draw entry** (`$1903 → routine_1a42`) over the scene-6 window
+   (climb ~f6019 → fight ~f6480, deterministic). Column model, from `routine_1927`
+   (CODE authority over the "$06 = X base" comment): **`$05` = horizontal byte column,
+   `$10` = sub-byte pixel shift (0-6), `$06` = Y start row.** Screen pixel column =
+   **`$05`·7 + `$10`**; parity = that mod 2.
+2. Added `--render-col-byte`/`--render-shift` to `harness/tools/sprite_convert.py`: feed
+   the traced `$05`/`$10` directly, converter computes `start_col = byte*7 + shift`, so
+   the origin is trace-sourced by construction (overrides `--start-col`; backward
+   compatible). Header now stamps the screen-col parity.
+3. Prove-on-one (diff): `cand@$9B00` (traced ODD) at old `start_col=0` (EVEN) vs traced
+   (85, ODD) → `fcb` color bytes **flipped** (that flip IS the fix); `cand@$8E9B` (traced
+   EVEN) vs `start_col=0` (EVEN) → `fcb` data **identical** (parity matched).
+
+### Still OPEN (per-candidate, Jay's ruling)
+Most candidates hold **one parity across their frames** (the game steps `$05`/`$10`
+together to preserve hue → one baked CoCo3 color is faithful). Three candidates —
+`cand@$942A`, `cand@$93AB`, `cand@$9A18` — **CROSS parity** across frames: one baked
+color cannot be faithful to the Apple's moving hue. These are **flagged, not resolved**
+— the per-parity-variant call (bake variants, or accept one) is Jay's. Identity of every
+candidate is Jay's live-MAME gate off the preview sheet (`build/scene6-cast-preview/`).
+
+---
+
 ## RESOLVED — Sprite blue/orange column-parity reversal (cast)
 **Date:** 2026-06-14 · **Area:** `tools/sprite_convert.py`, scene-5 cast content
 
