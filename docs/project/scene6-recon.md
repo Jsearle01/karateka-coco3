@@ -60,8 +60,10 @@ figure, not a tiled fill), reconciled to oracle labels (HS-4 — by structure, n
 >   assembled into one figure). This **SUPERSEDES** the oracle "`enemy_head_8E9B`" /
 >   "`feet_shadow_8EC1`" labels and this doc's prior GUARD hypothesis for `$8E9B`/`$8EC1`:
 >   they are player parts, not the guard. `$9A2A`/`$83A8`/`$90D7`/`$81BD` + the `player_run_*`
->   cluster are all player composite parts. (This window is the **climb / player-motion phase**
->   — no distinct guard was identified here; the guard fight is a later window, still open.)
+>   cluster are all player composite parts. (Jay: this window is **AFTER the climb phase** —
+>   the climb is an EARLIER window that needs its own trace. **No enemy/guard has appeared yet**
+>   in f6000-7400 — that is why none was found; the guard enters a LATER window. Both are
+>   separate trace dispatches.)
 > - **The three parity-CROSSERS `$942A`/`$93AB`/`$9A18` "look correct"** (the F1 flag was
 >   right) — **except the last, `$9A18`, is likely part of the PLAYER DEATH composite** (a
 >   player-death cel, not a standalone crosser). Its parity-crossing is consistent with being
@@ -152,9 +154,12 @@ rough character cels (shape-only; colors/registration not trustworthy):
   f6000-7400 cast is the **PLAYER multi-part composite** (parity-stable candidates = player parts
   needing compositing; `$9A18` ≈ player-death cel). This **supersedes** the `$8E9B`/`$8EC1`
   enemy/guard hypothesis. STILL OPEN: (a) **compositing** the player parts into the assembled
-  figure (next step — traced per-part column/row give registration); (b) **guard** localization
-  (not present/identified in this window — a later-window trace); (c) per-parity **variant ruling**
-  for any true crosser (`$9A18` folds into the player-death composite instead).
+  figure (next step — traced per-part column/row give registration; the current rough composite
+  `build/scene6-cast-preview/scene6-player-composite.png` is a decent start but needs more work —
+  Jay); (b) **CLIMB phase** — an EARLIER-window trace (before f6000; this window is post-climb);
+  (c) **GUARD/enemy** — a LATER-window trace (the enemy has not appeared by f7400); (d) per-parity
+  **variant ruling** for any true crosser (`$9A18` folds into the player-death composite instead).
+  Items (a)/(b)/(c) are follow-up dispatches (Jay to discuss with the orchestrator).
 - **25.3-V is the core gate:** Jay's live-MAME adjudication is the SOURCE of asset identity;
   the remaining `[HYP]` entries stay open until he watches the demo and answers the list above.
 - **Stage 1 scope (this pass):** find + classify the motion layers and localize the cast.
