@@ -150,6 +150,14 @@ rough character cels (shape-only; colors/registration not trustworthy):
 ---
 
 ## Player compositing model `[CONFIRMED by full-descriptor trace 2026-07-09]`
+
+> **JAY GATE — AC-6 — 2026-07-09 `[CONFIRMED by Jay]`** (off the raw + composited sheets in
+> `build/scene6-cast-preview/`): the composited reconstruction is **a good first pass — the
+> compositing METHOD is validated** (band-accumulation at traced positions reads as the player).
+> **Open:** the **feet band needs work** (Y153-159 — the feet/shadow cels don't sit right).
+> **Refinement moves to the animation sandbox** — not another recon trace. Method green-lit to
+> scale to the guard (later-window) and climb (earlier-window) traces.
+
 From the L1903 full-descriptor trace over f6000-7400 (`tools/scene6_full_descriptor.lua`,
 deterministic ×2, 352 non-scroll draws; per-draw CSV `build/logs/scene6_draws.csv`):
 - **The player is drawn DIRTY-RECT, not whole-figure-per-frame.** Draws-per-frame histogram:
