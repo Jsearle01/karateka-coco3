@@ -52,6 +52,25 @@ correctly identified as the scroll, not the hero. (27 distinct scroll sources to
 Combatant figures in the `$8xxx/$9xxx` sprite banks, drawn a **handful of times each** (one
 figure, not a tiled fill), reconciled to oracle labels (HS-4 — by structure, not draw-count):
 
+> **JAY VISUAL GATE — AC-6 / 25.3 — 2026-07-08 `[CONFIRMED by Jay]`** (off the trace-driven
+> preview sheet `build/scene6-cast-preview/`; overrides oracle labels per §2/§4). Decisive
+> reclassification of the f6000-7400 window:
+> - **All the parity-STABLE (non-crossing) candidates are PLAYER sprites** — parts of the
+>   player multi-part composite that **need compositing** (legs + torso + shadow + body cels
+>   assembled into one figure). This **SUPERSEDES** the oracle "`enemy_head_8E9B`" /
+>   "`feet_shadow_8EC1`" labels and this doc's prior GUARD hypothesis for `$8E9B`/`$8EC1`:
+>   they are player parts, not the guard. `$9A2A`/`$83A8`/`$90D7`/`$81BD` + the `player_run_*`
+>   cluster are all player composite parts. (This window is the **climb / player-motion phase**
+>   — no distinct guard was identified here; the guard fight is a later window, still open.)
+> - **The three parity-CROSSERS `$942A`/`$93AB`/`$9A18` "look correct"** (the F1 flag was
+>   right) — **except the last, `$9A18`, is likely part of the PLAYER DEATH composite** (a
+>   player-death cel, not a standalone crosser). Its parity-crossing is consistent with being
+>   a composite part drawn across positions.
+> **Consequence:** the scene-6 near-term cast is a PLAYER multi-part composite; the next step is
+> COMPOSITING the traced parts (per-part `$05·7+$10` column + `$06` Y-row give the relative
+> registration), not more per-cel conversion. Guard localization = a later-window trace.
+
+
 **PLAYER — run cycle `[HYP: oracle player_run_* labels]`** (early in the window, f6423-6613):
 | source | frames | oracle label |
 |--------|--------|---|
@@ -129,8 +148,15 @@ rough character cels (shape-only; colors/registration not trustworthy):
 ---
 
 ## Status / open items
+- **25.3-V — PARTIALLY CLOSED (2026-07-08):** Jay's visual gate (block in Layer 2) confirmed the
+  f6000-7400 cast is the **PLAYER multi-part composite** (parity-stable candidates = player parts
+  needing compositing; `$9A18` ≈ player-death cel). This **supersedes** the `$8E9B`/`$8EC1`
+  enemy/guard hypothesis. STILL OPEN: (a) **compositing** the player parts into the assembled
+  figure (next step — traced per-part column/row give registration); (b) **guard** localization
+  (not present/identified in this window — a later-window trace); (c) per-parity **variant ruling**
+  for any true crosser (`$9A18` folds into the player-death composite instead).
 - **25.3-V is the core gate:** Jay's live-MAME adjudication is the SOURCE of asset identity;
-  the `[HYP]` entries stay open until he watches the demo and answers the list above.
+  the remaining `[HYP]` entries stay open until he watches the demo and answers the list above.
 - **Stage 1 scope (this pass):** find + classify the motion layers and localize the cast.
   Delivered. **NOT done (later stages):** conversion into the port, the sequence-timing epic,
   the scroll-engine (dead-band/lock) build, the scene-6 CoCo hook — this recon is their spec.
