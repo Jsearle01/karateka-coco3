@@ -149,6 +149,34 @@ rough character cels (shape-only; colors/registration not trustworthy):
 
 ---
 
+## Draw-entry map + facing + recovered parts `[CONFIRMED by all-entry re-trace 2026-07-09]`
+All-entry re-trace of f6000-7400 (`harness/tools/scene6_full_descriptor.lua`, taps all four
+jmptable entries; deterministic ×2; CSV `build/logs/allent.csv`). Resolves the guard-facing +
+walk-feet-band threads — both were the same root: `$1903`-only coverage.
+- **Entry map (per-entry fire counts, f6000-7400):** draw-A `$1903`=**362**, draw-A-Yoffset
+  `$1906`=**22**, draw-B `$1909`=**10**, draw-B-Yoffset `$190C`=**299**. The `$1903`-only passes
+  missed ~331 draws (Ay+B+By). The two draw *variants*: `$1903`/`$1906`=draw-A (`routine_1927`),
+  `$1909`/`$190C`=draw-B (`routine_1af4`).
+- **FACING = CASE 2 (real h-mirror mechanism the composite dropped — PORT-RELEVANT) `[CONFIRMED
+  by code]`:** draw-B (`routine_1af4`) opens with `$10 = 7 - $10` + `dec $05` — a horizontal
+  sub-byte MIRROR. The `$0F` flip bit is **identical per-cel** for player and guard (e.g. `$8EC1`
+  is FLIP in both), so **facing is encoded by the ENTRY (draw-A vs draw-B), not `$0F`.** The guard
+  draws via `$190C` (draw-B) = mirrored → faces left toward the player; the player via `$1903`
+  (draw-A) = normal. My composites used the orientation-blind converter and **dropped the draw-B
+  mirror** → guard faced wrong. **Port must render draw-B (`$1909`/`$190C`) sprites h-flipped.**
+- **FEET-BAND = recovered Ay parts (H-parts CONFIRMED) `[CONFIRMED]`:** `$1906` (draw-A Y-offset)
+  "draws a second sprite tile BELOW the first" (oracle). The player's lower body — legs (`$83DE/
+  $843F/$84A0/$84DE`, Y143) + feet (`$90D7/$92DF`, Y159) — draws via **Ay `$1906`** (X154-193,
+  f7153+), which the `$1903`-only walk composite **omitted** → the incomplete feet-band. (Early-walk
+  feet via `$1903` were present, so registration may also contribute — but the missing Ay
+  second-tiles are a real, recovered cause.)
+- **Per-phase model refinement (HS-8):** the figures use **multiple entries**, not just `$1903` —
+  draw-A for the primary tiles, **draw-A-Yoffset (`$1906`) for lower second-tiles**, draw-B
+  (`$190C`) for the mirrored guard. A faithful composite must tap all four and honor the draw-B
+  mirror. This refines the earlier `$1903`-only "walk 4-band / climb 2-part / guard single-frame".
+- Corrected preview (untracked): `build/scene6-cast-preview/scene6-corrected-composited.png`
+  (guard as-was vs draw-B-flipped; walk with recovered Ay lower tiles).
+
 ## Guard entry + opening exchange `[CONFIRMED by all-entry trace 2026-07-09]`
 
 > **JAY GATE — AC-7 — 2026-07-09 `[CONFIRMED by Jay]`** (off the guard sheets): **all the
