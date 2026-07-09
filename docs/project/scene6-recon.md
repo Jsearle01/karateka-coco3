@@ -149,6 +149,34 @@ rough character cels (shape-only; colors/registration not trustworthy):
 
 ---
 
+## Guard entry + opening exchange `[CONFIRMED by all-entry trace 2026-07-09]`
+Traced `harness/tools/scene6_full_descriptor.lua` (now taps ALL FOUR jmptable_1900 draw entries);
+window f6450-7000; deterministic ×2; CSV `build/logs/guard.csv`.
+- **CRITICAL CORRECTION — the guard is drawn via draw-B Y-offset `$190C`, NOT `$1903`.** Every
+  prior scene-6 trace tapped only draw-A `$1903` and so **missed the guard entirely** (a false
+  "no second figure"). The four entries fire (f6000-9500): `$1903`(A), `$1906`(Ay), `$1909`(B),
+  **`$190C`(By)=832×**. Tapping all four is mandatory. (HS-1/HS-7: the tap must catch *all* draws.)
+- **The guard ENTERS FROM THE RIGHT** — head `$8ECB` at X314 (f6487) approaching left steadily to
+  X196 (f6715): X314→304→294→284→…→196. Exactly Jay's motion model.
+- **Two actors CO-OCCUR** (the decisive multi-actor signal): frame f6487 draws BOTH — PLAYER
+  (entry A, X120-132, left) and GUARD (entry By, X307-314, right) in one frame. Clean separation:
+  **entry-path + X-side + head-signature all agree** (no HS-9 conflict).
+- **Head-signature discriminates the actors:** both share the FLIP half `$8EC1`, but the norm half
+  differs — **player = `$8E9B`, guard = `$8ECB`**. The norm-half is the identity key.
+- **Guard cluster (structural):** head `$8EC1`+`$8ECB`, body `$899C` (torso) + `$8ACB`
+  (below-torso) + `$9A18`, feet `$90F5` — matches the scene-5 cast-map guard body (`$899C`/`$8ACB`).
+  Oracle labels mislead again (`$8ECB` = "feet_shadow" but is the guard HEAD). All Jay's call (HS-5).
+- **Guard compositing model:** mostly **single-frame** (f6487 draws head+torso+below-torso+`$9A18`
+  together via By) + feet `$90F5` on adjacent frames — closer to the climb's single-frame poses
+  than the walk's accumulation. (Per-cluster model, HS-8.)
+- **Convergence zone flagged (HS-9):** By-draws at middle X (167-203) — where the approaching guard
+  and the rightward-walking player overlap — are **kept OUT of the strict guard cluster** (reported,
+  not force-assigned).
+- **Caveat on the prior walk/climb composites:** they used `$1903` only, so any Y-offset parts
+  drawn via `$1906`/`$190C` were omitted — a possible source of the walk's "feet band needs work"
+  (Y-offset feet may draw via `$190C`). Flag for the animation-sandbox refinement.
+- Preview artifacts (untracked): `build/scene6-cast-preview/scene6-guard-{raw,composited}.png`.
+
 ## Player compositing model `[CONFIRMED by full-descriptor trace 2026-07-09]`
 
 > **JAY GATE — AC-6 — 2026-07-09 `[CONFIRMED by Jay]`** (off the raw + composited sheets in
