@@ -149,6 +149,30 @@ rough character cels (shape-only; colors/registration not trustworthy):
 
 ---
 
+## Player compositing model `[CONFIRMED by full-descriptor trace 2026-07-09]`
+From the L1903 full-descriptor trace over f6000-7400 (`tools/scene6_full_descriptor.lua`,
+deterministic ×2, 352 non-scroll draws; per-draw CSV `build/logs/scene6_draws.csv`):
+- **The player is drawn DIRTY-RECT, not whole-figure-per-frame.** Draws-per-frame histogram:
+  110 frames ×1, 31 ×2, 52 ×3, 6 ×4 — **each frame redraws only 2-4 Y-bands**, and the parts
+  **persist + accumulate** on the framebuffer. So single-frame co-occurrence gives a PARTIAL
+  figure; the **full figure = short-window accumulation** (latest draw per band within ~16
+  frames). This refines the prior "co-occurring cels = one figure" assumption — it's
+  accumulation, not one frame.
+- **Four Y-bands** (the composite structure): **head** Y116-121, **torso** Y123-129, **legs**
+  Y138-143, **feet** Y153-159. Each band's cel swaps per animation frame; X co-steps to hold
+  parity (movers stay one hue). 7/8 sampled anchors assemble all four bands; gaps (a band not
+  redrawn in-window) are real, not missing data.
+- **The head is a MIRROR PAIR:** `$8EC1` (blend=FLIP) + `$8E9B` (blend=normal) are drawn at the
+  **same X,Y every time** → a symmetric head built from one cel + its h-flip. This is why the
+  oracle "`feet_shadow_8EC1`"/"`enemy_head_8E9B`" labels mislead — together they are the player's
+  head (consistent with Jay's gate: player parts, not enemy). Blend/flip `$0F` per cel is in the
+  descriptor (`FLIP`=reversed/h-flip, `norm`, `skip`).
+- **Draw order** within a frame is stable (head-pair first, then body cels); cross-frame
+  accumulation paints chronologically (last drawn on top = framebuffer order). Bands barely
+  overlap, so occlusion is minor.
+- Preview artifacts (untracked): raw part-cel sheet + accumulated-figure sheet in
+  `build/scene6-cast-preview/scene6-player-{raw,composited}.png`.
+
 ## Status / open items
 - **25.3-V — PARTIALLY CLOSED (2026-07-08):** Jay's visual gate (block in Layer 2) confirmed the
   f6000-7400 cast is the **PLAYER multi-part composite** (parity-stable candidates = player parts
