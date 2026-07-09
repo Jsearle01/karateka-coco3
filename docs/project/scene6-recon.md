@@ -182,6 +182,14 @@ deterministic ×2, 352 non-scroll draws; per-draw CSV `build/logs/scene6_draws.c
   `build/scene6-cast-preview/scene6-player-{raw,composited}.png`.
 
 ## Climb phase `[CONFIRMED by full-descriptor trace 2026-07-09]`
+
+> **JAY GATE — AC-6 — 2026-07-09 `[CONFIRMED by Jay]`** (off the climb raw + composited sheets):
+> the composite is **pretty good — method validated**. **Tweaking deferred to the animation
+> sandbox.** Caveat Jay flagged: **the Y-change (ascent) can't be judged from static sheets —
+> needs the background + animation** to confirm the climb motion reads right (a sandbox check, not
+> a recon trace). Player-recon now closed both phases (fight + climb); **guard** is the remaining
+> cast item (later-window trace).
+
 Located + traced (`harness/tools/scene6_full_descriptor.lua`, env window + refined exclusion;
 deterministic ×2; CSV `build/logs/climb.csv`):
 - **Window (AC-1):** scene 5 (imprison) ends ~f5995; **CLIMB = f6019 (intro pose) + 5 active
