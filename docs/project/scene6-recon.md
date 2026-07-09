@@ -181,6 +181,31 @@ deterministic ×2, 352 non-scroll draws; per-draw CSV `build/logs/scene6_draws.c
 - Preview artifacts (untracked): raw part-cel sheet + accumulated-figure sheet in
   `build/scene6-cast-preview/scene6-player-{raw,composited}.png`.
 
+## Climb phase `[CONFIRMED by full-descriptor trace 2026-07-09]`
+Located + traced (`harness/tools/scene6_full_descriptor.lua`, env window + refined exclusion;
+deterministic ×2; CSV `build/logs/climb.csv`):
+- **Window (AC-1):** scene 5 (imprison) ends ~f5995; **CLIMB = f6019 (intro pose) + 5 active
+  steps f6077/6084/6091/6098/6105**; **climb→walk boundary f6105→f6110** (the `$8xxx/$9xxx`
+  walk begins f6110). This pins the phase boundary the prior verdicts left open.
+- **The climber is the `$A3C5-$A649` "Climbing-animation sprite chain"** (oracle
+  `sprite_data_a400.s`; 12 cels) — it lives IN the `$A400` bank but is **NOT scroll**. The prior
+  f6000-7400 trace excluded `$A400-$ACFF` wholesale and so **hid the climb** — the refined
+  exclusion is `$A64A-$ACFF` (scroll tiles `$A684+` / cliff `$AA7D` / floor), keeping
+  `$A3C5-$A649` as the captured climber. (HS-4 trap: climber and scroll share a bank.)
+- **Motion (HS-8 CONFIRMED):** the climber **translates UP** — Y 158→120 (upper) / 141→127
+  (lower) over f6019-6105, at X63-84 (lower-left). Positions MOVE per pose; there are **no fixed
+  Y-bands** (that model was walk-specific).
+- **Compositing model — DIFFERENT from the walk:** each climb pose **redraws BOTH parts in one
+  frame** (single-frame co-occurrence, blend=skip), so a pose composites directly from its frame's
+  2 cels at traced positions — **no cross-frame accumulation needed** (the walk needed it; the
+  climb does not). The **mirror-head pair is ABSENT** — the climb uses a compact 2-part figure
+  (upper + lower), not the walk's head/torso/legs/feet band stack.
+- **Cels:** 10 labeled (`sprite_A40B/A425/A45A/A4A4/A4D2/A4F2/A548/A572/A5CC/A5DC`) converted;
+  the f6019 **intro pose `$A3C5`/`$A3E9` is split across `fight_engine.s` (header) + `$A400`
+  (bitmap tail) with no clean label — OMITTED as a reported gap** (HS-6), not filled.
+- Preview artifacts (untracked): `build/scene6-cast-preview/scene6-climb-{raw,composited}.png`
+  (raw cels + 5 pose panels + ascent overlay).
+
 ## Status / open items
 - **25.3-V — PARTIALLY CLOSED (2026-07-08):** Jay's visual gate (block in Layer 2) confirmed the
   f6000-7400 cast is the **PLAYER multi-part composite** (parity-stable candidates = player parts

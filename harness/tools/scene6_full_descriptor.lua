@@ -13,7 +13,14 @@ local logf = io.open(LOG,"w")
 local csvf = io.open(CSV,"w"); csvf:write("frame,ord,ptr,x,y,h,w,flip,par\n")
 local function log(s) logf:write(s.."\n"); logf:flush() end
 local function rd(a) return mem:read_u8(a) end
-local FSTART,FEND = 6000,7400
+local FSTART = tonumber(os.getenv("FD_FSTART")) or 6000
+local FEND   = tonumber(os.getenv("FD_FEND"))   or 7400
+-- Scenery exclusion band: EXCLUDE tbl_ADF7 scroll tiles ($A684+) + cliff/floor ($AA00-$ACFF),
+-- default $A64A-$ACFF. CRITICAL: the climbing-animation chain $A3C5-$A649 is the climbing PLAYER
+-- (oracle sprite_data_a400.s), sits in the $A400 bank but is NOT scroll -> kept BELOW EXLO so it
+-- is CAPTURED. Env FD_EXLO/FD_EXHI override.
+local EXLO = tonumber(os.getenv("FD_EXLO")) or 0xA64A
+local EXHI = tonumber(os.getenv("FD_EXHI")) or 0xACFF
 _G._c=0; _G._hits=0; _G._ord=0
 _G._cel={}                 -- ptr -> {n,h,w,even,odd,blend{},xmin,xmax, y, first,last}
 _G._frames={}              -- frame -> ordered list of {ord,ptr,x,y,h,w,fl,par}
@@ -23,14 +30,15 @@ pcall(function()
   _G._tap = mem:install_read_tap(0x1903,0x1903,"L1903",function(o,d,m)
     if _G._c<FSTART or _G._c>FEND then return end
     local lo,hi=rd(0x03),rd(0x04); local src=hi*256+lo
-    if src>=0xA400 and src<=0xACFF then return end
+    if src>=EXLO and src<=EXHI then return end
     _G._hits=_G._hits+1; _G._ord=_G._ord+1
     local x,sh,y,fl = rd(0x05),rd(0x10),rd(0x06),rd(0x0F)
     local h,w = mem:read_u8(src), mem:read_u8(src+1)
     local px = x*7+sh; local par = px%2
     local e=_G._cel[src]
-    if not e then e={n=0,h=h,w=w,even=0,odd=0,bl={},xmin=px,xmax=px,y=y,first=_G._c,last=_G._c}; _G._cel[src]=e end
+    if not e then e={n=0,h=h,w=w,even=0,odd=0,bl={},xmin=px,xmax=px,ymin=y,ymax=y,y=y,first=_G._c,last=_G._c}; _G._cel[src]=e end
     e.n=e.n+1; e.last=_G._c; if par==0 then e.even=e.even+1 else e.odd=e.odd+1 end
+    if y<e.ymin then e.ymin=y end; if y>e.ymax then e.ymax=y end
     e.bl[flipstr(fl)]=(e.bl[flipstr(fl)] or 0)+1
     if px<e.xmin then e.xmin=px end; if px>e.xmax then e.xmax=px end
     local fr=_G._frames[_G._c]; if not fr then fr={}; _G._frames[_G._c]=fr end
@@ -49,8 +57,8 @@ _G._n=emu.add_machine_frame_notifier(function()
     for _,r in ipairs(rows) do local e=r.e
       local par=(e.even>0 and e.odd>0) and "CROSS" or (e.odd>0 and "ODD" or "EVEN")
       local bl=""; for k,v in pairs(e.bl) do bl=bl..k..":"..v.." " end
-      log(string.format("cel@$%04X ptr=$%04X %dx%d draws=%d par=%s(E%d/O%d) blend=[%s] X=%d-%d Y=%d f%d-%d",
-        r.p,r.p,e.h,e.w,e.n,par,e.even,e.odd,bl,e.xmin,e.xmax,e.y,e.first,e.last)) end
+      log(string.format("cel@$%04X ptr=$%04X %dx%d draws=%d par=%s(E%d/O%d) blend=[%s] X=%d-%d Y=%d-%d(dY%d) f%d-%d",
+        r.p,r.p,e.h,e.w,e.n,par,e.even,e.odd,bl,e.xmin,e.xmax,e.ymin,e.ymax,e.ymax-e.ymin,e.first,e.last)) end
     -- (3) draws-per-frame histogram
     for fr,list in pairs(_G._frames) do local n=#list; _G._hist[n]=(_G._hist[n] or 0)+1 end
     local hk={} for k in pairs(_G._hist) do hk[#hk+1]=k end; table.sort(hk)
