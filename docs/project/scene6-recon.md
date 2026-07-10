@@ -150,6 +150,14 @@ rough character cels (shape-only; colors/registration not trustworthy):
 ---
 
 ## Draw-entry map + facing + recovered parts `[CONFIRMED by all-entry re-trace 2026-07-09]`
+
+> **JAY GATE — AC-6 — 2026-07-10 `[CONFIRMED by Jay]`** (off the corrected sheet): the **draw-B
+> h-flip is confirmed — the guard now faces LEFT** (Case 2 validated; the facing mechanism is the
+> draw-entry, port-relevant). The **lower-body composite (recovered Ay `$1906` second-tiles) is
+> decent** — but the **FEET area still needs work**. As with the walk/climb/guard, **composite
+> refinement moves to the animation sandbox**, not another recon trace. Trace-side findings
+> (entry map, facing = draw-B mirror, Ay lower-tiles) are accepted.
+
 All-entry re-trace of f6000-7400 (`harness/tools/scene6_full_descriptor.lua`, taps all four
 jmptable entries; deterministic ×2; CSV `build/logs/allent.csv`). Resolves the guard-facing +
 walk-feet-band threads — both were the same root: `$1903`-only coverage.
