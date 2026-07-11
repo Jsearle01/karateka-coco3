@@ -173,13 +173,21 @@ no-filter, each run full-span f6484→f9443.
   L70C3 sta $33`). **SOLUTION that worked: a MAME debugger breakpoint at `$A03D` (`ldx $33`)** that
   overrides `$33` at the AI read, then `go` (with `manager.machine.debugger.execution_state="run"`
   to unpause the `-debug` startup). Forcing **every reachable row 7-11 each DIVERGED the fight** and
-  surfaced **2 cels the seed-sweep MISSED — `$8EA5`, `$8EB3`** (small player feet/pose variants,
-  oracle "enemy_head" labels misleading). **Union 106 → 108.** So the seed axis alone was incomplete
-  by 2; the row axis is now covered (rows 0-6 clamp to X=7; `$33`≥12 = idle → no table). **Residual:**
-  a full row×seed cross-product (each row × swept tier) would be the ultimate exhaustion — the +2
-  (minor variants) suggests diminishing returns, but it's the last tightening. Disassembling `$6540`
-  (selector→cel-seq) remains the follow-up for per-action attribution. Composited:
-  `build/scene6-cast-preview/scene6-tableforce-pose.png`.
+  surfaced **2 cels the seed-sweep MISSED — `$8EA5`, `$8EB3`**. **Union 106 → 108.** The row axis is
+  now covered (rows 0-6 clamp to X=7; `$33`≥12 = idle → no table).
+- **WHAT the forced rows revealed = the PLAYER FALL/LOSE animation `[Jay-ID + confirmed]`:** Jay
+  identified the table-force pose as the **player fall (lose) sprites.** Confirmed decisively:
+  **`$8EA5`/`$8EB3` appear in 0 of 12 natural seed-sweep runs** — genuinely UNREACHABLE in the demo.
+  This IS the dispatch's **"unreachable-under-win-weighting"** category, now **proven not
+  hypothesized**: the player-lose animation **exists in the game data** but the attract (player
+  always wins) **structurally never plays it** — no seed-sweep can reach it; only forcing the
+  prob-table row (overriding the win-biased selection) reveals it. Directly ties to the
+  **always-wins enforcement weighting** — the suppressed outcome is the player losing.
+- **COVERAGE — cleanly classified (AC-4 CLOSED):** REACHABLE actions = captured to saturation (106
+  cels, seed-sweep); UNREACHABLE-under-win-weighting = the **player-lose animation** (`$8EA5`/`$8EB3`
+  + pose, 0/12 natural), **captured by table-force** — a finding, not a gap. **Residual tightening:**
+  a full row×seed cross-product + disassembling `$6540` (selector→cel-seq) for per-action attribution.
+  Composited player-lose pose: `build/scene6-cast-preview/scene6-tableforce-pose.png`.
 - **HARNESS BUG CAUGHT:** the first sweep was a no-op — `scene6_full_descriptor.lua` lacked the
   seed-poke (it lived only in `scene6_fight_control.lua`), so 8 "sweep" runs were identical. Added
   the poke; re-ran; verified divergence. (The seed axis silently doing nothing = the exact axis-miss
