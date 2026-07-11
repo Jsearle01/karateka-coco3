@@ -427,6 +427,36 @@ referee. One event, three effects, and the causality shape:
   that `$7366` reads) is one level below this pass — **inferred [I]**, not isolated. The prior C4
   "not-captured" is superseded: the event/mediator mechanism IS captured; only the direct-write
   framing is refuted.
+
+### Collision → hit-state + the always-wins ORIGIN (last fight-model layer) `[VERIFIED 2026-07-11]`
+Tools `harness/tools/win_e40.lua` / `win_ratio.lua` + live dasm of `hit_detection_7366`.
+- **COLLISION = a range/reach test [C]:** `hit_detection_7366` (`$7366`, 250×; "Hit detection
+  code") is what the referee calls. It indexes the attack's reach by **action class `$32`**
+  (`tbl_range_0`/`tbl_range_1,x`) and **compares reach to the distance `$33`** (`cmp $33`):
+  reach ≈ `$33` → returns a **HIT event (`$03`)**, reach < `$33` (out of reach) → miss/other.
+  So a strike connects when the fighter is at the right DISTANCE for that attack's reach — a
+  clean range model, **not** a per-cel pixel tangle (F1 does not fire).
+- **THE LOAD-BEARING TEST → collision is NEUTRAL [C]:** watchpoint the **player's** event `$40`
+  — it **does** get nonzero (hit) values and the **player count `$B6` drops 13→8**. So a guard
+  attack DOES set the player's hit-state; **hits register symmetrically. The win is NOT rigged
+  at collision** (fork answered: yes, the guard can and does land hits).
+- **THE ALWAYS-WINS ORIGIN → downstream + MULTI-LAYER (F3), `$2F` is NOT the origin [C/I]:**
+  1. **Damage-race effectiveness bias (primary) [C ratio / I precise source]:** both combatants
+     run `fight_ai` and attack similarly (A ~25×, B ~20×), but **A's attacks connect ~2× more**
+     (player lands ~11, guard ~6 → guard arrows drop 13→2 vs player 13→8). The bias is
+     **positional/reach**: combatant A holds a close, stationary position (`$62`=`$22`≈0F) and
+     throws close-range D7; combatant B is mobile/farther (`$72`=16-1A) throwing mid-range C5
+     that connects less. An emergent effectiveness asymmetry, not a single "weight=0" knob.
+  2. **`$2F` unreached-state gate (secondary) [C]:** blocks the guard-WIN special branch (the
+     `$C2` path) — the previously-found mechanism, now placed as a **belt-and-suspenders
+     safeguard**, not the origin. **HS-2's warning holds: the first gate found (`$2F`) is
+     downstream of the real rigging (the damage race).**
+- **END-TO-END CHAIN [C]:** distance `$33`(=`$72−$62`) → `hit_detection_7366` (reach[`$32`] vs
+  `$33`) → hit event `$40`/`$41` → referee `$B584` → `combat_round_manager` `$7207` →
+  damage(`dec $b6`/`$b7`) + regen-reset(`$5B`/`$5C`) + react(`trigger_action`) → arrow counts
+  `$B6`/`$B7` → player wins the race (+ `$2F` gate blocks the guard-win branch). **This closes
+  the last inferred layer under the referee.** [I] remaining: the exact source of the
+  positional bias (deliberate start-state tuning vs emergent) is not fully isolated.
 - **PER-FRAME animation map CAPTURED (`$20`→cels, via L6811):** each anim-frame `$20` value draws a
   distinct cel set (body pose + head `$8EC1`/`$8E9B`|`$8ECB` + feet `$90D7`). Frames 01-06, 14-21+
   captured — e.g. `$20=02`→`$8244` (winning-blow), `$20=16`→`$8654`/`$8714`/`$876B` (strike/punch).
