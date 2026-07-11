@@ -168,8 +168,10 @@ the fight itself was never in the cel window (a coverage gap, not an untapped pa
   via A). Player-only resolution (guard defeated; no player death — scripted win).
 - **Both heads interleave through the fight:** player `$8E9B` and guard `$8ECB` fire alternately
   f7246-8145 (both combatants present + striking).
-- Combat-pose sheet (untracked): `build/scene6-cast-preview/scene6-combat-poses.png` — identity
-  (which cel = kick/punch/victory) is Jay's (HS-8, AC-6).
+- **Composited fight poses (untracked):** `build/scene6-cast-preview/scene6-fight-poses-composited.png`
+  — full-figure poses assembled from co-occurring cels at traced (X,Y) (player via A, guard via By
+  h-flipped): player strike / guard strike / player victory. (Raw cel sheet
+  `scene6-combat-poses.png` also present.) Identity (kick/punch/victory) is Jay's (HS-8, AC-6).
 
 ## Fight: control model (A2) + determinism + scroll (B) `[CONFIRMED by multi-run + seed-poke 2026-07-10]`
 `harness/tools/scene6_fight_control.lua`; window f6400-9500; 5 runs + 2 seed-perturbation runs.
