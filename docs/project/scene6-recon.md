@@ -455,8 +455,38 @@ Tools `harness/tools/win_e40.lua` / `win_ratio.lua` + live dasm of `hit_detectio
   `$33`) → hit event `$40`/`$41` → referee `$B584` → `combat_round_manager` `$7207` →
   damage(`dec $b6`/`$b7`) + regen-reset(`$5B`/`$5C`) + react(`trigger_action`) → arrow counts
   `$B6`/`$B7` → player wins the race (+ `$2F` gate blocks the guard-win branch). **This closes
-  the last inferred layer under the referee.** [I] remaining: the exact source of the
-  positional bias (deliberate start-state tuning vs emergent) is not fully isolated.
+  the last inferred layer under the referee.** (Authored-vs-emergent of the positional bias:
+  resolved below.)
+
+### Always-wins positional bias: AUTHORED (start geometry) — the origin classification `[VERIFIED 2026-07-11]`
+Tools `harness/tools/orig_pos.lua` + code read of `check_position_a/b` and the prob-table index.
+Three yes/no observations decompose the bias:
+- **(1) Start positions = AUTHORED-ASYMMETRIC [C]:** position evolution — the player (`$62`)
+  starts LEFT (~`$0B`) and holds ~`$0F` throughout; the guard (`$72`) starts FAR RIGHT (**`$30`
+  = 48**) and advances (30→2B→19→16) to distance `$33`=7 by fight-start, then oscillates 16-1A.
+  The two combatants are placed at **deliberately different start positions** (player close/left
+  and cornered at the left edge; guard far/right advancing). Not symmetric-and-diverging — they
+  begin far apart at authored values.
+- **(2) Movement AI = SYMMETRIC [C]:** `check_position_a` (player) and `check_position_b` (guard)
+  are **structurally identical** — same math (`#$30 − $52 + pos`), same bounds — differing only
+  in which position (`$62`/`$72`) feeds in and which flag (`$4C`/`$4B`) they set. Same code, no
+  role branch; the guard-advances/player-holds behavior comes from the asymmetric positions +
+  the shared engine (the player is pinned near the left edge `$0F`; the guard has room), not from
+  per-combatant movement logic.
+- **(3) Action weighting = SYMMETRIC [C]:** the prob-tables are indexed by `ldx $33` (distance)
+  only — **not combatant-indexed**. Both fighters share the same distance-driven tables; the
+  action *difference* (player D7-close, guard C5-mid) is emergent from each seeing a different
+  distance as the guard moves between interleaved turns, not from per-combatant weights.
+- **CLASSIFICATION → AUTHORED at ONE layer (start geometry), symmetric engine [C]:** the
+  player-always-wins is **authored via the start positions** (player placed close/left-cornered,
+  guard far/right); the movement AI and the action weighting are **fully symmetric/shared**. It
+  is neither pure-emergent (the positions are deliberately asymmetric) nor per-combatant AI/data
+  tuning (movement + weighting are one shared engine).
+- **PORT CONSEQUENCE:** the port must reproduce **only the authored start geometry** — place the
+  player close (left-cornered, ~`$0F`) and the guard far/right (~`$30`) advancing to distance 7 —
+  and can implement movement + action-weighting as a **single shared engine**; the ~2:1
+  damage-race win then **falls out of the geometry for free**. This closes the last fight-model
+  mechanic question.
 - **PER-FRAME animation map CAPTURED (`$20`→cels, via L6811):** each anim-frame `$20` value draws a
   distinct cel set (body pose + head `$8EC1`/`$8E9B`|`$8ECB` + feet `$90D7`). Frames 01-06, 14-21+
   captured — e.g. `$20=02`→`$8244` (winning-blow), `$20=16`→`$8654`/`$8714`/`$876B` (strike/punch).
