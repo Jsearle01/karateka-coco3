@@ -510,6 +510,34 @@ Three yes/no observations decompose the bias:
 >   cliff=`$118C`, victory=`$110B`. F2-path fired: the fight sounds use a genuinely different
 >   mechanism (speaker toggle) than the record engine.
 
+### Sound-hook PLACEMENT TABLE (build landmark + frame-precise position) `[VERIFIED 2026-07-11]`
+Tools `harness/tools/snd_place.lua` / `foot_win.lua` / `tune_place.lua`. Each sound → the scene-6
+build landmark its hook attaches to + the exact position (execution-observed).
+
+| Sound | Hook type / ID | Build landmark | Exact position (observed) |
+|---|---|---|---|
+| **Hit-click** | SPKR click — `$0C55` (player), `$0C64`/`$0C74` (guard), `$0C84` (impact, every hit) | the hit-resolution sequence | **AFTER the `$93AB` hit-marker draw, BEFORE the `$0BC9`/`$0BDA` count-decrement** — order is **marker → sound → damage**. Fires on **both** combatants (player via `$40`, guard via `$41`). |
+| **Footstep** | SPKR click — `$0CB0` | the locomotion (run) cycle | on the **`$20`=24 foot-plant frame**; fires during **movement** phases (walk-in 1×, approach 4×, walk-off 6×), **NOT during the stationary fight (0×)**. |
+| **Cliff-top tune** | record engine `HAL_sound_trigger($118C)` | climb-completion | **~9 frames AFTER the last climb-cel draw** (climb-completion f6105 → tune f6114); `$20`=07. |
+| **Victory yell** | record engine `HAL_sound_trigger($110B)` | the victory pose | mid-victory-pose at **`$20`=06** (fires ~f8416, ~270 frames into the victory hold — not on the pose's first frame). |
+
+- **AC-1 hit ordering [C]:** the SPKR click is emitted **between** the visual marker (`$93AB`) and
+  the damage decrement — the port must fire the hit hook on that same side (sound after the
+  marker, before the count drops), or the sound leads/lags the visual audibly.
+- **AC-2 footstep run-vs-walk [C, F2-partial]:** `$0CB0` is **locomotion-synced** to the
+  `$20`=24 foot-plant and is **silent during the stationary fight**. It DOES fire once in the
+  walk-window (f6110-6484) — so it is **not strictly walk-silent**; the scene-6 locomotion appears
+  to be a single run/approach cycle (no distinct walk gait found), so "footsteps = the run's
+  foot-plant." **Jay's run-vs-walk distinction is his visual call** — the trace shows footsteps on
+  every locomotion foot-plant (`$20`=24), fight excepted.
+- **AC-3/AC-4 tunes [C]:** cliff tune trails climb-completion by ~9 frames; victory yell fires
+  mid-pose (`$20`=06), not on entry.
+- **TWO hook types (reused):** record-engine tunes → `HAL_sound_trigger(record_id)` (gated by the
+  CoCo3 equivalent of `($4F AND $86)`); SPKR clicks (hit/step) → a second click hook (the `$C030`
+  path needs CoCo3 reimplementation — no 1-bit-speaker analog). **This is a SPEC** — no stubs
+  placed (scene-6 port code isn't built); the audio match-by-ear gate is deferred to the
+  sound-engine build phase.
+
 **[Superseded original — the `$0D00`/`$1000` mechanism PC-confirm below is still valid; its
 "fight silent" conclusion is refuted above.]** Tools `harness/tools/snd_trig.lua` / `snd_phase.lua`. PC-confirms the scene-5 R4 sound design
 (previously inferred-only) and maps scene-6.
