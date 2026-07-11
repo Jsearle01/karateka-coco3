@@ -174,7 +174,9 @@ no-filter, each run full-span f6484→f9443.
   seed-poke (it lived only in `scene6_fight_control.lua`), so 8 "sweep" runs were identical. Added
   the poke; re-ran; verified divergence. (The seed axis silently doing nothing = the exact axis-miss
   the exhaustive-search framing guards against.)
-- Seed-sweep-additions sheet (untracked): `build/scene6-cast-preview/scene6-seed-sweep-additions.png`.
+- Seed-only rare poses (untracked, **composited full figures**):
+  `build/scene6-cast-preview/scene6-rare-poses-composited.png` — `$87B3`/`$88C5` guard (By, mirror)
+  + `$8962` player, each assembled with its co-occurring head/torso/legs/feet at traced (X,Y).
 
 ## Full-span fight THROUGH the loop-back — combat poses found `[CONFIRMED 2026-07-11]`
 `harness/tools/scene6_full_descriptor.lua` (all-entry), window **f6484-9600**, run-length raised
