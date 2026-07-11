@@ -214,7 +214,7 @@ code (MAME `dasm` via debugger bp) to confirm, then read the oracle.
   distinct cel set (body pose + head `$8EC1`/`$8E9B`|`$8ECB` + feet `$90D7`). Frames 01-06, 14-21+
   captured — e.g. `$20=02`→`$8244` (winning-blow), `$20=16`→`$8654`/`$8714`/`$876B` (strike/punch).
   So per-action/per-frame attribution is **fully tractable via `$20`** (the transient `$2F` reads 00
-  at draw time — use `$20`, the anim index). Attribution is **no longer an open item**. **Composited per-frame animation sheet** (16 player anim-frames `$20`=01-06/14-21 as full figures): `build/scene6-cast-preview/scene6-anim-frames.png`.
+  at draw time — use `$20`, the anim index). Attribution is **no longer an open item**. **Composited per-frame animation sheet** (16 player anim-frames `$20`=01-06/14-21 as full figures): `build/scene6-cast-preview/scene6-anim-frames.png`. **Guard** animation sheet (15 frames `$20`=01/03-06/14-21, By/h-flipped): `build/scene6-cast-preview/scene6-guard-anim-frames.png` (one fewer frame than the player — no `$20=02`).
 - **HARNESS BUG CAUGHT:** the first sweep was a no-op — `scene6_full_descriptor.lua` lacked the
   seed-poke (it lived only in `scene6_fight_control.lua`), so 8 "sweep" runs were identical. Added
   the poke; re-ran; verified divergence. (The seed axis silently doing nothing = the exact axis-miss
