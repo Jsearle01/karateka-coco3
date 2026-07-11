@@ -235,6 +235,48 @@ the static `dasm6540.asm` read.
   by state `$33`) → **action code `$29`** → **`$6540`** dispatches to a **window/collision handler**
   (reads `$20`+window vars, `$2F`-gated) **||** `$20` anim-frame **written by the `$7000` state
   machine + `$6400` prep** → **`L6811` draws cel[`$20`]** → `$1903`-family blit.
+
+### Fight TIMING — VBLs-per-pose measured against the VBL timebase `[VERIFIED 2026-07-11]`
+Tool `harness/tools/scene6_pose_timing.lua`: taps the draw entries, reads `$20` (the active
+combatant's anim frame) at each combatant-cel draw, computes pose dwell = VBL gap between a
+combatant's figure redraws. Measured, not read from a table (there is none — see below).
+- **VBL timebase (AC-1):** the game syncs on **`vbl_sync` ($779A: `lda $C019` / `bmi` spin on
+  the RDVBL bit7)** — the hottest routine in the project. **MAME frame == one VBL** (one vblank
+  per emulated NTSC frame), so pose dwell is counted in MAME frames = VBLs. NB `vbl_sync` fires
+  only ~230× over the 960-VBL fight (~2 per figure redraw, double-buffered) — the **game main
+  loop is compute-bound at ~14 Hz, NOT 60 Hz**; distinguish the display VBL (the transferable
+  timebase) from the game-loop tick.
+- **`$20` is per-combatant context (`$20-$2F` = active-combatant register file):**
+  `save/restore_combatant_a/b` ($708F/$709B) swap the 16-byte block `$20-$2F` in/out of save
+  slots `$60-$6F` (A) / `$70-$7F` (B). So `$20` read at each combatant's OWN draw is that
+  combatant's frame. Player head `$8E9B` / guard `$8ECB` redraw on **0 shared frames** —
+  interleaved, never simultaneous.
+- **VBLs-per-pose (AC-2), pooled player, natural + 2 seeds (21 handles covered $20=01-06,0E-11,
+  14-1B,1F-21):**
+  - **BASE poses ≈ 1 tick (~12-14 VBL):** `$20`=01(11.9) 05(12.4) 06(14.2) 14(13.6) — walk/run/
+    approach/idle.
+  - **MID (~15-18 VBL):** `$20`=15 17 18.
+  - **EXTENDED ≈ 2 ticks (~20-25 VBL):** `$20`=02(21) 03(19) 16(20) 19(21) 1A(23) 1B(24.5)
+    1F(21.7) 20(19) 21(21.3) — strike / impact / recovery / held poses.
+  - fight-wide: 175 pose-steps, **mean 16.1 VBL, median 15, base-tick mode ~13 VBL** (11-14
+    spread = 6502 per-frame compute jitter). Guard mirrors the player split.
+- **Cadence STRUCTURE (AC-3):** **one animation tick ≈ 11-14 VBL** (the compute-bound main loop),
+  and each pose is **held an integer number of ticks** — 1 for base, ~2 for strikes/impacts —
+  chosen by a **countdown timer inside the `$20-$2F` context** (state-dependent). NOT a fixed
+  VBLs/frame; NOT a static per-move table.
+- **Seed-invariance (HS-3):** the **structure is seed-invariant** — base-tick length and the
+  base/extended split hold across seeds; per-handle mean is consistent ±2-3 VBL. *Which* poses
+  occur is seed-dependent (e.g. `$20=16` absent under seed 0xD5). Per-handle dwell carries
+  state-dependent variance (a pose's hold-count can extend with fight state) — **partial F2**:
+  dwell is state-coupled, not a pure per-handle constant.
+- **Oracle-table cross-check (AC-4) → F3 (NO timing table):** grep found no duration/dwell/
+  frames-per table; the `$7000` advance uses only `tbl_action_class` (**classification**, sets
+  `$32`), and the dwell is a **computed countdown** in the context block. The deferred A1
+  "oracle timing table vs traced dwell" premise is **refuted — there is no table to validate;
+  the trace is the sole timing authority.**
+- **Port note:** VBL is VBL (~60 Hz both machines) so the per-pose VBL budget transfers, BUT the
+  budget = (tick-count × tick-length) and tick-length is the port's compute-bound loop rate — the
+  port must reproduce the ~13 VBL base tick (or scale the hold-counts) to preserve pacing.
 - **PER-FRAME animation map CAPTURED (`$20`→cels, via L6811):** each anim-frame `$20` value draws a
   distinct cel set (body pose + head `$8EC1`/`$8E9B`|`$8ECB` + feet `$90D7`). Frames 01-06, 14-21+
   captured — e.g. `$20=02`→`$8244` (winning-blow), `$20=16`→`$8654`/`$8714`/`$876B` (strike/punch).

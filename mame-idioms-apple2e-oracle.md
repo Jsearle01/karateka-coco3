@@ -237,6 +237,19 @@ stretch it's a truncated trace.
 *Candidate:* `trace-through-a-boundary-not-to-it`. *Established:* scene-6 full-span combat
 search. Tool: `harness/tools/scene6_full_descriptor.lua` (`FD_FSTART`/`FD_FEND`).
 
+### 8a. Timing: **MAME frame == one VBL**; the game's vbl-sync count is the (compute-bound) loop rate
+For animation/timing traces, the **display VBL timebase is the MAME frame** — one vblank per
+emulated NTSC frame, so `frame_number` (or the frame-notifier count) IS the VBL count. **Do NOT
+use the game's own vbl-sync routine as the VBL count** — the Karateka fight calls `vbl_sync`
+($779A: `lda $C019`/`bmi` on RDVBL bit7) only ~230× over a 960-VBL fight, because the main loop
+is **compute-bound at ~14 Hz** (heavy 6502 work per frame) and double-buffers (~2 vbl-syncs per
+figure redraw). So: **display-VBL dwell** (frame_number gaps) = the transferable, on-screen
+timing; **vbl-sync count** = the game's internal loop tick. Measure pose dwell as VBL gaps
+between figure redraws (per combatant, keyed on the head cel), `$20` read at the draw as data.
+*Candidate:* `measure-dwell-against-display-vbl-not-compute-bound-loop`. *Established:* scene-6
+fight-timing pass. Tool: `harness/tools/scene6_pose_timing.lua`. (Cross-cutting — the display-VBL
+= emulator-frame identity holds on coco3 too.)
+
 ---
 
 ## 9. Enumeration / filter traps (bite in MAME traces)
