@@ -194,8 +194,27 @@ no-filter, each run full-span f6484→f9443.
   So the demo (player always wins) never plays *either* — forcing the table row+seed reveals both.
   **COVERAGE: REACHABLE = 106 (seed-sweep saturation); UNREACHABLE-under-win = 4 (the losing outcome,
   both sides), captured by table×seed force.** Total action-animation space = **110 cels**, saturated.
-  **Residual:** disassembling `$6540` (selector→cel-seq) for per-action attribution is the only open
-  piece. Composited: player-lose `scene6-tableforce-pose.png`, guard-win `scene6-guardwin-pose.png`.
+  Composited: player-lose `scene6-tableforce-pose.png`, guard-win `scene6-guardwin-pose.png`.
+
+## `$6540` action dispatcher DISASSEMBLED — the full control→render pipeline `[CONFIRMED 2026-07-11]`
+**CORRECTION:** `$6540` is NOT un-disassembled — the `fight_engine.s:104` note was stale. `$6540`
+is fully in **`gameplay_6000.s L6540`** (the "Action execution dispatcher", ~7000 fires); my earlier
+"per-action attribution blocked by `$6540` un-disassembly" was wrong. Disassembled the live loaded
+code (MAME `dasm` via debugger bp) to confirm, then read the oracle.
+- **`$6540` = action dispatcher:** checks `$2F` (active-action flag), then dispatches the action
+  code A to **6 handlers** — `$D1`→`L65F4`, `$D7`→`L6618`, `$C5`→`L667E`, `$C6`→`L6717`,
+  `$9B`→`L66C3`, `$C2`→`L66FE`. **So the action space is 6 codes, not the 4 I read from `fight_ai`**
+  (fight_ai passes `$9B`/`$C5`/`$D7`; `$D1`/`$C6`/`$C2` come from other state paths).
+- **Each handler sets/advances the animation-state var `$20`** (the anim-frame index) + `$21-$2A`.
+- **`L6811` (action-indexed combatant draw) reads `$20`** → selects + draws the cel for that frame.
+- **THE FULL FIGHT PIPELINE (control→render):** `fight_ai_a000` (LCG `$59` + prob-tables by state
+  `$33`) → **action code** → **`$6540` handler** (sets `$20`) → **`$20` anim-frame** → **`L6811`
+  draws cel[`$20`]** → `$1903`-family blit.
+- **PER-FRAME animation map CAPTURED (`$20`→cels, via L6811):** each anim-frame `$20` value draws a
+  distinct cel set (body pose + head `$8EC1`/`$8E9B`|`$8ECB` + feet `$90D7`). Frames 01-06, 14-21+
+  captured — e.g. `$20=02`→`$8244` (winning-blow), `$20=16`→`$8654`/`$8714`/`$876B` (strike/punch).
+  So per-action/per-frame attribution is **fully tractable via `$20`** (the transient `$2F` reads 00
+  at draw time — use `$20`, the anim index). Attribution is **no longer an open item**.
 - **HARNESS BUG CAUGHT:** the first sweep was a no-op — `scene6_full_descriptor.lua` lacked the
   seed-poke (it lived only in `scene6_fight_control.lua`), so 8 "sweep" runs were identical. Added
   the poke; re-ran; verified divergence. (The seed axis silently doing nothing = the exact axis-miss
