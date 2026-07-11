@@ -176,9 +176,16 @@ the fight itself was never in the cel window (a coverage gap, not an untapped pa
     head `$8ECB`.
   - **PLAYER READY/FIGHTING stance** (NOT victory) = f8304-8316 (via A) — the neutral combat stance.
   - **GUARD KICK** (likely MID KICK) = f8306-8308 (via By): `$804D` + `$821E` + head `$8ECB`.
-  - **PLAYER VICTORY** = a distinct **HELD** pose `$891B` (23×3) held f8370-8412 (~42 frames) after
-    the fight ends, via A (`build/scene6-cast-preview/scene6-victory-pose.png`) — distinct from the
-    ready-stance and the run-off (run cycle f8647+); `$8244` (f8141) = the winning-blow pose.
+  - **PLAYER VICTORY** = a distinct **HELD** pose held f8370-8412 (~42 frames), via A. **`$891B` is
+    oracle-labeled "player torso, arm raised, VICTORY pose, no head" (NOT a mask** — Jay's
+    scene-5-Akuma-stencil hypothesis refuted by the oracle label). Full figure = `$891B` (torso+arm)
+    + head `$8EC1`/`$8E9B` + legs `$81BD` + feet `$90D7`. **Compositing nuance:** `$891B` is a body
+    **silhouette** (every row starts `$80`=black) — black-keyed-transparent strips the torso body
+    (reads mask-like); it needs **opaque-black** (the `'f'` opaque-black model, see
+    [[hal-opaque-blit-mode-needed]] / opaque-black-f-refactor-plan). The earlier composite also
+    wrongly included the prior-frame ready-torso `$9A2A` overlapping it. `$8244` (f8141) = the
+    winning-blow pose. Rebuilt: `build/scene6-cast-preview/scene6-victory-pose.png` (transparent vs
+    opaque-black variants).
   - Fight resolution: last hit-marker f8145, held victory ~f8370-8412, run-off f8647+, last actor
     draw f9148, loop-back f9443. (Guard defeat/fall + exact victory framing pending Jay's confirm.)
 
