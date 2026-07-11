@@ -149,6 +149,33 @@ rough character cels (shape-only; colors/registration not trustworthy):
 
 ---
 
+## Exhaustive fight-animation search — action space + seed-sweep to saturation `[CONFIRMED 2026-07-11]`
+`harness/tools/scene6_full_descriptor.lua` (now with seed-poke), 12-seed sweep × all-4-entries ×
+no-filter, each run full-span f6484→f9443.
+- **Action space (AC-1) — N = 4 selectors:** `fight_ai_a000` picks the animation via prob-tier
+  (tables `$A087`/`$A08C`/`$A091`/`$A096`, indexed by combat state `$33` 0-7): **`$9B`** (approach,
+  `$70`=`$13`/`$2F` paths), **`$C5`** (tier-2), **`$D7`** (tier-3), **`$00`/idle** (tier-1/fall);
+  `$29` codes `$00`/`$01`/`$FF`. The RNG is the LCG `$59=$59×5+$13`. **`$6540` (the dispatch that
+  maps selector→cel-seq) is UN-DISASSEMBLED** → per-action cel attribution is blocked statically
+  (a reported limitation, not a trace gap).
+- **Seed-sweep SATURATED (AC-2):** poking `$59` across 12 seeds, the combat-cel union grew
+  103 (one fight) → **106**, then **plateaued for 7 consecutive seeds** (added 0). Saturation
+  reached. **The seed axis was necessary:** 3 cels appear ONLY under seed variation, absent from
+  the baseline single fight.
+- **The 3 seed-only rare cels:** **`$87B3`** (14×5, guard/By) + **`$88C5`** (14×6, guard/By, one
+  seed only) + **`$8962`** (14×4, player/A) — rare strike/body variants a single-fight trace misses.
+- **Both combatants covered:** entry A (player) 7640 draws / By (guard) 7272 draws across the sweep.
+- **Coverage verdict (AC-4):** the reachable animation cel-space is **captured to saturation** (106
+  cels); the 4 action-selectors all fire (punch/kick/approach/idle observed). A precise per-action
+  X-of-N is **blocked by `$6540` being un-disassembled** — disassembling `$6540` (selector→cel-seq
+  map) is the follow-up that would close per-action attribution. No unreachable-under-win-weighting
+  action identified (the weighting biases *which* move, not *whether* a move-type appears).
+- **HARNESS BUG CAUGHT:** the first sweep was a no-op — `scene6_full_descriptor.lua` lacked the
+  seed-poke (it lived only in `scene6_fight_control.lua`), so 8 "sweep" runs were identical. Added
+  the poke; re-ran; verified divergence. (The seed axis silently doing nothing = the exact axis-miss
+  the exhaustive-search framing guards against.)
+- Seed-sweep-additions sheet (untracked): `build/scene6-cast-preview/scene6-seed-sweep-additions.png`.
+
 ## Full-span fight THROUGH the loop-back — combat poses found `[CONFIRMED 2026-07-11]`
 `harness/tools/scene6_full_descriptor.lua` (all-entry), window **f6484-9600**, run-length raised
 to reach the loop. **Root cause of "missing combat poses": prior CEL captures capped at f7400** —
