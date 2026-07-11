@@ -149,6 +149,28 @@ rough character cels (shape-only; colors/registration not trustworthy):
 
 ---
 
+## Full-span fight THROUGH the loop-back — combat poses found `[CONFIRMED 2026-07-11]`
+`harness/tools/scene6_full_descriptor.lua` (all-entry), window **f6484-9600**, run-length raised
+to reach the loop. **Root cause of "missing combat poses": prior CEL captures capped at f7400** —
+the fight itself was never in the cel window (a coverage gap, not an untapped path).
+- **Frame-accountability (AC-1/2):** first captured **f6484**, last captured **f9443** (=loop-back
+  to the Broderbund title, `$0400` font + logo). Continuous coverage f6484→f9443; the tap fired
+  the whole span. **The fight is f7246-8145** (hit-markers `$93AB` fire across it); **victory /
+  walk-off f8145-9443**; loop f9439-9443. Prior windows (f6000-7400) caught only the first 3
+  hit-markers — the bulk (f7607-8145) was uncaptured.
+- **Hit-markers `$93AB` = working control (HS-4):** ✓ fire f7246-8145 at **both** combatants
+  (X104 player / X139 guard) — the tap works where it fires; **no fallback needed** (strikes come
+  through the `$1903`-family tap, entries A + By, same as everything).
+- **Strike poses (high-kick / high-punch) = SHARED cels:** `$876B` `$8654` `$8592` `$85F3` `$86EB`
+  `$86B5` `$821E` `$804D` — each drawn via **A (player, left) AND By (guard, right, mirrored)**.
+  Confirms the two karateka share pose shapes; combatant = the draw-entry (facing), not the cel.
+- **Victory / walk-off (player wins):** post-f8145 — `$8DA9` + the player run cels (`$9B00-$9DD5`
+  via A). Player-only resolution (guard defeated; no player death — scripted win).
+- **Both heads interleave through the fight:** player `$8E9B` and guard `$8ECB` fire alternately
+  f7246-8145 (both combatants present + striking).
+- Combat-pose sheet (untracked): `build/scene6-cast-preview/scene6-combat-poses.png` — identity
+  (which cel = kick/punch/victory) is Jay's (HS-8, AC-6).
+
 ## Fight: control model (A2) + determinism + scroll (B) `[CONFIRMED by multi-run + seed-poke 2026-07-10]`
 `harness/tools/scene6_fight_control.lua`; window f6400-9500; 5 runs + 2 seed-perturbation runs.
 
