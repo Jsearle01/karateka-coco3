@@ -207,6 +207,14 @@ against independently-grounded pixels. *Candidates:*
 `automated-check-tautology-validate-against-ground-truth-not-rule-predictions`. *Established:*
 standing; Content Wave 1 (commit `0b5825b`).
 
+**`-nothrottle` snapshots lie for motion (cross-cutting, mirrored from the apple2e file §6).**
+`-nothrottle` is fine for **traces** (full trace fast), but a `-nothrottle` **still-frame
+snapshot manufactures phantom motion artifacts** — a mid-frame no-throttle grab ≠ the live
+rendered frame. So a coco3 snapshot tool (`gate1_snap.lua` / `comp_snap.lua`, §13) is **not a
+live gate**, and colour/position from a snapshot is not authoritative regardless — the on-screen
+truth is Jay's live MAME (above). *Established:* the nothrottle/motion caveat +
+`nothrottle-snapshots-unreliable-trust-live-gate`.
+
 **Live-gate viewing flags (Jay's preference — viewing-only, no cadence change):**
 ```
 mame coco3 -rompath C:\mame\roms -window -prescale 3 -resolution 1920x1152 -speed 8 \
