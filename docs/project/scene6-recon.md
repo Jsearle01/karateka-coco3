@@ -488,8 +488,30 @@ Three yes/no observations decompose the bias:
   damage-race win then **falls out of the geometry for free**. This closes the last fight-model
   mechanic question.
 
-## Scene-6 SOUND triggers — mechanism PC-confirmed; fight is silent-by-no-trigger `[VERIFIED 2026-07-11]`
-Tools `harness/tools/snd_trig.lua` / `snd_phase.lua`. PC-confirms the scene-5 R4 sound design
+## Scene-6 SOUND triggers — TWO paths; the fight IS voiced `[CORRECTED 2026-07-11]`
+> **CORRECTION (operator ground truth refutes the prior F2):** the block below originally
+> concluded "the fight is silent-by-no-trigger (F2)". **WRONG — Jay plays the game and HEARS
+> fight sounds.** The error: the prior pass tapped only the `$1000`→`$0D00` **tune** path; the
+> fight sounds are on a **SECOND, entirely separate path** it never looked at — the **`$C030`
+> (SPKR) speaker-click dispatch `$0C40` → handlers `$0C55`-`$0CB0`**. Retrace (`snd_spkr.lua`/
+> `snd_victory.lua`) found **457 SPKR fires over f6000-8200** — the fight is not silent.
+> - **HIT sound (both combatants) [C]:** SPKR `$0C55` fires on the player hit (`$40`≠0, 6/6),
+>   `$0C64`/`$0C74`/`$0C84` on the guard hit (`$41`≠0) — a speaker click on every landed blow,
+>   BOTH sides (HS-5 confirmed).
+> - **STEP / running sound [C]:** SPKR `$0CB0` (fires with no hit pending — footstep-synced).
+> - **CLIFF-TOP tune [C]:** the `$0D00` tune path, record **`$118C`** at f6114 (this WAS in the
+>   prior data, mislabeled "scene-entry" — it is the cliff-top tune).
+> - **VICTORY yell [C]:** the `$0D00` tune path, record **`$110B`** (fires at f8200+ — past the
+>   prior pass's f8200 window, which is why it was missed).
+> - **TWO INTERFACES, not one:** tunes/melodies → `HAL_sound_trigger(record_id)` (the `$1000`/
+>   `$0D00` record engine, gated `($4F AND $86)`); clicks (hit/step) → a **second hook**, the
+>   `$C030` SPKR dispatch (`$0C40`→`$0C55`-`$0CB0`). Fight-event record/handler IDs are now
+>   **observed** (closing the prior [I]): hit=`$0C55`(player)/`$0C64`-`$0C84`(guard), step=`$0CB0`,
+>   cliff=`$118C`, victory=`$110B`. F2-path fired: the fight sounds use a genuinely different
+>   mechanism (speaker toggle) than the record engine.
+
+**[Superseded original — the `$0D00`/`$1000` mechanism PC-confirm below is still valid; its
+"fight silent" conclusion is refuted above.]** Tools `harness/tools/snd_trig.lua` / `snd_phase.lua`. PC-confirms the scene-5 R4 sound design
 (previously inferred-only) and maps scene-6.
 - **MECHANISM PC-CONFIRMED [C] (closes scene-5 R4):** the sound engine is `$0D00`
   (`sound_engine`, tone generator, reads records via `($F7),Y`), invoked through the `$1000`
