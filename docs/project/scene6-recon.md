@@ -403,6 +403,30 @@ per-frame from `$7292`. Each claim **[C]** confirmed / **[I]** inferred.
   damage `dec`-on-hit floored at 0 + resets the regen timer; regen = per-frame timer, reset-on-hit,
   +1 at threshold (`$B8`/`$B9`, set to 255 = off in the demo); count-driven arrow redraw (cel
   `$0B12`, player-left, bottom row).
+
+### The hit-resolution event — closes H3 (damage trigger) + refines C4 (M2 causality) `[VERIFIED 2026-07-11]`
+Tools `harness/tools/c4_events.lua` / `c4_e41.lua` (event-code watchpoint) + live `dasm` of the
+referee. One event, three effects, and the causality shape:
+- **The trigger is a per-combatant EVENT CODE `$40` (player) / `$41` (guard) [C]:** watchpoint on
+  `$41` — set nonzero (01/02/03) by **`$B598`/`$B5B0`** exactly on the ~12 guard-hit events (each
+  followed by `$B7` decrementing), cleared to 0 otherwise (47×). NOT the prior C4 guess `$97`/`$9A`
+  (those had 0 writes — wrong bytes).
+- **H3 CLOSED — the three effects SHARE the trigger [C]:** `combat_round_manager` (`$7207`, 125×/
+  fight) reads `$40`/`$41`; when a combatant's code is nonzero it `restore_combatant`s that actor
+  and fires **damage** (`jsr $0B09`/`$0B0C` → `dec $b6`/`$b7`), **regen-reset** (inside, `$5B`/`$5C`
+  →0), AND **react** (`jsr trigger_action`) — all from the one event code. **F3 refuted:** damage,
+  react, and regen-reset do share one trigger.
+- **C4 REFINED → referee-mediated, NOT a direct cross-actor write [C mechanism / I collision-layer]:**
+  the event codes are computed by a **central referee at `$B584`** (per cycle): it clears `$40`/`$41`,
+  then (if both combatants active, `$5D`/`$5E`) computes **`$41` from `$70`** (guard's own state) and
+  **`$40` from `$60`** (player's own state) via `$7366`→`sta $41`/`sta $40`. So the react/damage is
+  **the victim's own event, computed by a neutral referee and applied by a per-frame manager** — NOT
+  the attacker's PC directly writing the opponent's state byte. This **refines M2 (F2-leaning):** the
+  fight's cross-actor coupling is *mediated* (referee + shared position), not a direct attacker→victim
+  memory write. The deeper collision layer (how a strike's position-overlap becomes the "hit" state
+  that `$7366` reads) is one level below this pass — **inferred [I]**, not isolated. The prior C4
+  "not-captured" is superseded: the event/mediator mechanism IS captured; only the direct-write
+  framing is refuted.
 - **PER-FRAME animation map CAPTURED (`$20`→cels, via L6811):** each anim-frame `$20` value draws a
   distinct cel set (body pose + head `$8EC1`/`$8E9B`|`$8ECB` + feet `$90D7`). Frames 01-06, 14-21+
   captured — e.g. `$20=02`→`$8244` (winning-blow), `$20=16`→`$8654`/`$8714`/`$876B` (strike/punch).
