@@ -149,6 +149,58 @@ rough character cels (shape-only; colors/registration not trustworthy):
 
 ---
 
+## Fight: control model (A2) + determinism + scroll (B) `[CONFIRMED by multi-run + seed-poke 2026-07-10]`
+`harness/tools/scene6_fight_control.lua`; window f6400-9500; 5 runs + 2 seed-perturbation runs.
+
+### Determinism / §M-RUN — the reconciliation with "it varies run-to-run"
+- **5 runs from a fixed headless boot are BYTE-IDENTICAL** (control CSV). **But the fight IS
+  stochastic** — the LCG seed `$59` takes **101 distinct values** over the window and the action
+  code `$29` is written **only** by `fight_ai_a000`. The reconciliation: **the fight is LCG-driven
+  stochastic, but DETERMINISTIC FROM A FIXED SEED.** From an identical boot the seed sequence
+  repeats → identical fight. **Jay's run-to-run variance = SEED variance** (real/interactive entry
+  advances `$59` a different number of times before the fight). Not a contradiction — both true.
+- **Seed-perturbation PROOF:** poking `$59` at f6484 diverges the fight **~6034 CSV lines** from
+  baseline (for two different poke values) → the fight is **seed(`$59`)-driven**, not a fixed
+  timeline script. (F-A2b refuted: it IS the RNG, not a canned script.)
+- **HS-1 tap-bypass CATCH:** read-taps on `$A000`/`$A0A2` returned **0 fires — a FALSE negative**
+  (6502 opcode-fetches bypass MAME read-taps). The reliable evidence the AI runs is the **seed
+  `$59` evolving + `$29` written only by fight_ai + the poke divergence**, not the (bypassed) tap.
+
+### A2 — action-control behavioral model `[execution-confirmed, HS-8]`
+- **RNG = LCG at `$A0A2` (`lcg_step_a0a2`): `$59 = $59×5 + $13 (mod 256)`, single-byte seed ZP
+  `$59`.** (`combat_state_a0af` also steps the LCG and sets `$2A` = `$FF`/`$00`/`$01` via `$55`/
+  `$AA` thresholds — a random direction/choice.)
+- **Selector = `fight_ai_a000` ($A000)**, called from `routine_b69a` ($B6E2, scene_dispatch).
+  Reads combatant state, steps the LCG (×2), compares the random byte against **4-tier probability
+  tables** (`$A087`/`$A08C`/`$A091`/`$A096`, indexed by combatant state `$33` 0-7), and sets the
+  **action code `$29`** (`$00`/`$01`/`$FF`, + loads a cel-sequence ptr `$9B`/`$C5`/`$D7`), then
+  tail-calls the **action dispatch `$6540`**.
+- **Action/state ZP map:** `$29` action code (written only by fight_ai) · `$2A` random choice ·
+  `$33` combatant state (0-11) · `$59` LCG seed · `$70`/`$2F`/`$5E` combat-state flags · `$DB`
+  per-combatant threshold · `$22`/`$4A`/`$72` distance/position.
+- **Code path (traced):** `routine_b69a $B6E2 → fight_ai_a000 $A000 → lcg_step $A0A2 (advance $59)
+  + combat_state_a0af → prob-table compare → set $29 → jmp $6540 (dispatch) → cel-seq → $1903-blit`.
+- **OUT OF SCOPE (named follow-up):** the player-always-wins **enforcement weighting** — the
+  stochastic model + seed map are here; *why the player wins* is a later task. No death-anim assumed.
+
+### A1 — fight playback / animation union
+- **A real scripted-by-RNG fight occurs** (not just the approach): fight cels `$8DA9`/`$8F0E`/
+  `$8E83` (31× each) + `$9290` (62×), hit-marker `$93AB` (13×), feet_shadow `$942A` (13×). 103-cel
+  actor union in one run.
+- **UNION NUANCE (HS-7):** a fixed boot = **one seed = one fight**, so this union is one sample.
+  The TRUE animation union needs **multiple SEEDS** (poke different `$59`), NOT multiple identical
+  boots. (The AA/3C poke runs already surface additional cels — a seed-sweep is the way to the union.)
+- Loop-back to the Broderbund title at ~f9443 (font `$0400` + logo `$BBEC`).
+
+### B — background scroll verification `[per-frame ΔX]`
+- **Midground `$A684`: SCROLLS** — X span **94** (238→332) over the window. ✓
+- **"Upper background" `$A7xx` (Y<70): ALSO SCROLLS — span 94, identical to the midground.**
+  `$A82B`/`$A7D1`/`$A707`/`$A763`/`$A703`/`$A857` all span 94. **F-Ba fired:** these are NOT a
+  fixed layer — the whole `$Axxx` scenery is **one scrolling layer**. Any truly-fixed sky/Fuji is
+  **not in the `$1903` sprite-draw stream** (a `$0A00` fill or one-time draw), so "upper bg does
+  not scroll" is **unconfirmed here** and the `$A7xx` cels specifically **do** scroll (HS-6:
+  reported as measured, not asserted).
+
 ## Draw-entry map + facing + recovered parts `[CONFIRMED by all-entry re-trace 2026-07-09]`
 
 > **JAY GATE — AC-6 — 2026-07-10 `[CONFIRMED by Jay]`** (off the corrected sheet): the **draw-B
