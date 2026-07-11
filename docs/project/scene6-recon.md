@@ -168,10 +168,19 @@ the fight itself was never in the cel window (a coverage gap, not an untapped pa
   via A). Player-only resolution (guard defeated; no player death — scripted win).
 - **Both heads interleave through the fight:** player `$8E9B` and guard `$8ECB` fire alternately
   f7246-8145 (both combatants present + striking).
-- **Composited fight poses (untracked):** `build/scene6-cast-preview/scene6-fight-poses-composited.png`
-  — full-figure poses assembled from co-occurring cels at traced (X,Y) (player via A, guard via By
-  h-flipped): player strike / guard strike / player victory. (Raw cel sheet
-  `scene6-combat-poses.png` also present.) Identity (kick/punch/victory) is Jay's (HS-8, AC-6).
+- **Composited fight poses + Jay's IDs (AC-6) `[CONFIRMED by Jay]`** (full-figure composites,
+  `build/scene6-cast-preview/scene6-fight-poses-composited.png`):
+  - **PLAYER HIGH PUNCH** = the f7602-7608 pose (via A): strike cel `$8654`/`$8714` + torso `$9A2A`
+    + head `$8EC1`/`$8E9B` + feet `$90D7`.
+  - **GUARD PUNCH** (mid-or-high unclear) = f7604-7610 (via By, mirrored): `$876B` + `$8654` +
+    head `$8ECB`.
+  - **PLAYER READY/FIGHTING stance** (NOT victory) = f8304-8316 (via A) — the neutral combat stance.
+  - **GUARD KICK** (likely MID KICK) = f8306-8308 (via By): `$804D` + `$821E` + head `$8ECB`.
+  - **PLAYER VICTORY** = a distinct **HELD** pose `$891B` (23×3) held f8370-8412 (~42 frames) after
+    the fight ends, via A (`build/scene6-cast-preview/scene6-victory-pose.png`) — distinct from the
+    ready-stance and the run-off (run cycle f8647+); `$8244` (f8141) = the winning-blow pose.
+  - Fight resolution: last hit-marker f8145, held victory ~f8370-8412, run-off f8647+, last actor
+    draw f9148, loop-back f9443. (Guard defeat/fall + exact victory framing pending Jay's confirm.)
 
 ## Fight: control model (A2) + determinism + scroll (B) `[CONFIRMED by multi-run + seed-poke 2026-07-10]`
 `harness/tools/scene6_fight_control.lua`; window f6400-9500; 5 runs + 2 seed-perturbation runs.
