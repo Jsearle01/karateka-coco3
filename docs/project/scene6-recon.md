@@ -165,11 +165,19 @@ no-filter, each run full-span f6484→f9443.
 - **The 3 seed-only rare cels:** **`$87B3`** (14×5, guard/By) + **`$88C5`** (14×6, guard/By, one
   seed only) + **`$8962`** (14×4, player/A) — rare strike/body variants a single-fight trace misses.
 - **Both combatants covered:** entry A (player) 7640 draws / By (guard) 7272 draws across the sweep.
-- **Coverage verdict (AC-4):** the reachable animation cel-space is **captured to saturation** (106
-  cels); the 4 action-selectors all fire (punch/kick/approach/idle observed). A precise per-action
-  X-of-N is **blocked by `$6540` being un-disassembled** — disassembling `$6540` (selector→cel-seq
-  map) is the follow-up that would close per-action attribution. No unreachable-under-win-weighting
-  action identified (the weighting biases *which* move, not *whether* a move-type appears).
+- **Coverage verdict (AC-4) — CAVEATED: seed axis saturated, TABLE axis NOT exhausted `[open]`:**
+  the seed-sweep saturation (106 cels) is over the **naturally-reached table rows + RNG only**, NOT
+  over every prob-table entry. The action selection has TWO inputs: the RNG `$59` (swept ✓) **and
+  the state `$33` = the prob-table ROW index (NOT swept).** Measured: the attract reaches the
+  `$33`-table path (`$5E`=01, `$2F`=00 → `LA049`) with **`$33` naturally ∈ {7, 9, 11}** — so
+  **rows 7/9/11 are exercised; rows 8 and 10 are NOT naturally reached**, and their actions may be
+  un-captured. **Attempts to FORCE `$33` (a frame-notifier poke, then a write-tap override) BOTH
+  no-op'd** (byte-identical to a clean run — the poke didn't take; the write-tap didn't fire or was
+  re-stomped by the game's `sta $33` at `gameplay_7000 L70C3`). **So the table axis is NOT proven
+  exhausted.** To exercise rows 8/10 needs a **working `$33` force** — a MAME **debugger breakpoint
+  at the `ldx $33` read** (`~$A03D`) that overrides just before the AI reads it (read-taps on the
+  AI bypass via 6502 opcode-fetch; the write-tap approach failed). That, plus disassembling `$6540`
+  (selector→cel-seq), is the open follow-up to truly close the action space.
 - **HARNESS BUG CAUGHT:** the first sweep was a no-op — `scene6_full_descriptor.lua` lacked the
   seed-poke (it lived only in `scene6_fight_control.lua`), so 8 "sweep" runs were identical. Added
   the poke; re-ran; verified divergence. (The seed axis silently doing nothing = the exact axis-miss

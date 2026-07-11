@@ -20,6 +20,11 @@ local FEND   = tonumber(os.getenv("FD_FEND"))   or 7400
 -- diverges the fight (aecabae). This is the SEED axis of the exhaustive search.
 local SEEDPOKE = tonumber(os.getenv("FD_SEEDPOKE"))
 local POKEF    = tonumber(os.getenv("FD_POKEF")) or 6484
+-- STATE axis: force the prob-table ROW index $33 (combatant state, fight_ai_a000) to a fixed value
+-- every frame in the fight window, so the AI selects that row's action regardless of the demo's
+-- natural state -> executes EVERY table entry, not just those the demo reaches. FD_STATEPOKE unset
+-- = no state poke. (Answers "did you poke every table value" — the seed axis alone doesn't.)
+local STATEPOKE = tonumber(os.getenv("FD_STATEPOKE"))
 -- Scenery exclusion band: EXCLUDE tbl_ADF7 scroll tiles ($A684+) + cliff/floor ($AA00-$ACFF),
 -- default $A64A-$ACFF. CRITICAL: the climbing-animation chain $A3C5-$A649 is the climbing PLAYER
 -- (oracle sprite_data_a400.s), sits in the $A400 bank but is NOT scroll -> kept BELOW EXLO so it
@@ -56,6 +61,16 @@ local function handle(entry)
   end
 end
 pcall(function() for addr,tag in pairs(ENT) do _G["_tap_"..addr]=mem:install_read_tap(addr,addr,tag,handle(tag)) end end)
+-- STATE override: the game writes $33 (gameplay_7000 L70C3) then fight_ai reads it. A frame poke is
+-- stomped by that write. A WRITE-tap on $33 fires ON the game's write -> re-force our value AFTER
+-- it, so the AI reads the forced table row. Guard against re-entry with _G._spflag.
+if STATEPOKE then
+  pcall(function() _G._sptap=mem:install_write_tap(0x33,0x33,"stateforce",function(o,d,m)
+    if _G._c>=POKEF and _G._c<=FEND and not _G._spflag then
+      _G._spflag=true; mem:write_u8(0x33,STATEPOKE); _G._spflag=false
+    end
+  end) end)
+end
 _G._n=emu.add_machine_frame_notifier(function()
   _G._c=_G._c+1; _G._ord=0
   if SEEDPOKE and _G._c==POKEF then mem:write_u8(0x59,SEEDPOKE); log(string.format("== POKED $59=%02X at f%d ==",SEEDPOKE,POKEF)) end
