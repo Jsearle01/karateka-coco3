@@ -33,6 +33,25 @@ Always state explicitly which source you are using and why before drawing any be
 
 ---
 
+## 2A. MAME Instrumentation Reference Files (check every dispatch)
+
+Two standing reference files at the repo root capture every MAME instrumentation quirk, gotcha, working command/Lua syntax, and the harness tool that exercises each case — so MAME idioms are **looked up, not rediscovered each dispatch**:
+
+- **`mame-idioms-apple2e-oracle.md`** — the `apple2e` / 6502 oracle target (`karateka_dissasembly_claude`).
+- **`mame-idioms-coco3-port.md`** — the `coco3` / 6809 port target (`karateka-coco3`).
+
+Cross-cutting idioms appear in both files; `mame-idioms-addendum.md` is folded into both (provenance only).
+
+**These are mandatory read points, not optional references:**
+
+1. **At the start of any dispatch that touches MAME** (any trace, watchpoint, breakpoint, snapshot, boot, or gate), **read the file for the relevant target first** and apply the applicable idioms before writing instrumentation. The single most load-bearing difference: **6502 read-taps silently false-0 (opcode-fetch bypass); 6809 read-taps work** — getting this wrong reads as "the code never ran."
+2. **During a dispatch, whenever you are about to exercise a MAME function you have not already confirmed this session** (a new debugger command, a `bpset`/`wpset`/tap form, `tracelog`/`trace` action, `natkeyboard:post`, `execution_state`, a speed/GIME/FDC poke, an image-build step), **check the file for the verified syntax and known gotchas before running it** — do not rediscover by trial and error what the file already records (e.g. headless `-debug` hangs without `execution_state="run"`; the frame-notifier/tap GC-reference gotcha; bp-action `tracelog` is brace-free while trace-action is braced; `-seconds_to_run` is emulated seconds; Windows paths need forward slashes in Lua).
+3. **When you discover a new MAME idiom, gotcha, or working syntax during a dispatch, add it to the applicable file** (both files if cross-cutting) so it is not rediscovered next time. Surface the addition in the Form B report.
+
+The MAME idioms files are *how* to get the reliable execution evidence §2 requires — they never override the ground-truth hierarchy or the visual-gate rules (§4), they serve them.
+
+---
+
 ## 3. PNG Handling Rules
 
 PNG files are diagnostic artifacts for human review. The following rules are absolute:

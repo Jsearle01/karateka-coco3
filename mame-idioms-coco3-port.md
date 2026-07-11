@@ -1,0 +1,279 @@
+# MAME idioms & quirks — CoCo3 target (the Karateka port)
+
+**Purpose:** a standing, self-contained reference so instrumentation and boot quirks on the
+`coco3` target (the `karateka-coco3` port) are **looked up, not rediscovered each dispatch.**
+Every entry is traced to the pass that established it and, where one exists, to the **tool**
+that exercises it and the **exact command/Lua syntax** that works. Read this before
+instrumenting or booting the port under MAME.
+
+**Target:** `mame coco3`, 6809 CPU, ~0.89 MHz slow / ~1.78 MHz double-speed, GIME video +
+MMU, WD1773 FDC on a 5.25″ floppy. **Prod baseline (never mutate under a read pass):**
+`karateka.bin` SHA-1 `88eba89b15cdf17c8d25e082d2d3e1f3cce57d38`, 17978 B. **Co-equal target:**
+a MAME **failure** on coco3 is a **shipping bug** (C-11 / I-BOTH), not deferrable to hardware
+— but a MAME **success** on a hardware-edge question is **not** a hardware guarantee (§7).
+
+> This file **incorporates** the earlier `mame-idioms-addendum.md` item A (GIME register
+> ordering) and D (pixel-colour provenance), plus the cross-cutting debugger/Lua mechanics,
+> tap-GC gotcha, and live-gate flags shared with the apple2e oracle.
+
+---
+
+## 1. The load-bearing one: **the CoCo3 has NO autoboot**
+Inserting a disk **runs nothing.** There is no autoboot. The entry point is **Disk BASIC
+(DECB)** — you reach the game by having DECB `LOADM` + `EXEC` the binary (or an equivalent
+boot front-end). **Do not expect `-flop1 <disk>` to boot the game** — it mounts the disk;
+DECB is the ROM running, and it does nothing until told. The boot path is DECB, whose live
+low-RAM and IRQ-vector usage **overlap the game's load region** (§5). *Candidate:*
+`coco3-has-no-autoboot-entry-is-DECB`. *Established:* disk-boot / DECB-overlap arc.
+
+---
+
+## 2. **Autoboot script ↔ interactive input are mutually exclusive** — use `natkeyboard:post`
+MAME's `-autoboot_script` and interactive input don't coexist cleanly here. To drive DECB
+(type `LOADM"…"` / `EXEC`) under automation, **post keystrokes to the natural keyboard**:
+```lua
+manager.machine.natkeyboard:post('LOADM"PROG"\r')   -- note the trailing \r (ENTER)
+manager.machine.natkeyboard:post('EXEC\r')
+```
+Drive it **after boot settles** (~frame 240). The documented method: `disk11.rom` (Disk BASIC
+ROM) + `imgtool` (build the image) + `mame coco3` + `natkeyboard:post`, working around the
+autoboot mutual-exclusion. *Candidate:*
+`mame-autoboot-and-interactive-are-mutually-exclusive-use-natkeyboard-post`. *Established:*
+disk-boot / DECB-overlap verdict (AC-4 reachability).
+
+---
+
+## 3. Disk images: **`imgtool`**, `.dsk` vs DMK, and **MAME can't write DMK/SDF back**
+- **`imgtool`** builds coco3 disk images for MAME. **A `.dsk` is always 18 sectors/track** —
+  no native short-track fixture; a short-count / worst-case track points at **DMK** (or JVC).
+- **JVC createopts came back empty; DMK is the format for track-geometry control** (DMK
+  createopts unchecked at last note — verify before relying). Boot images are
+  **whole-track-aligned** in our `.dsk` layout (keeps raw game tracks contiguous).
+- **`.dsk` fixtures are gitignored / throwaway** — a shared fixture once broke an AC (3b-1);
+  **generate per-task, don't share.**
+- **MAME write-back is format-limited (a real gotcha).** **DMK and SDF are READ-ONLY** in
+  MAME's floppy layer (`floptool` shows `dmk r-`, `sdf r-`) — a guest that formats a mounted
+  `.dmk` runs fine but the file is **byte-unchanged on exit**. Only `jvc` and `coco_rawdsk`
+  save back, and JVC is a **logical** image (discards physical sector order). So you **cannot
+  image a guest-formatted disk to inspect its interleave**, and MAME Lua exposes no floppy
+  track-data accessor.
+  - **Workaround — in-session CPU hijack (§10 proxy pattern):** boot the guest, let it format
+    in the in-memory floppy, then from Lua load a standalone read harness and time a read of
+    the just-formatted disk (no write-back needed). **Validate the hijack with a control**
+    (read a known-good pristine disk the same way; it must reproduce the normal time). Detect
+    guest-op completion by watching FDC command writes (`$FF48`) for an idle gap.
+
+*Candidates:* `dsk-is-always-18-sectors-use-DMK-for-short-tracks`,
+`mame-dmk-writeback-hijack-proxy`. *Established:* BUILD #3b passes + the DECB-BACKUP refutation.
+
+---
+
+## 4. **Track-17 is the DECB directory** — mid-disk, do not overwrite
+The DECB directory lives on **track 17, mid-disk.** A raw game-track span crossing track 17 is
+**silent corruption** (bootloader reads directory as game data, or the raw layer overwrites
+the directory). **Keep the raw game track range clear of track 17** (or account for it
+explicitly); reserved raw tracks must stay **contiguous and clear of 17**, and DECB must
+**tolerate the reservation** (it can flag reserved tracks as an inconsistency if done wrong).
+*Candidate:* `decb-directory-is-track-17-keep-raw-tracks-clear`. *Established:* BUILD #3b-3.
+
+---
+
+## 5. The disk-boot overlap: **DECB `LOADM` overwrites `$010C`** (M1) — confirmed mechanism
+When DECB `LOADM`s the binary, segment-1 lands on DECB's regions — specifically **M1: the
+`$010C` IRQ-vector overwrite** (hang at `$C60F` in the trace). `$0100-$01FF` is **contested
+during LOADM** — the M1 watchpoint on it pinpointed the overlap. The fix (a separate gated
+task, M4): a bootable `.dsk` + a loader that avoids the overlap; the raw-underlayer approach
+chains through this. **M2** (a second overlap hypothesis) was **unreachable/unproven** in the
+trace — flagged, not smoothed over. *Candidate:* `decb-loadm-overwrites-010C-irq-vector`.
+*Established:* disk-boot / DECB-overlap verdict (M1 confirmed by trace).
+
+---
+
+## 6. **The WD1773 FDC** — the CoCo3 disk-controller programming model
+- **Four memory-mapped registers** in the `$FF4x` area (command/status, track, sector, data;
+  command/status at **`$FF48`**) — confirm base/order against **DECB Unravelled** (register
+  base/order is the F1 risk if assumed).
+- **DECB assumes slow; it does not FORCE slow**, and **does not use HALT for double-density.**
+  The absence of a `$FFD8` (slow-speed poke) in the disk path is the evidence — "assumes
+  slow" ≠ "forces slow."
+- **Capture the density / motor / settle sequence** (addresses, latch bits, DECB's
+  motor/settle/density order) when tracing disk I/O.
+
+*Candidate:* `decb-assumes-slow-does-not-force-slow`. *Established:* FDC read-primitive recon +
+DECB speed passes.
+
+---
+
+## 7. What MAME **cannot** answer here — do not over-trust the emulator
+MAME shows *behaviour*; only real hardware / a faithful timing model settles some questions.
+Flag these **MAME-can't-confirm**; don't launder a clean run into "verified":
+- **Fast-speed FDC survival** at ~1.78 MHz — doc-supported-**unsafe** (Lomont fast-speed ROM
+  failure; MFM DD polling fails at 0.89 MHz empirically) but the **edge is not
+  MAME-authoritative** → real silicon.
+- **HALT + NMI-completion timing** — if the fix depends on HALT-enable / NMI-completion and
+  there's no INTRQ path, it may be **UN-TESTABLE in MAME**; report as such (may still be
+  correct, just not MAME-provable).
+- **Seek-Error reliance / FDC edge fidelity** → real silicon.
+- **GIME MMU 128K range conflict** — MAME does **not** resolve the doc-vs-hardware MMU-range
+  question; tracked as a 25.3-H(divergence) item, not closed by a clean run.
+
+**Rule:** a MAME **failure** on a co-equal target is a real bug (C-11); a MAME **success** on
+a hardware-edge question (fast-speed FDC / HALT timing / MMU range) is **not** a hardware
+guarantee — hold it as `inferred`, gate to silicon. *Candidate:*
+`mame-success-on-a-hardware-edge-question-is-not-a-hardware-guarantee`. *Established:*
+DD-slow-speed feasibility, DECB fast-speed viability, GIME-MMU recheck.
+
+---
+
+## 8. Speed control: **force-slow → do-I/O → restore-speed** wrapper
+Where slow speed is needed for disk I/O, poke the speed down, do the transfer, restore.
+`$FFD8`/`$FFD9` are the speed pokes (slow/fast). The **boot primitive itself doesn't need it**;
+the wrapper is owned at the I/O-caller layer. DECB assumes slow but won't protect you at fast
+speed (§6) — a missing `$FFD8` in a disk path means "assumes slow," not "forces slow."
+*Established:* DD-at-slow-speed feasibility + FDC viability follow-up.
+
+---
+
+## 9. **GIME register write ORDER: palette must be written AFTER video mode** (addendum A)
+A real hardware/emulator behaviour, not a style preference: **palette register writes
+(`$FFB0-$FFB3`) do not latch correctly until the GIME's video mode is already set.** Writing
+palette **before** `$FF98`/`$FF99` leaves the mid-range indices **not rendering** — only the
+extremes ($00 black / $3F white) survive; indices 1/2 (orange, blue/cyan) come out wrong or
+absent. **Symptom:** a four-band palette test shows only 2 bands; Brøderbund logos render
+without orange/blue.
+
+**The required order** (addresses confirmed present in `src/`):
+1. **`$FF90`** (CoCo3 mode) **first** — the `$8000+` framebuffer needs CoCo3 mode for CPU
+   access.
+2. clear buffers.
+3. GIME mode/offset/SAM setup: **`$FF98`/`$FF99`** (video mode + resolution), **`$FF9D`/
+   `$FF9E`** (offset), **`$FF9C`**, **`$FF9F`**, **`$FFD9`**, **`$FFDF`**.
+4. **palette `$FFB0-$FFB3` LAST.**
+
+Empirical (GFXMODE3.ASM + Jay: "the GIME needs to be completely initialized before palette
+values are written"), **not** Sockmaster-documented. Cost of not knowing it: the P2.3a
+display-init arc burned multiple followups (followup-2 NOT CONFIRMED, chasing palette
+*values* when the cause was *ordering*) before the reorder fixed it. *Candidate:*
+`gime-palette-writes-must-follow-video-mode-set`. *Established:* P2.3a.6 followup-3 (the
+reorder). Tool: `harness/tools/palette_derive.py` (index derivation),
+`harness/tools/decode_framebuffer.py` (framebuffer verify).
+
+---
+
+## 10. Instrumentation — **6809 read-taps WORK** (the key cross-target asymmetry) + shared Lua
+- **On 6809, program-space read-taps DO fire** — unlike the 6502 oracle side, where opcode
+  fetches bypass them. So the single most important cross-target difference: **on coco3 you
+  can read-tap an execution address directly; on apple2e you can't** (use a bp / write-tap /
+  watch-the-result there). *Candidate:* `6809-read-taps-work-6502-read-taps-dont`.
+- **Tap-GC gotcha (cross-cutting, applies here too):** `install_read_tap`/`install_write_tap`
+  and `emu.add_machine_frame_notifier` return an object you **must keep referenced** (`_G._tap
+  = …`, `_G._n = …`) or it is garbage-collected and **silently stops firing** (empty log =
+  false "never happens"). Taps work **headless** (no `-debug`).
+- **The debugger/Lua toolkit is MAME-general** (same as apple2e §4) and useful on coco3 for
+  boot-time watchpoints and forcing:
+  ```lua
+  pcall(function() manager.machine.debugger.execution_state="run" end)  -- unpause headless -debug (else HANGS)
+  local cpu = manager.machine.devices[":maincpu"]
+  cpu.debug:wpset(cpu.spaces["program"], "w", 0x010C, 2, nil, 'tracelog "M1 pc=%04X",pc; go')  -- catch the $010C overwrite
+  cpu.debug:bpset(0xADDR, nil, 'pb@0xZP=0xNN; go')     -- force a value at a read
+  manager.machine.debugger:command("trace C:/…/out.tr,0")   -- run any debugger cmd from Lua
+  ```
+  **Syntax:** registers `a b d x y u s pc cc dp` (6809 set); byte read `b@0xADDR`; poke
+  `pb@0xADDR=v`; **bp-action `tracelog` is brace-FREE** (`tracelog "…",pc; go`), **trace-command
+  action is BRACED** (`{tracelog "…",pc}`) — mixing fails silently. Debugger `printf` is **NOT
+  captured headless** — use `tracelog` into an open trace. Write Lua output via `io.open`, not
+  `print()` (console not captured).
+
+*Established:* cross-target instrumentation note + the M1 `$010C` watchpoint + the shared
+debugger toolkit from the `$6540` pass (commit `634e0c3`).
+
+---
+
+## 11. Visual authority is **Jay's live MAME**, never a Clyde snapshot
+Every colour / position / on-screen claim is **Jay's** to gate off a live coco3 MAME run. The
+CoCo3 side is **palette-based** (GIME explicit palette) — once colour is fixed on the Apple
+read side, the CoCo3 index is baked correctly and there is nothing to re-check at render time;
+but **whether it reads right on-screen is still Jay's eye**, and 25.3 is his MAME observation.
+A `wpset` PC-confirm shows *code ran*, not *what it looks like*.
+
+**Pixel-colour provenance (addendum D — applies to any capture file):** filename labels
+("TRUE"/"reference"/"ground truth") establish nothing; **content + creation method +
+timestamp** do. MAME's rendered palette ≠ the conversion tool's constants (MAME blue ≈
+`(25,144,255)` vs tool `(0,0,255)`, the latter confirmed in `harness/tools/palette_derive.py`)
+— a "ground truth" file with `(0,0,255)` is a tool render. **Automated-check tautology:**
+"N/N pixels match the rule" is tautological if the rule generated the predictions — validate
+against independently-grounded pixels. *Candidates:*
+`tool-render-is-not-a-mame-capture-verify-by-pixel-colour`,
+`automated-check-tautology-validate-against-ground-truth-not-rule-predictions`. *Established:*
+standing; Content Wave 1 (commit `0b5825b`).
+
+**Live-gate viewing flags (Jay's preference — viewing-only, no cadence change):**
+```
+mame coco3 -rompath C:\mame\roms -window -prescale 3 -resolution 1920x1152 -speed 8 \
+     -autoboot_script tools\<gate>_live.lua
+```
+`-speed 8` (fast-watch; `-speed 16`/`-nothrottle` for max), `-prescale 3 -resolution
+1920x1152` (3× window, size only). The `*_live.lua` loads the boot-excluded `.bin` and sets
+PC. *Established:* `mame-live-gate-viewing-flags`.
+
+---
+
+## 12. Quick command idioms (coco3)
+```bash
+# Boot to DECB + drive it (needs disk11.rom present):
+mame coco3 -flop1 <image.dsk>        # then natkeyboard:post 'LOADM"PROG"\r' / 'EXEC\r' (§2)
+# Build an image:  imgtool ...        # .dsk = 18 sec/track fixed; DMK for track geometry (§3)
+# Operator live-watch (§11):  -speed 8 -prescale 3 -resolution 1920x1152 -window -nomax
+# Fast headless trace:  -nothrottle -video none -sound none -seconds_to_run <N> -script tools/<lua>.lua
+# Headless DEBUGGER run:  add -debug AND unpause in Lua (execution_state="run", §10)
+```
+- **Windows-path-in-Lua gotcha (shared):** `"C:\k…"` is an invalid Lua escape → the script
+  **silently fails** and MAME runs the full duration with **no tap, no error.** Use forward
+  slashes (`C:/…`) or `\\`.
+- **Script must be at MAME's cwd** (`-script tools/foo.lua` resolves from the run repo) —
+  copy from `harness/tools/` if needed.
+- **`-seconds_to_run` is EMULATED seconds**, not wall-clock; if a `-nothrottle` run drags for
+  minutes real-time, throttle isn't in effect — fix the invocation.
+- **Never mutate prod under a read pass:** `karateka.bin` `88eba89…` must stay byte-identical.
+
+---
+
+## 13. Tool index — which tool exercises each idiom
+| Idiom | Tool |
+|---|---|
+| live visual gate (boot-excluded `.bin` + set PC) | `harness/tools/gate1_live.lua`, `gate2_live.lua`, `comp_live.lua` |
+| gate trace / framebuffer verify | `harness/tools/gate1_trace.lua`, `gate2_trace.lua`, `decode_framebuffer.py` |
+| GIME palette index derivation | `harness/tools/palette_derive.py` |
+| sprite convert / parity / render | `harness/tools/sprite_convert.py`, `flip_parity_inplace.py`, `sprite_visualize.py` |
+| snapshot capture (⚠ not a live gate) | `harness/tools/gate1_snap.lua`, `comp_snap.lua` |
+
+---
+
+## Appendix — candidate names (MAME cluster, coco3)
+Sourced to specific disk-boot / FDC / GIME / display-init passes:
+- `coco3-has-no-autoboot-entry-is-DECB`
+- `mame-autoboot-and-interactive-are-mutually-exclusive-use-natkeyboard-post`
+- `dsk-is-always-18-sectors-use-DMK-for-short-tracks` · `mame-dmk-writeback-hijack-proxy`
+- `decb-directory-is-track-17-keep-raw-tracks-clear`
+- `decb-loadm-overwrites-010C-irq-vector` · `decb-assumes-slow-does-not-force-slow`
+- `mame-success-on-a-hardware-edge-question-is-not-a-hardware-guarantee`
+- `gime-palette-writes-must-follow-video-mode-set`
+- `6809-read-taps-work-6502-read-taps-dont`
+- `tool-render-is-not-a-mame-capture-verify-by-pixel-colour`
+  · `automated-check-tautology-validate-against-ground-truth-not-rule-predictions`
+- **cross-cutting (shared, in the apple2e file's appendix):**
+  `mame-frame-notifier-return-must-be-referenced-or-gcd`,
+  `mame-debugger-printf-not-captured-headless-use-tracelog`,
+  `mame-bp-action-tracelog-is-brace-free-trace-action-is-braced`.
+
+---
+
+## Cross-reference
+The **Apple IIe / oracle** quirks (6502 read-tap bypass, watch-the-seed, seed-determinism of
+the attract loop, `FD_STATEFORCE`, tap-every-draw-entry, trace-through-a-boundary,
+`-nothrottle` motion-snapshot lie, boot-time-static bytes, the full debugger/Lua toolkit) are
+in the companion **`mame-idioms-apple2e-oracle.md`**. The two targets differ most at §1/§10:
+**6809 read-taps work; 6502 read-taps don't** — the single most important cross-target
+difference. The debugger/Lua mechanics (`execution_state="run"` headless-unpause, `bpset`/
+`wpset`, `b@`/`pb@`, `debugger:command`, trace+`tracelog`, the brace rule) and the
+tap-GC/visual-provenance/`-seconds_to_run` gotchas are **shared** and appear in both files.
