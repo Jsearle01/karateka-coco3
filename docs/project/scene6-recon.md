@@ -183,11 +183,19 @@ no-filter, each run full-span f6484→f9443.
   always wins) **structurally never plays it** — no seed-sweep can reach it; only forcing the
   prob-table row (overriding the win-biased selection) reveals it. Directly ties to the
   **always-wins enforcement weighting** — the suppressed outcome is the player losing.
-- **COVERAGE — cleanly classified (AC-4 CLOSED):** REACHABLE actions = captured to saturation (106
-  cels, seed-sweep); UNREACHABLE-under-win-weighting = the **player-lose animation** (`$8EA5`/`$8EB3`
-  + pose, 0/12 natural), **captured by table-force** — a finding, not a gap. **Residual tightening:**
-  a full row×seed cross-product + disassembling `$6540` (selector→cel-seq) for per-action attribution.
-  Composited player-lose pose: `build/scene6-cast-preview/scene6-tableforce-pose.png`.
+- **FULL SATURATION (AC-4 fully CLOSED) — row×seed cross-product, 30 runs `[CONFIRMED 2026-07-11]`:**
+  every prob-table row (7-11) × a 6-seed spread, each forced via the debugger bp + seed poke. **Union
+  saturated at 110 combat cels** (15-run plateau at the end). The cross was necessary — it found 2
+  beyond the row-force-alone 108. **The 4 cels beyond the natural seed-sweep 106 are ALL 0/12 natural
+  (unreachable-under-win-weighting), and they are the complete LOSING OUTCOME both combatants:**
+  - **PLAYER FALL/LOSE** (via A): `$8EA5`, `$8EB3` — the player defeated.
+  - **GUARD WIN/VICTORY** (via By): `$8000` (25×2 body), `$9043` — the guard's victory when the
+    player loses.
+  So the demo (player always wins) never plays *either* — forcing the table row+seed reveals both.
+  **COVERAGE: REACHABLE = 106 (seed-sweep saturation); UNREACHABLE-under-win = 4 (the losing outcome,
+  both sides), captured by table×seed force.** Total action-animation space = **110 cels**, saturated.
+  **Residual:** disassembling `$6540` (selector→cel-seq) for per-action attribution is the only open
+  piece. Composited: player-lose `scene6-tableforce-pose.png`, guard-win `scene6-guardwin-pose.png`.
 - **HARNESS BUG CAUGHT:** the first sweep was a no-op — `scene6_full_descriptor.lua` lacked the
   seed-poke (it lived only in `scene6_fight_control.lua`), so 8 "sweep" runs were identical. Added
   the poke; re-ran; verified divergence. (The seed axis silently doing nothing = the exact axis-miss
