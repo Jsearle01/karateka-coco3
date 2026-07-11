@@ -548,28 +548,19 @@ build landmark its hook attaches to + the exact position (execution-observed).
   `sta $F7; stx $F8; lda $4F; and $86; beq skip; jmp $0D00`. Observed firing: 7 triggers through
   `$101C`, gate **`($4F AND $86)` = 1 (OPEN)**, **6/7 reached `$0D00` (voiced)**. This is the
   "always-called, conditionally-voiced" stub shape — now execution-grounded, not inferred.
-- **THE ATTRACT IS VOICED but the FIGHT is SILENT-BY-NO-TRIGGER [C] (F2):** all 7 triggers fire
-  **pre-fight** (f500-6114: intro/title/scene-entry records `$105B`/`$1073`/`$114D`/`$115D`/
-  `$1130`/`$118C`); the **fight window f7246-8145 fires ZERO** triggers — and crucially the **gate
-  is OPEN at f7400** (`$4F`=`$86`=`$01`). So the fight is silent **not** because of a closed gate
-  but because **the fight code never CALLS a sound slot in the attract.** (Likely the fight sounds
-  are input-driven — `input.s` slot_0 `$1006` fires "when the `$88` timer expires" — so the
-  no-input attract never triggers them; real controlled play would.)
+- **[STRUCK — ledger #14, per Jay's ruling]** The dead "the FIGHT is SILENT-BY-NO-TRIGGER (F2)"
+  finding is removed. **Superseded by the CORRECTION above:** the fight IS voiced — the fight
+  sounds are on the `$C030` SPKR click path (`$0C40`→`$0C55`-`$0CB0`) this pass had not tapped.
+  (See consolidation §9 #14.)
 - **SCENE-6 RECORD IDs (observed, pre-fight) [C]:** `$105B` (f3923), `$1073` (f4166), `$114D`
   (f5260, slot_6 score/event), `$115D` (f5463), `$1130` (f5705), `$118C` (f6114, ~scene-entry/
   climb). These are the sounds that actually fire in scene-6's window — intro/title/entry, **not
   fight events.** Move/hit/victory names are **provisional/Jay's** (what each voices).
-- **STUB-PLACEMENT SPEC [design]:** one shared interface **`HAL_sound_trigger(record_id)`** ≡ JSR
-  the `$1000` slot for `record_id`; the CoCo3 voicing (the `$0D00`-leaf equivalent) is filled
-  behind the stub later, gated by the CoCo3 equivalent of `($4F AND $86)`.
-  - **Confirmed sites (observable):** the pre-fight/entry records above — `HAL_sound_trigger` at
-    each `$1000`-slot call site.
-  - **Fight-event sites = DESIGN-FROM-EVENTS (real-play-only, NOT in attract) [I]:** place
-    `HAL_sound_trigger(?)` at the mapped fight events (hit-resolution `$40`/`$41`, guard-entry
-    f6484, winning-blow cel `$8244`, victory cel `$891B`); **record IDs unknown** (the attract
-    never fires them) — flagged for a real-play capture or Jay's spec.
-- **PORT note:** the stub captures "record N fires here"; the mechanism (slot→record→gated engine)
-  is one interface shared scene-5/6. No CoCo3 sound + no stub *implementation* this pass — spec only.
+- **[STRUCK — ledger #16, per Jay's ruling]** The dead "one shared `HAL_sound_trigger` interface"
+  spec and the "fight-event sites = DESIGN-FROM-EVENTS, real-play-only [I]" claim are removed.
+  **Superseded:** there are **TWO** hooks (record-engine tunes + `$C030` SPKR clicks — distinct
+  mechanisms), and the fight-event sounds ARE found (SPKR path, IDs observed) — see the
+  **placement table above**. (See consolidation §9 #16, §7a.)
 - **PER-FRAME animation map CAPTURED (`$20`→cels, via L6811):** each anim-frame `$20` value draws a
   distinct cel set (body pose + head `$8EC1`/`$8E9B`|`$8ECB` + feet `$90D7`). Frames 01-06, 14-21+
   captured — e.g. `$20=02`→`$8244` (winning-blow), `$20=16`→`$8654`/`$8714`/`$876B` (strike/punch).
