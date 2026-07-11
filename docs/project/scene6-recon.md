@@ -205,11 +205,36 @@ code (MAME `dasm` via debugger bp) to confirm, then read the oracle.
   code A to **6 handlers** — `$D1`→`L65F4`, `$D7`→`L6618`, `$C5`→`L667E`, `$C6`→`L6717`,
   `$9B`→`L66C3`, `$C2`→`L66FE`. **So the action space is 6 codes, not the 4 I read from `fight_ai`**
   (fight_ai passes `$9B`/`$C5`/`$D7`; `$D1`/`$C6`/`$C2` come from other state paths).
-- **Each handler sets/advances the animation-state var `$20`** (the anim-frame index) + `$21-$2A`.
 - **`L6811` (action-indexed combatant draw) reads `$20`** → selects + draws the cel for that frame.
-- **THE FULL FIGHT PIPELINE (control→render):** `fight_ai_a000` (LCG `$59` + prob-tables by state
-  `$33`) → **action code** → **`$6540` handler** (sets `$20`) → **`$20` anim-frame** → **`L6811`
-  draws cel[`$20`]** → `$1903`-family blit.
+
+### CLOSE 1.2 — the `$6540` dispatch OBSERVED EXECUTING (not re-read) `[VERIFIED 2026-07-11]`
+Tool `harness/tools/scene6_dispatch_trace.lua`: a **debugger breakpoint at `$6540`** (opcode-fetch
+level — read-taps false-0 on 6502 fetch) that `tracelog`s A/`$2F`/`$20` per fire into a bounded
+instruction trace, so the branch **actually taken** is visible in the executed stream. Unreached
+codes forced by setting register A (+`$2F`) at the bp. **Ground truth = the execution trace**, not
+the static `dasm6540.asm` read.
+- **Action→handler branch TAKEN, all 6 observed jumping (cross-check vs `dasm6540.asm`: MATCH):**
+  `$D1`→`6548 jmp $65F4` · `$D7`→`654F jmp $6618` · `$C5`→`6556 jmp $667E` · `$C6`→`655D jmp $6717`
+  · `$9B`→`6564 jmp $66C3` · `$C2`→`656F jmp $66FE`. The static handler MAP is correct.
+- **FINDING A — the dispatch is `$2F`-GATED (a conditional the flat 6-way read hid):** `6540 ldx $2f;
+  6542 bne $6559`. When **`$2F`==0** (every observed natural dispatch) it checks `$D1/$D7/$C5/$C6/$9B`
+  and the `cmp #$C2` at `$656B` is **never reached** — `$C2`→`$66FE` is unreachable. `$C2`→`$66FE`
+  fires **only when `$2F`≠0** (verified by forcing `$2F=1`: reaches `656B cmp #$c2` → `656F jmp
+  $66fe`). The attract demo holds `$2F`==0 at dispatch, so **`$C2` never fires naturally** — same
+  unreachable-under-win-weighting pattern as the player-lose / guard-win cels.
+- **FINDING B — secondary "idle" tail at `$6567`-`$65B3` (omitted by the 6-handler summary):** when
+  A matches none of the 5 movement codes (**A=`$00` = ~59% of natural fires**, the idle action),
+  `$6540` does NOT no-op — it runs `6567 ldx $2f; 6572 lda $2f; 65B3 lda $29(action); 65B5 beq $6590
+  rts`, i.e. an `$2F`/action-code-keyed routine, dominant at runtime.
+- **CORRECTION to "each handler SETS `$20`":** the handlers **read** `$20`(WNDLFT)/`$21`(WNDWDTH)/
+  `$24`(CH)/`$2F` to branch, then merge into the `$6572` tail and `rts`; **no handler writes `$20`**.
+  `$20` is written by **`$7081`/`$709D`** (gameplay_7000 per-frame state/anim update) + **`$645B`/
+  `$6493`** (the `$6400` anim-prep sub the main loop calls after dispatch) — verified by a write
+  watchpoint on `$20`. (MAME shows these ZP as Apple-monitor names: `$20`=WNDLFT, `$29`=BASH.)
+- **THE FULL FIGHT PIPELINE (control→render), corrected:** `fight_ai_a000` (LCG `$59` + prob-tables
+  by state `$33`) → **action code `$29`** → **`$6540`** dispatches to a **window/collision handler**
+  (reads `$20`+window vars, `$2F`-gated) **||** `$20` anim-frame **written by the `$7000` state
+  machine + `$6400` prep** → **`L6811` draws cel[`$20`]** → `$1903`-family blit.
 - **PER-FRAME animation map CAPTURED (`$20`→cels, via L6811):** each anim-frame `$20` value draws a
   distinct cel set (body pose + head `$8EC1`/`$8E9B`|`$8ECB` + feet `$90D7`). Frames 01-06, 14-21+
   captured — e.g. `$20=02`→`$8244` (winning-blow), `$20=16`→`$8654`/`$8714`/`$876B` (strike/punch).
