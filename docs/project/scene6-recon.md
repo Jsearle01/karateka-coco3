@@ -212,6 +212,21 @@ non-`$1903` `$0A00` FILL family. **The scene-6 background is THREE layers:**
      now surfaced by sorting fixed cels by Y.) The full stack spans Y81→Y108, does not move.
    - **Sky = `$0A00` fill `passA r0-104 c0-40 pat$D5`** — a **full-width fill of the top 104 rows,
      laid once at scene entry (f6003-6062)** and persisting; fixed vertical position.
+   - **OCCLUSION-REPAIR mechanism (Q1) `[CONFIRMED — PORT REQUIREMENT]`:** the base draws 35×
+     vs the peak 2× because of **occlusion, X-scoped**: at the **peak's position (X112-168,
+     Y81-99) overpaint = 0** → drawn 2× at entry, persists. At the **base's position (X84-189,
+     Y100-111) the scrolling FLOOR `$AA` tiles overpaint (94 draws)** → the game **repair-blits**
+     the lower stack 35× to keep it visible. **The fixed backdrop is NOT draw-once** — the lower
+     stack (rows overlapping the scrolling floor/midground) needs **repair-blitting after
+     overpaint**; the peak (above the floor line) can be draw-once. (Confirms Jay's read.)
+   - **The 4th-sprite vertical gap (Q2) = CASE B `[CONFIRMED]`:** heights `$A948`=11 / `$A976`=8
+     / `$A9B8`=4 / `$A9E2`=3 leave **rows Y104-107 uncovered in the sprite stack** — a real gap.
+     **Case A refuted:** all four draw via **entry A (`$1903` base, no Y-offset)** — not a
+     composite Y-offset artifact. **Case B confirmed:** the gap rows Y104-107 are the **floor
+     zone** — the scrolling floor `$AA11` (Y104, tiled across X) **fills them on-screen**; the
+     plain Fuji-sprite composite omitted the floor, showing a gap the screen fills. Re-composite
+     with the floor layered in reads continuous (`build/scene6-cast-preview/scene6-fuji-gapfill.png`);
+     on-screen-vs-sheet is Jay's oracle call (HS-3).
 2. **SCROLLING midground — Xspan≈88 `[CONFIRMED]`:** the `$A684`-bank tiles (`$A684`/`$A68A`/
    `$A703`/`$A85F`/`$A7xx`/…) — 24 cels, all span ≈88. This is what F-Ba measured and mislabeled.
 3. **ACTORS:** `$8xxx/$9xxx` (player/guard).
