@@ -186,8 +186,18 @@ the fight itself was never in the cel window (a coverage gap, not an untapped pa
     wrongly included the prior-frame ready-torso `$9A2A` overlapping it. `$8244` (f8141) = the
     winning-blow pose. Rebuilt: `build/scene6-cast-preview/scene6-victory-pose.png` (transparent vs
     opaque-black variants).
-  - Fight resolution: last hit-marker f8145, held victory ~f8370-8412, run-off f8647+, last actor
-    draw f9148, loop-back f9443. (Guard defeat/fall + exact victory framing pending Jay's confirm.)
+  - **WINNING-BLOW** = `$8244` (21×8 body) + `$809A` + head + feet, f8141 (via A). `build/scene6-cast-preview/scene6-blow-and-fall.png`.
+  - **GUARD FALL/DEATH** = `$8D0A` (oracle "player_death" cel, **reused** for the guard) + `$8E31`
+    (enemy-head) + head `$8ECB`, single-frame **f8371** (via By, mirrored) — a crouched/falling pose
+    at Y140-156 (no full floor-collapse). **Coincides with the player's victory hold** (guard falls
+    the same frame the victory `$891B` begins).
+  - Fight resolution TIMELINE: last hit-marker f8145 → **winning-blow f8141** → **guard falls +
+    player victory hold f8371** (~42 frames) → player runs off (run cycle f8647+) → last actor draw
+    f9148 → loop-back f9443.
+  - **OPAQUE-BLACK is REQUIRED for scene 6 (Jay-confirmed):** the victory torso `$891B` (and the
+    blow/fall body cels) are **silhouettes** — neither pure-transparent nor pure-opaque-black renders
+    right; **pixel-precision trans-vs-opaque-black is needed** (a sandbox task). Scene 6's first
+    concrete case demanding the per-pixel `'f'` opaque-black model ([[hal-opaque-blit-mode-needed]]).
 
 ## Fight: control model (A2) + determinism + scroll (B) `[CONFIRMED by multi-run + seed-poke 2026-07-10]`
 `harness/tools/scene6_fight_control.lua`; window f6400-9500; 5 runs + 2 seed-perturbation runs.
