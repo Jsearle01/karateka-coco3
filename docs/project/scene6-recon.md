@@ -196,10 +196,27 @@ rough character cels (shape-only; colors/registration not trustworthy):
 - **Midground `$A684`: SCROLLS** — X span **94** (238→332) over the window. ✓
 - **"Upper background" `$A7xx` (Y<70): ALSO SCROLLS — span 94, identical to the midground.**
   `$A82B`/`$A7D1`/`$A707`/`$A763`/`$A703`/`$A857` all span 94. **F-Ba fired:** these are NOT a
-  fixed layer — the whole `$Axxx` scenery is **one scrolling layer**. Any truly-fixed sky/Fuji is
-  **not in the `$1903` sprite-draw stream** (a `$0A00` fill or one-time draw), so "upper bg does
-  not scroll" is **unconfirmed here** and the `$A7xx` cels specifically **do** scroll (HS-6:
-  reported as measured, not asserted).
+  fixed layer — the `$A7xx` cels are **scrolling midground**, not the fixed backdrop. **[SEE THE
+  RE-VERIFY BELOW — the fixed sky/Fuji layer WAS found, just not in the `$1903` span; F-Ba was a
+  mislabel of the scrolling midground, not evidence the backdrop moves.]**
+
+### B (re-verify) — THREE background layers, fixed backdrop FOUND `[CONFIRMED 2026-07-11]`
+Jay's eye (watched scene 6 ×3): **sky + Mt-Fuji never move** — ground truth. Re-verify
+(`harness/tools/scene6_bg_layers.lua`, f6000-7400): classify `$Axxx` cels by X-span + tap the
+non-`$1903` `$0A00` FILL family. **The scene-6 background is THREE layers:**
+1. **FIXED backdrop — Δ=0 `[CONFIRMED]`:** (a) constant-X sprites **`$A9E2` (X84, Y108)** and
+   **`$A9B8` (X105, Y100)** — **Xspan=0, drawn 35× at the SAME position** across f6013-7165 while
+   the midground scrolls; (b) the **`$0A00` fill layer at constant coords** — notably the
+   upper/sky region fill **`passA r30-104`** (re-laid every ~44 frames at fixed rows). These do
+   **not move** — consistent with Jay's eye. (Candidate sky/Fuji features; identity is Jay's, HS-7.)
+2. **SCROLLING midground — Xspan≈88 `[CONFIRMED]`:** the `$A684`-bank tiles (`$A684`/`$A68A`/
+   `$A703`/`$A85F`/`$A7xx`/…) — 24 cels, all span ≈88. This is what F-Ba measured and mislabeled.
+3. **ACTORS:** `$8xxx/$9xxx` (player/guard).
+- **Root of F-Ba:** the prior pass measured X-span only on the `$1903` scroll stream and never
+  captured the fixed layer (constant-X sprites + the `$0A00` fill). The fixed backdrop was
+  invisible to that measurement, not absent. **Corrected: there IS a fixed sky/Fuji layer** (Δ=0),
+  separate from the scrolling midground — matching Jay's eye.
+- Preview (untracked): `build/scene6-cast-preview/scene6-bg-layers.png`.
 
 ## Draw-entry map + facing + recovered parts `[CONFIRMED by all-entry re-trace 2026-07-09]`
 
