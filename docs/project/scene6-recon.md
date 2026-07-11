@@ -277,6 +277,25 @@ combatant's figure redraws. Measured, not read from a table (there is none — s
 - **Port note:** VBL is VBL (~60 Hz both machines) so the per-pose VBL budget transfers, BUT the
   budget = (tick-count × tick-length) and tick-length is the port's compute-bound loop rate — the
   port must reproduce the ~13 VBL base tick (or scale the hold-counts) to preserve pacing.
+
+#### Timing — extended coverage beyond the fight window `[VERIFIED 2026-07-11]`
+The fight-window pass (above) covered only f7240-8200. Follow-up wide run (f6000-9450) +
+state-forced runs (rows 8/10):
+- **INTRO — climb** (`$A3C5-$A5DC` cels, f6019-6105, brief): ~17 VBL/step (only ~6 steps).
+- **INTRO — walk-in / guard-approach** (player `$8E9B`, f6105-7245): mean **22.6 VBL** (slower
+  than the fight; long holds up to 311 VBL = the pre-fight ready/wait, a phase-boundary gap not a
+  single pose).
+- **VICTORY / walk-off** (f8146-9450): player `$8E9B` mean **15.5 VBL**; victory-specific cels
+  `$8F0E`/`$8E83`/`$8DA9` (absent from the fight) ~**18 VBL**, `$9290` ~**9 VBL** (a faster
+  element). Guard head `$8ECB` **absent** — the guard is defeated.
+- **WIN-SUPPRESSED (player-lose / guard-win) — NOT TIMED (honest gap).** Forcing the AI prob-table
+  row `$33`=8/10 at `$A03D` **diverges** the fight (different action sequence, confirmed) but the
+  lose heads `$8EA5`/`$8EB3` (and guard-win `$8000`/`$9043`) **never draw** — verified over both
+  the fight window AND the full span f6484-9450 (4783 draws, 0 lose cels; only `$8E9B`/`$8EC1`/
+  `$8ECB`). Row-forcing changes action *selection* but does not produce a player-LOSS *outcome*
+  (health→0), which is what plays the lose animation. So the win-suppressed set's VBL dwell is
+  **unmeasured** — timing it needs an actual driven loss (a mechanics/Track-M question), or the
+  exact saturation seed+row combo that first surfaced those cels. Flagged, not smoothed over.
 - **PER-FRAME animation map CAPTURED (`$20`→cels, via L6811):** each anim-frame `$20` value draws a
   distinct cel set (body pose + head `$8EC1`/`$8E9B`|`$8ECB` + feet `$90D7`). Frames 01-06, 14-21+
   captured — e.g. `$20=02`→`$8244` (winning-blow), `$20=16`→`$8654`/`$8714`/`$876B` (strike/punch).

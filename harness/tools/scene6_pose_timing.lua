@@ -30,7 +30,9 @@ local function handle(tag)
   return function(o,d,m)
     if _G._f < FSTART or _G._f > FEND then return end
     local src = rd(0x04)*256 + rd(0x03)
-    if src < 0x8000 or src >= 0xA000 then return end   -- combatant/fx banks $8xxx/$9xxx only; skip $A4xx scroll
+    -- combatant/fx banks $8xxx/$9xxx + the climb actor $A3C5-$A649 (below the $A64A scroll boundary);
+    -- exclude $A000-$A3C4 and the $A64A+ scroll.
+    if not ((src>=0x8000 and src<0xA000) or (src>=0xA3C5 and src<=0xA649)) then return end
     local a20 = rd(0x20)                    -- WNDLFT = $20 = anim-frame index, at the draw (HS-1)
     local x   = rd(0x05)*7 + rd(0x10)
     local y   = rd(0x06)
