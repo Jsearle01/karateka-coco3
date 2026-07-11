@@ -165,19 +165,21 @@ no-filter, each run full-span f6484→f9443.
 - **The 3 seed-only rare cels:** **`$87B3`** (14×5, guard/By) + **`$88C5`** (14×6, guard/By, one
   seed only) + **`$8962`** (14×4, player/A) — rare strike/body variants a single-fight trace misses.
 - **Both combatants covered:** entry A (player) 7640 draws / By (guard) 7272 draws across the sweep.
-- **Coverage verdict (AC-4) — CAVEATED: seed axis saturated, TABLE axis NOT exhausted `[open]`:**
-  the seed-sweep saturation (106 cels) is over the **naturally-reached table rows + RNG only**, NOT
-  over every prob-table entry. The action selection has TWO inputs: the RNG `$59` (swept ✓) **and
-  the state `$33` = the prob-table ROW index (NOT swept).** Measured: the attract reaches the
-  `$33`-table path (`$5E`=01, `$2F`=00 → `LA049`) with **`$33` naturally ∈ {7, 9, 11}** — so
-  **rows 7/9/11 are exercised; rows 8 and 10 are NOT naturally reached**, and their actions may be
-  un-captured. **Attempts to FORCE `$33` (a frame-notifier poke, then a write-tap override) BOTH
-  no-op'd** (byte-identical to a clean run — the poke didn't take; the write-tap didn't fire or was
-  re-stomped by the game's `sta $33` at `gameplay_7000 L70C3`). **So the table axis is NOT proven
-  exhausted.** To exercise rows 8/10 needs a **working `$33` force** — a MAME **debugger breakpoint
-  at the `ldx $33` read** (`~$A03D`) that overrides just before the AI reads it (read-taps on the
-  AI bypass via 6502 opcode-fetch; the write-tap approach failed). That, plus disassembling `$6540`
-  (selector→cel-seq), is the open follow-up to truly close the action space.
+- **Coverage verdict (AC-4) — TABLE AXIS NOW EXHAUSTED via debugger-bp force `[CLOSED for the row
+  axis]`:** the action selector has TWO inputs — RNG `$59` (seed-swept ✓, saturated) **and state
+  `$33` = the prob-table ROW index.** The attract reaches the `$33`-table path (`$5E`=01, `$2F`=00
+  → `LA049`) with **`$33` naturally ∈ {7, 9, 11}** (rows 8, 10 never naturally reached). The
+  tap-based `$33` pokes (frame-notifier + write-tap) **both no-op'd** (stomped by `gameplay_7000
+  L70C3 sta $33`). **SOLUTION that worked: a MAME debugger breakpoint at `$A03D` (`ldx $33`)** that
+  overrides `$33` at the AI read, then `go` (with `manager.machine.debugger.execution_state="run"`
+  to unpause the `-debug` startup). Forcing **every reachable row 7-11 each DIVERGED the fight** and
+  surfaced **2 cels the seed-sweep MISSED — `$8EA5`, `$8EB3`** (small player feet/pose variants,
+  oracle "enemy_head" labels misleading). **Union 106 → 108.** So the seed axis alone was incomplete
+  by 2; the row axis is now covered (rows 0-6 clamp to X=7; `$33`≥12 = idle → no table). **Residual:**
+  a full row×seed cross-product (each row × swept tier) would be the ultimate exhaustion — the +2
+  (minor variants) suggests diminishing returns, but it's the last tightening. Disassembling `$6540`
+  (selector→cel-seq) remains the follow-up for per-action attribution. Composited:
+  `build/scene6-cast-preview/scene6-tableforce-pose.png`.
 - **HARNESS BUG CAUGHT:** the first sweep was a no-op — `scene6_full_descriptor.lua` lacked the
   seed-poke (it lived only in `scene6_fight_control.lua`), so 8 "sweep" runs were identical. Added
   the poke; re-ran; verified divergence. (The seed axis silently doing nothing = the exact axis-miss

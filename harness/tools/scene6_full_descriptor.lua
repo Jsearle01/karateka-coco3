@@ -71,6 +71,16 @@ if STATEPOKE then
     end
   end) end)
 end
+-- STATE-FORCE via DEBUGGER BREAKPOINT (requires -debug): bp at $A03D (the AI's `ldx $33` read) that
+-- overrides $33 to the forced table row EXACTLY before the read, then continues. This is the method
+-- the tap-based pokes couldn't do (frame-poke stomped; write-tap re-stomped). Forces the AI to
+-- select prob-table row FD_STATEFORCE -> executes rows the demo never naturally reaches (8/10).
+local STATEFORCE = tonumber(os.getenv("FD_STATEFORCE"))
+if STATEFORCE and cpu.debug then
+  pcall(function() cpu.debug:bpset(0xA03D, nil, string.format("pb@0x33=0x%X; go", STATEFORCE)) end)
+  -- -debug starts the machine PAUSED at the debugger; unpause it so the game runs (the bp still fires).
+  pcall(function() manager.machine.debugger.execution_state = "run" end)
+end
 _G._n=emu.add_machine_frame_notifier(function()
   _G._c=_G._c+1; _G._ord=0
   if SEEDPOKE and _G._c==POKEF then mem:write_u8(0x59,SEEDPOKE); log(string.format("== POKED $59=%02X at f%d ==",SEEDPOKE,POKEF)) end
