@@ -204,11 +204,14 @@ rough character cels (shape-only; colors/registration not trustworthy):
 Jay's eye (watched scene 6 ×3): **sky + Mt-Fuji never move** — ground truth. Re-verify
 (`harness/tools/scene6_bg_layers.lua`, f6000-7400): classify `$Axxx` cels by X-span + tap the
 non-`$1903` `$0A00` FILL family. **The scene-6 background is THREE layers:**
-1. **FIXED backdrop — Δ=0 `[CONFIRMED]`:** (a) constant-X sprites **`$A9E2` (X84, Y108)** and
-   **`$A9B8` (X105, Y100)** — **Xspan=0, drawn 35× at the SAME position** across f6013-7165 while
-   the midground scrolls; (b) the **`$0A00` fill layer at constant coords** — notably the
-   upper/sky region fill **`passA r30-104`** (re-laid every ~44 frames at fixed rows). These do
-   **not move** — consistent with Jay's eye. (Candidate sky/Fuji features; identity is Jay's, HS-7.)
+1. **FIXED backdrop — Δ=0 `[CONFIRMED]`:**
+   - **Mt-Fuji = a 4-sprite STACK, all Xspan=0 (fixed):** peak **`$A948` (X126, Y81)** → **`$A976`
+     (X112, Y92)** → **`$A9B8` (X105, Y100)** → base **`$A9E2` (X84, Y108)**. (Jay's correction:
+     the earlier pass showed only the base `$A9B8`/`$A9E2`; the **TOP/peak `$A948`/`$A976` draw
+     just 2× at scene entry (f6012) and PERSIST**, so they were buried in the draw-count list —
+     now surfaced by sorting fixed cels by Y.) The full stack spans Y81→Y108, does not move.
+   - **Sky = `$0A00` fill `passA r0-104 c0-40 pat$D5`** — a **full-width fill of the top 104 rows,
+     laid once at scene entry (f6003-6062)** and persisting; fixed vertical position.
 2. **SCROLLING midground — Xspan≈88 `[CONFIRMED]`:** the `$A684`-bank tiles (`$A684`/`$A68A`/
    `$A703`/`$A85F`/`$A7xx`/…) — 24 cels, all span ≈88. This is what F-Ba measured and mislabeled.
 3. **ACTORS:** `$8xxx/$9xxx` (player/guard).

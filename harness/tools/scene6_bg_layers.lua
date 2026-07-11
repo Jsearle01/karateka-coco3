@@ -44,9 +44,9 @@ _G._n=emu.add_machine_frame_notifier(function()
       local row={s=s,e=e,sp=sp}
       if sp<=4 then fixed[#fixed+1]=row elseif sp>=20 then scroll[#scroll+1]=row else other[#other+1]=row end
     end
-    local function dump(nm,t) table.sort(t,function(a,b) return a.e.n>b.e.n end)
+    local function dump(nm,t) table.sort(t,function(a,b) return a.e.ymn<b.e.ymn end)
       log(string.format("== %s: %d $Axxx cels ==",nm,#t))
-      for i,r in ipairs(t) do if i<=14 then
+      for i,r in ipairs(t) do if i<=30 then
         log(string.format("   $%04X  Xspan=%d (X%d-%d)  Y%d-%d  draws=%d  f%d-%d",
           r.s,r.sp,r.e.mn,r.e.mx,r.e.ymn,r.e.ymx,r.e.n,r.e.f0,r.e.f1)) end end
     end
