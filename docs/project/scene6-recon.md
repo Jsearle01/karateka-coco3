@@ -335,7 +335,41 @@ confirmed-in-trace or **[I]** inferred-from-disasm (HS-1/HS-2).
   shared index that both **gates** action (range) and **indexes** the M3 weighting; M3's `$2F`
   gate suppresses the guard-win branch. Port reproduces the RULES (distance = pos−pos;
   `$33≥$0C` idle; distance-indexed LCG weighting; `$2F`=0 suppression), not a timeline.
-- **PER-FRAME animation map CAPTURED (`$20`→cels, via L6811):** each anim-frame `$20` value draws a
+
+### Closing the 4 inferred Track-M items `[VERIFIED 2026-07-11]`
+Tools `harness/tools/scene6_mechanics_trace.lua` + `c2_poke.lua` / `c3_2f.lua` / `c1_force.lua`
+(poke-differential + branch forcing).
+- **C1 — state-transition table → F-C1 (stateless decision function) [C-structure]:** the
+  "`$7000` state machine" is **not** a stored-state FSM with tabulable transitions — it is a
+  **per-tick stateless decision function** recomputed each fight_ai call from live inputs
+  (distance `$33`, gates `$2F`/`$5E`, opponent-frame `$70`, LCG). Confirmed branches: **in-range
+  attack** (`$33`∈[7,0B]→D7 close/C5 mid, [C natural+forced]); **out-of-range idle**
+  (`$33`≥`$0C`→00, [C forced 0x10]); **suppressed** (`$2F`≠0→`$9B`/`$C2`, [C forced]). Forcing
+  single inputs confirms each is LIVE (`$5E`=0 surfaces `$29`=D1; `$70`=`$13` surfaces FF/01/9B)
+  but does **not** cleanly select one branch (multi-input + LCG interact) — so **a clean 1:1
+  transition table is not extractable; residual marked [I], not forced** (HS-2). PARTIAL, as
+  expected.
+- **C2 — `$22`/`$4A`/`$72` roles → F-C2 (computed delta) [C]:** no single byte is "the distance";
+  the operative distance is the **computed delta `$33 = $72 − $62`**. Poke-differential confirms:
+  forcing `$72`=0x14 → `$33`=05-07 → attacks; forcing `$72`=0x30 → `$33`=0x21 → zero attacks (all
+  idle/01). Roles: **`$72` = combatant-B position** (poke-confirmed), **`$22` = active-combatant
+  position** (context byte-2; = `$62` for A), **`$4A` = a distance threshold** (compared vs
+  `$72−$22` in the `$2F`≠0 branch only).
+- **C3 — suppression mechanism → UNREACHED-STATE, not zero-row [C]:** the prob-tables
+  (`LA087`/`tbl_a08c`/`LA091`/`LA096`) live in the normal `$2F`==0 path and select the **active
+  combatant's attacks** (`LA077`→`$D7`, `LA07C`→`$C5`, `LA081`→`$01`) — there is **no guard-win
+  row**. The guard-win is the separate **`$2F`≠0 branch**, gated by `$2F` held at 0 (a state never
+  entered). Forcing `$2F`=1 opens it (action `$9B` appears, 31×, absent naturally; the 1.2 pass
+  showed `$C2`→`$66FE` executes with `$2F` forced at the dispatch). So the always-wins is an
+  **unreached-state gate**, not a zero-weighted probability.
+- **C4 — cross-actor hit→react write → NOT CAPTURED [I] (honest):** M2's causality was **asserted,
+  never traced**. Attempt: the hit-marker `$93AB` draws 13× over the fight, but its candidate
+  gate bytes `$97`/`$9A` get **0 writes** in the window — so the exact attacker-resolution PC that
+  writes the opponent's state was **not isolated** this pass. **M2 hit→react causality stays
+  [I] inferred** (fight_ai emits no react `$29` code, so a recoil is *likely* hit-triggered
+  outside fight_ai — but unproven). **The one trace that would close it:** bp at the `$93AB` draw,
+  step back to the guard byte that led there, watchpoint that byte, and confirm its writer PC is
+  in the attacker's routine (not the victim's AI) with a react cel following.
   distinct cel set (body pose + head `$8EC1`/`$8E9B`|`$8ECB` + feet `$90D7`). Frames 01-06, 14-21+
   captured — e.g. `$20=02`→`$8244` (winning-blow), `$20=16`→`$8654`/`$8714`/`$876B` (strike/punch).
   So per-action/per-frame attribution is **fully tractable via `$20`** (the transient `$2F` reads 00
