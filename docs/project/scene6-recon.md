@@ -194,10 +194,28 @@ the fight itself was never in the cel window (a coverage gap, not an untapped pa
   - Fight resolution TIMELINE: last hit-marker f8145 → **winning-blow f8141** → **guard falls +
     player victory hold f8371** (~42 frames) → player runs off (run cycle f8647+) → last actor draw
     f9148 → loop-back f9443.
-  - **OPAQUE-BLACK is REQUIRED for scene 6 (Jay-confirmed):** the victory torso `$891B` (and the
-    blow/fall body cels) are **silhouettes** — neither pure-transparent nor pure-opaque-black renders
-    right; **pixel-precision trans-vs-opaque-black is needed** (a sandbox task). Scene 6's first
-    concrete case demanding the per-pixel `'f'` opaque-black model ([[hal-opaque-blit-mode-needed]]).
+  - **OPAQUE-BLACK — the HAL CAPABILITY ALREADY SHIPS (reconciliation 2026-07-11, corrects the
+    "first concrete case for a refactor" framing):** the victory torso `$891B` (and the blow/fall
+    body cels) are **mixed figures** — interior black (part of the silhouette → opaque) + exterior
+    black (background → transparent) + colored pixels — so neither whole-sprite mode fits (opaque
+    black-boxes the exterior; transparent holes the interior). **But the per-pixel path already
+    exists in the HAL, regression-proven:**
+    - `HAL_gfx_blit_sprite_opaque` (`$13` flag → all-`$FF` table, stores index-0 verbatim) — added
+      for the **scene-5 princess shadow `$1CC4`** (100% index-0 black); **that was the first opaque
+      case, and it shipped** (scenes 1-4 byte-identical).
+    - `HAL_gfx_blit_sprite_masked` — **per-pixel** trans-vs-opaque *within a cel*: a caller mask
+      byte per column, pair `11`=opaque / `00`=keep-dest, "a column can be opaque on some pixels
+      and transparent on others." Plus `_mixed` (per-region) and `_stencil_punch` (per-pixel 2D) —
+      the same masked/stencil path used for **scene-5 Akuma**.
+    - The standard transparent blit already builds a per-pixel mask from the source ("11 per
+      non-black pixel pair, 00 per black").
+    **VERDICT:** the "opaque-black HAL refactor" is **NOT a blocking dependency and NOT a build** —
+    the capability is present. The scene-6 figures render via the **existing `HAL_gfx_blit_sprite_masked`**
+    with a **per-cel opacity mask authored** (a content/sandbox task, like Akuma's `$974B`), NOT a
+    HAL change. The `'f'`=opaque-black 4bpp model ([[hal-opaque-blit-mode-needed]],
+    opaque-black-f-refactor-plan) is a **cleaner future option** (bake opacity into the cel, drop
+    the separate mask) — an optimization, deferrable, **not required** for scene 6. Item STRUCK as
+    a HAL build; reframed as content-side mask authoring. (Jay to confirm the strike, AC-6.)
 
 ## Fight: control model (A2) + determinism + scroll (B) `[CONFIRMED by multi-run + seed-poke 2026-07-10]`
 `harness/tools/scene6_fight_control.lua`; window f6400-9500; 5 runs + 2 seed-perturbation runs.
