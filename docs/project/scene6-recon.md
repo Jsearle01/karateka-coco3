@@ -370,6 +370,40 @@ Tools `harness/tools/scene6_mechanics_trace.lua` + `c2_poke.lua` / `c3_2f.lua` /
   outside fight_ai — but unproven). **The one trace that would close it:** bp at the `$93AB` draw,
   step back to the guard byte that led there, watchpoint that byte, and confirm its writer PC is
   in the attacker's routine (not the victim's AI) with a react cel following.
+
+## Scene-6 HEALTH / VITALITY system (execution-confirmed) `[VERIFIED 2026-07-11]`
+Tools `harness/tools/h2_zpdiff.lua` / `h2_watch.lua` / `h4_force.lua` / `h5_read.lua` /
+`h1_cel.lua`. The whole subsystem is one low-RAM routine `$0B0C` (jmptable `$0B00`), called
+per-frame from `$7292`. Each claim **[C]** confirmed / **[I]** inferred.
+- **H2 — two count bytes [C]:** **`$B6` = PLAYER count, `$B7` = GUARD count** — two DISTINCT
+  adjacent bytes (not one shared), found by ZP-diff (they drop over the fight) + write-watch.
+  **Both start at `$0D` = 13 → EQUAL, even in the demo** (F6 does NOT fire; Jay's "equal in the
+  first fight" holds). The two regen thresholds mirror them: **`$B8` (player) / `$B9` (guard)**.
+- **H3 — damage [C]:** `$0BC1` (player: `lda $b6; beq; lda #0; sta $5b; dec $b6`) and `$0BD2`
+  (guard: `... sta $5c; dec $b7`) — **`dec` the count on a landed hit, floored at 0, and RESET
+  the combatant's regen timer (`$5B` player / `$5C` guard).** It's a **separate per-frame health
+  routine** gated by the hit event, **not literally the C4 react-write** (F3-partial: damage and
+  react are decoupled routines sharing the same hit trigger).
+- **H4 — regen [C, forced]:** timers `$5B`/`$5C` **increment each frame** (`$0BE3 inc $5b` /
+  `$0BF2 inc $5c`), are **reset to 0 on every hit** (H3), and at threshold (`cmp $B8`/`cmp $B9`)
+  the count is **incremented by ONE** (`$0C1E inc $b7`). **Model = one-arrow-at-a-time on a
+  repeating timer, reset-on-hit** (NOT refill-to-full). **Naturally `$B8`=`$B9`=`$FF` (255-frame
+  threshold) → regen NEVER fires in the busy attract demo (F4)** — the demo is tuned so it can't,
+  like the win-weighting. Confirmed by forcing `$B9`=04: `$B7` then oscillates up (`0C→0D→0E`,
+  regen via `$0C1E`) and down (damage) — the regen path executes.
+- **H5 — draw is count-driven [C]:** the `$0B35` loop `ldx #0; jsr $1903; inx; cpx $b6; bcc`
+  **draws exactly `$B6` arrows** (redraw-N each refresh, X += 3 per arrow), player at **`$05`=0
+  (LEFT)**, **Y=`$B9`=185 (bottom)**, flip `$0F`=`$01`. Not a delta-blit — a count-driven redraw.
+- **H1 — arrow cel [C-partial / Jay-gate]:** the arrow cel is **`$0B12`** (a low-RAM cel;
+  `$03=$12/$04=$0B` in the draw loop). Player arrows drawn LEFT (confirmed). **Guard-side draw +
+  the mirror check are NOT cleanly captured** [I] — the `$1903` read-tap didn't fire on the
+  arrow-draw `jsr` (the 6502 read-tap subtlety), so guard-right + same-cel-mirrored is a
+  **follow-up**; the cel *bitmap* ID is **Jay's visual gate** (AC-H1.3 pending Jay).
+- **Coupling / port:** the port reproduces the rules — two counts (`$B6`/`$B7`) start-equal at 13;
+  damage `dec`-on-hit floored at 0 + resets the regen timer; regen = per-frame timer, reset-on-hit,
+  +1 at threshold (`$B8`/`$B9`, set to 255 = off in the demo); count-driven arrow redraw (cel
+  `$0B12`, player-left, bottom row).
+- **PER-FRAME animation map CAPTURED (`$20`→cels, via L6811):** each anim-frame `$20` value draws a
   distinct cel set (body pose + head `$8EC1`/`$8E9B`|`$8ECB` + feet `$90D7`). Frames 01-06, 14-21+
   captured — e.g. `$20=02`→`$8244` (winning-blow), `$20=16`→`$8654`/`$8714`/`$876B` (strike/punch).
   So per-action/per-frame attribution is **fully tractable via `$20`** (the transient `$2F` reads 00
