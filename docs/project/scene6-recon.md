@@ -296,6 +296,45 @@ state-forced runs (rows 8/10):
   (health→0), which is what plays the lose animation. So the win-suppressed set's VBL dwell is
   **unmeasured** — timing it needs an actual driven loss (a mechanics/Track-M question), or the
   exact saturation seed+row combo that first surfaced those cels. Flagged, not smoothed over.
+
+## Fight MECHANICS — the behavioral model (execution-confirmed) `[VERIFIED 2026-07-11]`
+Tool `harness/tools/scene6_mechanics_trace.lua`: bp @ `$A03D` (the AI's `ldx $33`) logs the
+selection inputs; bp @ `$6540` logs the selected action `$29`. Each claim marked **[C]**
+confirmed-in-trace or **[I]** inferred-from-disasm (HS-1/HS-2).
+- **M2 — DISTANCE is the state index [C]:** `update_range_flag` ($70BA) computes **`$33 = $72 −
+  $62`**; `save_combatant_a/b` copy the active context `$20-$2F` into `$60-$6F` (A) / `$70-$7F`
+  (B), so **`$62`/`$72` are the two combatants' position byte (`$22`)** and **`$33` = the
+  inter-combatant DISTANCE**. Confirmed in every AI decision (e.g. `72=1A 62=0F → 33=0B` ✓);
+  `$62`=0F held constant, `$72` swept 16→1A, `$33` tracked 07→0B. The flagged `$22` distance ZP
+  is **CONFIRMED** (it is the per-combatant position; distance is `$72-$62`).
+- **M2 — RANGE GATES the action [C]:** `fight_ai_a000` ($A03D): `ldx $33; cpx #$0C; bcs idle` →
+  **`$33 ≥ $0C` ⇒ IDLE (out of range)**. Confirmed by forcing: `$33`=03 → 35 attacks vs 23 idle;
+  `$33`=10 → 42 idle vs 12 attacks. Distance **weights** aggression — **not a hard cutoff** (a
+  few attacks leak past `$0C`, in-progress).
+- **M1 — action SELECTED by distance + LCG each AI tick [C]:** natural distance→action:
+  **`$33`=07 (close)→`$29`=D7** (19/27), **`$33`=09 (mid)→`$29`=C5** (10/15), **`$33`=0B
+  (far)→`$29`=00 idle** (19/21). fight_ai fires ~63× over the fight; each call re-selects `$29`
+  from distance + LCG, so a pose HOLDS while the distance band + LCG keep re-picking it — **the
+  timing pass's "dwell = how long the AI re-selects" coupling, now mechanistic.**
+- **M3 — weighting is distance-indexed prob-tables [C-structure/C-frequency]:** index
+  `X = clamp($33, ≥7)`; a 4-tier LCG threshold compare — `cmp $DB; bcs idle` (aggression gate)
+  then `LA087,x` / `tbl_combat_prob_a08c,x` / `LA091,x` / `LA096,x` (distance-indexed) select the
+  action. Action weighting depends on **range** (M2↔M3 coupled through `$33`).
+- **M3 — the always-wins SUPPRESSION [C]:** `LA013: lda $2F; beq LA030` — **`$2F`==0 (every
+  natural AI decision) → normal path; `$2F`≠0 → a different, suppressed branch** (→ the `$2F`-
+  gated `$C2` dispatch, force-observed executing in the 1.2 pass). **Player-win is enforced by
+  `$2F` held at 0** — the guard's winning branch is a *state never entered*, closer to
+  **F-M3a (a gate)** than pure weighting at the branch level, while the *action* choice within
+  the normal path IS weighted. Both true at different layers.
+- **PARTIAL / inferred [I]:** player-vs-guard attribution (`$62` vs `$72`) not resolved this
+  pass. **Hit→react causality (M2.3):** fight_ai does NOT select a react as a `$29` action (no
+  react code appears), so a recoil is **likely hit-triggered outside fight_ai** (causal, not
+  AI-selected) — but that path was **not traced**; inferred, not asserted (possible F-M2b). The
+  `$70==$13` special case and exact prob-table row semantics are inferred.
+- **Coupling (AC-S.2):** M1 re-selection sets pose dwell (timing); M2 distance `$33` is the
+  shared index that both **gates** action (range) and **indexes** the M3 weighting; M3's `$2F`
+  gate suppresses the guard-win branch. Port reproduces the RULES (distance = pos−pos;
+  `$33≥$0C` idle; distance-indexed LCG weighting; `$2F`=0 suppression), not a timeline.
 - **PER-FRAME animation map CAPTURED (`$20`→cels, via L6811):** each anim-frame `$20` value draws a
   distinct cel set (body pose + head `$8EC1`/`$8E9B`|`$8ECB` + feet `$90D7`). Frames 01-06, 14-21+
   captured — e.g. `$20=02`→`$8244` (winning-blow), `$20=16`→`$8654`/`$8714`/`$876B` (strike/punch).
