@@ -329,7 +329,7 @@ Each entry: the **dead** version → the **current** version (and where it lives
   named landmarks/frames.
 
 ### 10b. Pending Jay's visual gate [J] — resolve in the sandbox
-- Arrow cel `$0B12` bitmap ID.
+- ~~Arrow cel `$0B12` bitmap ID~~ — **RESOLVED 2026-07-12** (Jay visual gate: "look correct"; §1).
 - Move names (the 110-cel action space; combat poses) — provisional until sandbox.
 - Feet-bands, climb Y-ascent, Fuji bottom seam (deferred to sandbox).
 - Guard-mirror visual confirm.
