@@ -7,12 +7,13 @@ bounding-box edges (trim boundary) — indistinguishable from the mountain's rea
 interior black. Blitting OPAQUE (so the mountain's black is solid) then paints
 those edge blacks as unwanted vertical black bands (Jay's gate).
 
-Fix (Jay: "fix the cel data"): flood-fill from the cel BORDER through {index-0
-black, index-2 blue} pixels; every black pixel reached is sky/edge/transition and
-is converted to index-2 (blue) — matching the sky. The mountain's interior black,
-walled off by index-3 (white), is never reached and stays black. After this, an
-OPAQUE blit renders the mountain's real black solid and the former edge-black as
-blue (blends into the sky).
+Fix (Jay: "fix the cel data"; the area left black = trans, the other = opaque):
+flood-fill from the cel BORDER through {index-0 black, index-2 blue}. The black
+REACHED from the border is the mountain's OUTLINE/EDGE and stays index-0 (opaque
+solid black). The black NOT reached — walled off by index-3 (white), i.e. the
+INTERIOR sky-holes — is converted to index-2 (blue) so it reads as sky. After
+this, an OPAQUE blit renders the mountain's edge black solid and the interior
+sky-holes as blue (blend into the sky / transparent look).
 
 Overwrites content/background/scene6_bg_<cel>/converted.s in place. Idempotent.
 """
@@ -64,13 +65,27 @@ def floodfill(rows, wpx, h):
         push(0, c); push(h - 1, c)
     for r in range(h):
         push(r, 0); push(r, wpx - 1)
-    converted = 0
     while q:
         r, c = q.popleft()
-        if rows[r][c] == 0:
-            rows[r][c] = 2  # sky/edge black -> blue
-            converted += 1
         push(r - 1, c); push(r + 1, c); push(r, c - 1); push(r, c + 1)
+    # Jay's ruling: the EDGE-connected black (reached from the border) is the
+    # mountain's outline/edge and must stay OPAQUE (solid black); the INTERIOR
+    # black (white-surrounded, NOT reached) is a sky-hole and must read as
+    # TRANSPARENT -> convert it to blue so the opaque blit shows sky there.
+    converted = 0
+    for r in range(h):
+        for c in range(wpx):
+            if rows[r][c] == 0 and not seen[r][c]:
+                rows[r][c] = 2  # interior sky-hole black -> blue
+                converted += 1
+    # Vertical-bar removal (Jay: the vertical bars should be transparent): a
+    # FULLY-black column is the cel bounding-box / trim-boundary edge artifact,
+    # not the mountain (a real slope varies row-to-row) — convert it to blue.
+    for c in range(wpx):
+        if all(rows[r][c] == 0 for r in range(h)):
+            for r in range(h):
+                rows[r][c] = 2
+                converted += 1
     return converted
 
 

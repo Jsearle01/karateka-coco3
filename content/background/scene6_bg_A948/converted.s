@@ -11,14 +11,14 @@
 
 scene6_bg_A948:
         fcb     11,7  ; height=11 rows, coco3_width=7 bytes/row (4px/byte)
-        fcb     $AA,$AA,$AA,$AA,$AA,$AA,$AA  ; row 0
+        fcb     $AA,$AA,$A8,$00,$0A,$AA,$AA  ; row 0
         fcb     $AA,$AA,$AF,$F7,$EA,$AA,$AA  ; row 1
-        fcb     $AA,$AA,$AF,$FF,$FA,$AA,$AA  ; row 2
+        fcb     $AA,$AA,$AF,$FF,$F0,$AA,$AA  ; row 2
         fcb     $AA,$AA,$FF,$FE,$FE,$AA,$AA  ; row 3
-        fcb     $AA,$AA,$FF,$FF,$FF,$AA,$AA  ; row 4
+        fcb     $AA,$AA,$FF,$FF,$FF,$0A,$AA  ; row 4
         fcb     $AA,$AF,$FF,$FF,$FF,$EA,$AA  ; row 5
-        fcb     $AA,$BF,$FF,$FF,$FF,$FA,$AA  ; row 6
+        fcb     $A8,$3F,$FF,$FF,$FF,$F0,$AA  ; row 6
         fcb     $AA,$FF,$FF,$FF,$FF,$FE,$AA  ; row 7
-        fcb     $AF,$FF,$FF,$FF,$FF,$FF,$AA  ; row 8
+        fcb     $AF,$FF,$FF,$FF,$FF,$FF,$0A  ; row 8
         fcb     $AF,$FF,$FF,$FF,$FF,$FF,$EA  ; row 9
-        fcb     $FF,$FF,$FF,$FF,$EF,$FF,$FA  ; row 10
+        fcb     $FF,$FF,$FF,$FF,$EF,$FF,$F2  ; row 10

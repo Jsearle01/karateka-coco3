@@ -112,9 +112,10 @@ draw_fuji_backdrop:
         ldb     #108
         ldx     #scene6_bg_A9E2
         jsr     HAL_gfx_blit_sprite_opaque
-        * $A9B8  X125 (Apple105+20)  Y100  byte 31 sub 1
-        lda     #1
-        sta     <blit_subbyte
+        * $A9B8  byte 31 (X124)  Y100  — BYTE-ALIGNED (sub 0): opaque blit + a
+        * sub-byte shift writes the shifted-in edge zeros as BLACK bars, so the
+        * backdrop sprites are byte-aligned (<=2px shift, negligible). [Jay gate]
+        clr     <blit_subbyte
         lda     #31
         ldb     #100
         ldx     #scene6_bg_A9B8
@@ -125,9 +126,9 @@ draw_fuji_backdrop:
         ldb     #92
         ldx     #scene6_bg_A976
         jsr     HAL_gfx_blit_sprite_opaque
-        * peak $A948  X146 (Apple126+20)  Y81  byte 36 sub 2  (last = on top)
-        lda     #2
-        sta     <blit_subbyte
+        * peak $A948  byte 36 (X144)  Y81  — BYTE-ALIGNED (sub 0, see A9B8 note);
+        * drawn last = on top (§3)
+        clr     <blit_subbyte
         lda     #36
         ldb     #81
         ldx     #scene6_bg_A948

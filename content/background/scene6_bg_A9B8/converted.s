@@ -11,7 +11,7 @@
 
 scene6_bg_A9B8:
         fcb     4,18  ; height=4 rows, coco3_width=18 bytes/row (4px/byte)
-        fcb     $AA,$AA,$AF,$FF,$AA,$AA,$AA,$AA,$AB,$FF,$FA,$BF,$FF,$FF,$FE,$AA,$AA,$AA  ; row 0
-        fcb     $AA,$AA,$FC,$3E,$AA,$AA,$AA,$AA,$AB,$FF,$FA,$AB,$FB,$FF,$FF,$AA,$AA,$AA  ; row 1
-        fcb     $AA,$AF,$FB,$FA,$AA,$AA,$AA,$AA,$AB,$FF,$BF,$AA,$AB,$FF,$FF,$FA,$AA,$AA  ; row 2
-        fcb     $AA,$BF,$AF,$AA,$AA,$AA,$AA,$AA,$AA,$BF,$AF,$AA,$AA,$AF,$FF,$FF,$AA,$AA  ; row 3
+        fcb     $AA,$AA,$0F,$FF,$AA,$AA,$AA,$AA,$AB,$FF,$FA,$BF,$FF,$FF,$FC,$2A,$AA,$AA  ; row 0
+        fcb     $AA,$A0,$FE,$BC,$00,$00,$00,$00,$03,$FF,$F0,$03,$FB,$FF,$FF,$02,$AA,$AA  ; row 1
+        fcb     $AA,$0F,$FB,$FA,$AA,$AA,$AA,$AA,$AB,$FF,$BF,$AA,$AB,$FF,$FF,$F0,$2A,$AA  ; row 2
+        fcb     $A0,$3F,$0F,$00,$00,$00,$00,$00,$00,$3F,$0F,$00,$00,$0F,$FF,$FF,$02,$AA  ; row 3
