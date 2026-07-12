@@ -178,6 +178,35 @@ right there — grep the PC region. Add `,noloop` to skip repeated loops.
 *Candidate:* `mame-debug-launches-paused-arm-watchpoints-before-go`. *Established:* Q010
 (4a/4b) + `$6540` dispatch closure (4a/4c/4d/4e), commit `634e0c3`.
 
+### 4f. Isolate the DECISIVE write with `wpdata`; read the caller via `sp` — but beware JMP-stale returns
+Two idioms from the scene-6 walk-window (guard-entry trigger) investigation:
+
+- **`wpdata` conditions a watchpoint on the value being written**, so you can catch only
+  the *one* write that matters instead of every write to a hot ZP byte. To find the write
+  that first drives guard-pos `$72` below its parked `$30`:
+  ```lua
+  cpu.debug:wpset(cpu.spaces["program"],"w",0x72,1,"wpdata<0x30",
+    'tracelog "ENTRY pc=%04X data=%02X\\n",pc,wpdata; go')
+  ```
+  The first `ENTRY` line's `pc` is the decisive routine. (A plain `wpset` on a byte touched
+  by a block-copy + a scroll-dec + a wrap-inc gives 3+ PCs of noise; `wpdata<K` cuts to the one.)
+
+- **Read the caller's return address off the 6502 stack** in a bp-action tracelog with the
+  register token **`sp`** (lowercase; the state key is `SP` but expressions want `sp`).
+  After JSR, the pushed return addr is at `$0101+sp` (lo) / `$0102+sp` (hi):
+  ```lua
+  cpu.debug:bpset(0xB30F,nil,'tracelog "ret lo=%02X hi=%02X\\n",b@(0x101+sp),b@(0x102+sp); go')
+  ```
+  **GOTCHA (cost a run):** this only works if the routine was entered by **JSR**. If it was
+  reached by **JMP** (or fall-through), the top-of-stack is a *stale* return from some earlier
+  JSR and points somewhere unrelated (here it pointed at a `jmp`-table vector `$1903`). **Verify
+  the entry kind first:** grep the full trace for the instruction line immediately *before* the
+  routine's first line (`grep -B1 "^B30F:"`) — if it's `jmp $b30f`, the stack read is bogus;
+  the real caller is the branch just above that `jmp`, which you then `dasm` to read the compare.
+
+*Established:* scene-6 walk-window investigation 2026-07-12 (guard entry = player `$62 > $0F`
+at `$B29D cmp #$0f` → `jmp $b30f` scroll; decisive write `$B357 dec $72`).
+
 ---
 
 ## 5. Boot-time-static bytes — written once from disk load, never by runtime code

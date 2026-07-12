@@ -24,6 +24,19 @@ back to Brøderbund title. Timeline (seed-deterministic): climb f6019–6105 →
 f6110–6484 → guard enters f6484 → strike exchange f7246–8145 → winning-blow f8141 →
 guard-fall + victory hold f8371 → run-off → last draw f9148 → loop-back f9443.
 
+> **Guard-entry trigger — TRACE-CONFIRMED [walk-window investigation 2026-07-12].**
+> The "walk/scroll f6110–6484" window is mostly a **static hold**: player `$62=$0B`,
+> scroll state (`$50`/`$52`/`$53`) frozen, guard `$72=$30` parked, f6110–~f6405.
+> Player approach begins ~f6420 (`$65` progress 00→44, `$62` 0B→0F). The guard-entry
+> is **POSITION-DRIVEN, not timer/scripted/scroll-completion**: the decisive branch is
+> `$B29D cmp #$0f` on the **player position `$62`** — when `$62 > $0F` (`jmp $b30f`),
+> the shared background-scroll routine runs and `dec $72`s the guard column (also
+> `dec $62`/`$52`/`$91`). Guard `$72` first leaves `$30` at **~f6455** (frame varies
+> slightly with boot timing; the recon's f6484 is ballpark). Self-regulating treadmill:
+> the scroll's `dec $62` pulls the player back, so the guard keeps entering only while
+> the player keeps pressing past `$0F`. No branch compares `$72` or a VBL timer against
+> an "enter-now" constant.
+
 ---
 
 ## 1. Cast (sprites) — [C] unless marked
@@ -72,7 +85,13 @@ Three layers:
    **repair-blitted** where the scrolling floor `$AA11` overpaints it (peak un-occluded,
    drawn 2×; X-scoped overpaint peak=0 / base=94). 4th-sprite vertical gap = real gap filled
    on-screen by floor tile `$AA11`.
-2. **Scrolling midground** — `$A684`-bank (24 tiles, span ≈ 88).
+2. **Scrolling midground** — `$A684`-bank (24 tiles, span ≈ 88). **TRACE-CONFIRMED
+   [walk-window investigation 2026-07-12]: NO pre-guard midground scroll.** The tile
+   counter `$52`/velocity `$53` are frozen the entire pre-guard walk (f6110–~f6454);
+   the midground scroll and the guard entry are the **same `$B30F` scroll event**,
+   first firing when the player crosses `$62 > $0F` (~f6455). A full ZP diff of two
+   pre-guard frames (f6200 vs f6450) shows only player-approach churn (draw pointers,
+   `$62`, `$65`, distance `$33` 25→21) — `$50`/`$52`/`$53`/`$72` do not change.
 3. **Actors** — the combatants (§1).
 
 - **Bottom seam** deferred to sandbox **[J]**.
