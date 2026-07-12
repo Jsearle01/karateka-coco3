@@ -79,17 +79,51 @@ def build_sheet(rows, title, out):
     return out, len(cels)
 
 
+def scan_content(category):
+    """Every content/<category>/<asset>/converted.s -> a preview row, labeled
+    with its start_col (0 = BLIND, flagged). Covers ALL asset types for the
+    hue gate, not just the combatants from the convert manifest."""
+    root = os.path.join(REPO, 'content', category)
+    rows = []
+    if not os.path.isdir(root):
+        return rows
+    for name in sorted(os.listdir(root)):
+        cs = os.path.join(root, name, 'converted.s')
+        if not os.path.isfile(cs):
+            continue
+        sc = 0
+        for line in open(cs, encoding='utf-8', errors='replace'):
+            m = re.search(r'start_col=(\d+)', line)
+            if m:
+                sc = int(m.group(1)); break
+        blind = (sc == 0)
+        rows.append(dict(ptr=name[:18], dominant='blind' if blind else f'c{sc}',
+                         mirror='False', note='F:blind(start_col=0)' if blind else 'ok',
+                         dir=os.path.relpath(os.path.join(root, name), REPO)))
+    return rows
+
+
 def main():
     manifest = os.path.join(REPO, 'build', 'scene6-stage0-manifest.csv')
     outdir = os.path.join(REPO, 'build', 'scene6-stage0-preview')
     os.makedirs(outdir, exist_ok=True)
     rows = list(csv.DictReader(open(manifest)))
-    for kind, title in [('player', 'SCENE-6 PLAYER (target: ORANGE)'),
-                        ('guard', 'SCENE-6 GUARD (target: BLUE, mirrored)')]:
+    # Combatants: from the Stage-0 convert manifest (player=orange / guard=blue).
+    for kind, title in [('player', 'SCENE-6 PLAYER combatants (target: ORANGE)'),
+                        ('guard', 'SCENE-6 GUARD combatants (target: BLUE, mirrored)')]:
         krows = [r for r in rows if r['kind'] == kind]
         res = build_sheet(krows, title, os.path.join(outdir, f'scene6_{kind}_sheet.png'))
         if res:
             print(f"  {res[0]}  ({res[1]} cels)")
+    # Set-dressing: scan the existing content dirs so ALL types reach the gate.
+    # 'blind' (start_col=0) cels are flagged red = need re-conversion at column.
+    for category, title in [('scenery', 'SCENE-6 SCENERY (set-dressing)'),
+                            ('floor', 'SCENE-6 FLOOR / MIDGROUND (set-dressing)')]:
+        srows = scan_content(category)
+        res = build_sheet(srows, title, os.path.join(outdir, f'scene6_{category}_sheet.png'))
+        if res:
+            nblind = sum(1 for r in srows if r['note'].startswith('F'))
+            print(f"  {res[0]}  ({res[1]} cels, {nblind} blind)")
 
 
 if __name__ == '__main__':
