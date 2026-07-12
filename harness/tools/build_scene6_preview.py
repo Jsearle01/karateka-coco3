@@ -115,10 +115,10 @@ def main():
         res = build_sheet(krows, title, os.path.join(outdir, f'scene6_{kind}_sheet.png'))
         if res:
             print(f"  {res[0]}  ({res[1]} cels)")
-    # Set-dressing: scan the existing content dirs so ALL types reach the gate.
-    # 'blind' (start_col=0) cels are flagged red = need re-conversion at column.
-    for category, title in [('scenery', 'SCENE-6 SCENERY (set-dressing)'),
-                            ('floor', 'SCENE-6 FLOOR / MIDGROUND (set-dressing)')]:
+    # Scene-6 background/midground (Fuji stack $A948.. / floor $AA11 / scroll
+    # $A684-bank): sourced from stage0_convert_scene6_bg (NOT content/scenery|floor,
+    # which are SCENE-5). Rendered under content/background/ when converted.
+    for category, title in [('background', 'SCENE-6 BACKGROUND / MIDGROUND (Fuji/floor/scroll)')]:
         srows = scan_content(category)
         res = build_sheet(srows, title, os.path.join(outdir, f'scene6_{category}_sheet.png'))
         if res:
