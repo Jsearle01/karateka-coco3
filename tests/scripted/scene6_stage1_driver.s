@@ -20,8 +20,10 @@
 *   $AA11 floor X0   Y104 -> tiled across (4 bytes wide), overpaints the lower Fuji (§3)
 *
 * Cels are the Stage-0 Jay-hue-gated content/background/ assets — rendered AS-IS,
-* no re-flip (HS-8). Sky = the cleared-black framebuffer (HAL_gfx_init clears to 0);
-* the $0A00 sky-fill COLOR is a Jay-gate refinement (not pinned here).
+* no re-flip (HS-8). SKY = BLUE (index 2), the oracle-faithful $0A00 fill ($11=$AA
+* pattern = index-2 on the CoCo3); Jay's gate ruling 2026-07-12. Filled rows 0-103
+* (above the floor line) before the Fuji blits so the Fuji's transparent (index-0)
+* pixels show blue sky and the white snow caps stand out.
 *
 * SEE-THROUGH REGIONS (HS-4, from §3) established for Stages 2-3:
 *   - FLOOR BAND rows ~104-111 (the $AA11 tile line) — Stage 2 scrolling midground
@@ -91,6 +93,8 @@ hold:
 *   lower Fuji (§3). blit_subbyte set per cel; A = byte col, B = row.
 * ---------------------------------------------------------------
 draw_fuji_backdrop:
+        * sky fill FIRST: rows 0-103 of buffer A = blue (index 2, byte $AA)
+        jsr     fill_sky
         * base $A9E2  X84  Y108  byte 21 sub 0
         clr     <blit_subbyte
         lda     #21
@@ -119,6 +123,18 @@ draw_fuji_backdrop:
         jsr     HAL_gfx_blit_sprite
         * floor line: tile $AA11 (4 bytes wide) across at Y104
         jsr     draw_floor_line
+        rts
+
+* fill_sky — fill buffer A rows 0-103 (above the floor line) with BLUE (index 2).
+*   Each byte $AA = 4 pixels of index 2. 104 rows x 80 bytes = 8320 B = 4160 words.
+fill_sky:
+        ldx     #$8000                  ; buffer A top-left
+        ldd     #$AAAA                  ; two blue bytes (index-2 x8 px)
+        ldy     #4160                   ; 104*80/2 words
+fs_loop:
+        std     ,x++
+        leay    -1,y
+        bne     fs_loop
         rts
 
 * draw_floor_line — tile the $AA11 floor cel across the row at Y104.
