@@ -32,7 +32,8 @@ The full scene-6 asset set was converted at correct parity and **Jay's preview h
 - **HUD arrow `$0B12` [2026-07-12, Stage-2 prereq]:** converted from dump05 into `content/hud/`
   (player-orange `arrow_0B12` draw-A + guard-blue `arrow_0B12_mir` `--mirror`) per the Stage-0
   color-target rule. Cel is **NOT left-right palindromic** (`--mirror` genuinely reverses). On-screen
-  column parity closed by Jay's hue gate on `scene6_hud_sheet.png`.
+  column parity **CLOSED — Jay hue gate PASSED 2026-07-12** ("hue check is sat") on
+  `scene6_hud_sheet.png` (player reads orange / guard reads blue).
 
 ### (original 2026-07-09 report)
 **Area:** `harness/tools/sprite_convert.py`, scene-6 cast candidates
