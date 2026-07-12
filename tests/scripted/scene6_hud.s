@@ -24,7 +24,14 @@ ARROW_COUNT     equ 14          ; $0E (both sides, fixed this stage)
 *   the oracle $0B35/$0B7C count-driven model: draw exactly N, advance the 10px
 *   pitch each. Transparent blit. Y=185.
 * ---------------------------------------------------------------
-draw_hud:
+draw_hud:                               ; Stage-2 fight HUD: BOTH sides (unchanged render)
+        lbsr    draw_hud_player         ; player arrows (shared player-only entry)
+        bra     draw_hud_guard          ; then the guard side (falls to rts)
+
+* draw_hud_player — player arrow bar ONLY (Stage-3 climb HUD entry; per D2 the guard
+* side is ABSENT during the climb). draw_hud composes this + draw_hud_guard, so the
+* Stage-2 both-sides render is byte-for-byte the same blit sequence (HS-5).
+draw_hud_player:
         * --- player: arrow_0B12 (orange, draw-A), byte 5 / sub 1, +10px each ---
         lda     #5
         sta     <hud_byte
@@ -53,7 +60,10 @@ dp_nocarry:
         sta     <hud_byte
         dec     <hud_cnt
         bne     dp_loop
+        rts                             ; player-only done (Stage-3 climb enters here)
 
+* draw_hud_guard — guard arrow bar (Stage-2 only). draw_hud bra's here after the player.
+draw_hud_guard:
         * --- guard: arrow_0B12_mir (blue, BAKED mirror), byte 73 / sub 0, -10px each ---
         lda     #73
         sta     <hud_byte

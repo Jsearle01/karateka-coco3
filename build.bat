@@ -50,6 +50,10 @@ lwasm --decb -o tests/scripted/scene6_stage2_driver.bin tests/scripted/scene6_st
 if errorlevel 1 goto :error
 call :size tests/scripted/scene6_stage2_driver.bin
 
+lwasm --decb -o tests/scripted/scene6_stage3_driver.bin tests/scripted/scene6_stage3_driver.s
+if errorlevel 1 goto :error
+call :size tests/scripted/scene6_stage3_driver.bin
+
 lwasm --decb -I src/engine -I src/hal/coco3-dsk -o tests/scripted/timer_framesync_driver.bin tests/scripted/timer_framesync_driver.s
 if errorlevel 1 goto :error
 call :size tests/scripted/timer_framesync_driver.bin
