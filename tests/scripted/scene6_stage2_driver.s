@@ -146,76 +146,14 @@ dg_noborrow:
         rts
 
 * ---------------------------------------------------------------
-* draw_fuji_backdrop — Stage-1 static backdrop (copied; Stage 1 kept intact).
-* ---------------------------------------------------------------
-draw_fuji_backdrop:
-        jsr     fill_sky
-        clr     <blit_subbyte
-        lda     #26
-        ldb     #108
-        ldx     #scene6_bg_A9E2
-        jsr     HAL_gfx_blit_sprite_opaque
-        clr     <blit_subbyte
-        lda     #31
-        ldb     #100
-        ldx     #scene6_bg_A9B8
-        jsr     HAL_gfx_blit_sprite_opaque
-        clr     <blit_subbyte
-        lda     #33
-        ldb     #92
-        ldx     #scene6_bg_A976
-        jsr     HAL_gfx_blit_sprite_opaque
-        clr     <blit_subbyte
-        lda     #36
-        ldb     #81
-        ldx     #scene6_bg_A948
-        jsr     HAL_gfx_blit_sprite_opaque
-        jsr     draw_floor_line
-        rts
-
-fill_sky:
-        ldy     #104
-        ldx     #$8005
-fs_row:
-        pshs    x,y
-        ldd     #$AAAA
-        ldy     #35
-fs_byte:
-        std     ,x++
-        leay    -1,y
-        bne     fs_byte
-        puls    x,y
-        leax    80,x
-        leay    -1,y
-        bne     fs_row
-        rts
-
-draw_floor_line:
-        ldb     #5
-fl_tile:
-        pshs    b
-        clr     <blit_subbyte
-        tfr     b,a
-        ldb     #104
-        ldx     #scene6_bg_AA11
-        jsr     HAL_gfx_blit_sprite
-        puls    b
-        addb    #4
-        cmpb    #73
-        blo     fl_tile
-        rts
-
-* ---------------------------------------------------------------
-* HAL + cel data (Stage-1 backdrop cels + Stage-2 hud cels). No sprite_engine.s.
+* HAL + the SHARED backdrop module (single source) + the Stage-2 hud cels.
+* The backdrop routines + content/background includes live in scene6_backdrop.s,
+* shared with the Stage-1 driver (de-dup refactor). No sprite_engine.s (STATIC).
 * ---------------------------------------------------------------
         include "../../src/hal/coco3-dsk/sys.s"
         include "../../src/hal/coco3-dsk/gfx.s"
 
-        include "../../content/background/scene6_bg_A948/converted.s"
-        include "../../content/background/scene6_bg_A976/converted.s"
-        include "../../content/background/scene6_bg_A9B8/converted.s"
-        include "../../content/background/scene6_bg_A9E2/converted.s"
-        include "../../content/background/scene6_bg_AA11/converted.s"
+        include "scene6_backdrop.s"
 
         include "../../content/hud/arrow_0B12/converted.s"
         include "../../content/hud/arrow_0B12_mir/converted.s"
