@@ -220,6 +220,22 @@ out of the same tap. *Candidates:* `tap-every-draw-entry-not-just-the-first`,
 (facing = which entry mirrors, not a cel attribute). Tool:
 `harness/tools/scene6_full_descriptor.lua` (ENT map, per-draw CSV).
 
+**7b. Static-vs-dynamic facing = the per-cel `entry=[…]` map — but read it via the UNSHARED cel.**
+To answer "does an actor flip facing across the scene," the descriptor tool's per-cel
+`entry=[A:n By:m …]` aggregate is the direct readout — a single-entry cel never flips; a both-entries
+cel *might*. **The trap:** two fixed-facing actors that **share** a cel bank make that cel show BOTH
+entries (player draws it draw-A on the left, guard draw-B on the right) — which looks like flipping
+but isn't. **Discriminate with each actor's UNSHARED identity cel (the head):** one head per fighter,
+never shared, so its `entry` map IS that fighter's facing with no ambiguity. (Scene-6 guard: head
+`$8ECB` = `By` only across f6487–8382; player head `$8E9B` = `A` only — neither flips → STATIC;
+shared combat bodies show both entries only because the two fixed-facing fighters reuse them mirrored.)
+Confirm the shared-cel reading by X: the draw-A instances cluster LEFT, the draw-B RIGHT. **The
+trampoline read-taps at `$1903/$1906/$1909/$190C` DO fire** (1507× over a fight window) — this is a
+JMP-trampoline entry, not a §1 routine-body false-0. *Candidate:*
+`mirror-head-norm-half-is-the-actor-discriminator` (extended: read any per-actor property — facing,
+flip, state — off the UNSHARED cel; a shared cel aggregates it across every reuser). *Established:*
+scene-6 guard-facing sizing (`docs/project/scene6-guard-facing-sizing.md`).
+
 ---
 
 ## 8. Trace **THROUGH** a boundary, not **TO** it; size the run correctly
