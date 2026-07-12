@@ -534,8 +534,10 @@ Tools `harness/tools/h1_arrow_bp.lua` / `h1_blink.lua` / `h1_cel_dump.lua`.
   arrows are **hidden when `$07`=`$20`, shown when `$07`=`$40`** (a 2-phase toggle). Cadence
   (forced `$B6`=1): the low-health arrow pass runs ~every 10 VBL and `$07` alternates each pass →
   **blink period ≈ 20 VBL (~3 Hz, ~10 on / 10 off)**.
-- **Arrow cel [C / Jay-gate]:** `$0B12` = **7 rows × 1 byte** (`81 85 95 D5 95 85 81` — arrowhead);
-  bytes surfaced for Jay's visual gate (cel bitmap ID = Jay's call).
+- **Arrow cel [C, Jay-gate PASSED 2026-07-12]:** `$0B12` = **7 rows × 1 byte** (`81 85 95 D5 95 85
+  81` — arrowhead); rendered color-correct (Apple II HGR, bit7=1 → blue/orange palette by column
+  parity) via `sprite_render_apple2.py` → `build/scene6-cast-preview/arrow_0b12_col{0,1}.png`.
+  **Jay's visual gate: "look correct"** — the arrow-cel bitmap is confirmed.
 ### TRACK C1 — residual edges dispositioned (force-artifact guarded)
 Each `fight_ai` decision-function branch, dispositioned {**confirmed-real** = natural state
 reaches it / **force-suspect** = fires only when the state is jammed, verify under real input /

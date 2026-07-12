@@ -47,8 +47,7 @@ norm-half** + the **draw entry** (facing), NOT the body-cel shape.
   (normal player-win fight) + **4 unreachable-under-win-weighting** (the entire losing
   outcome: player-lose `$8EA5`/`$8EB3`, guard-win `$8000`/`$9043` — reachable only by forcing
   the prob-table row).
-- **Health arrows:** cel `$0B12` **[C]**, drawn player-LEFT bottom-row; guard-side + mirror
-  **[I]** (read-tap missed — re-run with bp). Cel bitmap ID **[J]**.
+- **Health arrows:** cel `$0B12` **[C]**, drawn player-LEFT bottom-row; guard-side = same cel MIRRORED via draw-B `$1909` at X=`$26` RIGHT (`$0B7C`) **[C]**. Cel bitmap ID **[C, Jay-gate PASSED 2026-07-12: "look correct"]**.
 
 ---
 
