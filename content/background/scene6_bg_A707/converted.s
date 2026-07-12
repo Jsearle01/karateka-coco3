@@ -1,0 +1,31 @@
+* converted.s
+* CoCo3 sprite data — converted from Apple II source.
+*
+* ORIGIN: dump05_imprison.bin
+*         Apple II label: addr_A707
+* Color model: adjacency + screen-col parity + color-cell fill (MAME-verified
+*   TASK 1/2 gate 2026-05-16; color-cell fill P4 gate 2026-06-13).
+*   0=Black 1=Orange(odd screen col) 2=Blue(even screen col) 3=White
+*   start_col=244  screen-col parity=EVEN
+* [ref: karateka-coco3 docs/project/karateka-coco3-design-v0.1.md §6.7]
+
+scene6_bg_A707:
+        fcb     18,9  ; height=18 rows, coco3_width=9 bytes/row (4px/byte)
+        fcb     $AA,$AA,$AA,$A8,$15,$55,$55,$0A,$A8  ; row 0
+        fcb     $AA,$AA,$AA,$AF,$00,$00,$00,$0A,$A8  ; row 1
+        fcb     $AA,$AA,$AA,$FF,$55,$55,$55,$0A,$A8  ; row 2
+        fcb     $AA,$AA,$AF,$FF,$00,$00,$00,$0A,$A8  ; row 3
+        fcb     $AA,$AA,$AF,$FF,$55,$55,$55,$0A,$A8  ; row 4
+        fcb     $AA,$AA,$FF,$FF,$00,$00,$00,$0A,$A8  ; row 5
+        fcb     $AA,$AF,$FF,$FF,$55,$55,$55,$0A,$A8  ; row 6
+        fcb     $AA,$AF,$FF,$FF,$00,$00,$00,$0A,$A8  ; row 7
+        fcb     $AA,$FF,$FF,$FF,$55,$55,$55,$0A,$A8  ; row 8
+        fcb     $AF,$FF,$FF,$FF,$00,$00,$00,$0A,$A8  ; row 9
+        fcb     $AF,$FF,$FF,$FF,$55,$55,$55,$0A,$A8  ; row 10
+        fcb     $FF,$FF,$FF,$C0,$00,$00,$00,$0A,$A8  ; row 11
+        fcb     $FF,$FF,$FC,$00,$00,$00,$00,$AA,$A8  ; row 12
+        fcb     $FF,$FF,$F0,$00,$00,$00,$0A,$AA,$A8  ; row 13
+        fcb     $FF,$FF,$00,$00,$00,$00,$AA,$AA,$A8  ; row 14
+        fcb     $FF,$FC,$00,$00,$00,$0A,$AA,$AA,$A8  ; row 15
+        fcb     $FF,$C0,$00,$00,$00,$AA,$AA,$AA,$A8  ; row 16
+        fcb     $FC,$00,$00,$00,$0A,$AA,$AA,$AA,$A8  ; row 17
