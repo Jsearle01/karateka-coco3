@@ -1,15 +1,15 @@
 * converted.s
 * CoCo3 sprite data — converted from Apple II source.
 *
-* ORIGIN: sprite_data_9b00.s
-*         Apple II label: player_run_legs_9B6B
+* ORIGIN: dump05_imprison.bin
+*         Apple II label: addr_9B6B
 * Color model: adjacency + screen-col parity + color-cell fill (MAME-verified
 *   TASK 1/2 gate 2026-05-16; color-cell fill P4 gate 2026-06-13).
 *   0=Black 1=Orange(odd screen col) 2=Blue(even screen col) 3=White
-*   start_col=0
-* [ref: karateka-coco3 docs/karateka-coco3-design-v0.1.md §6.7]
+*   start_col=0  screen-col parity=EVEN
+* [ref: karateka-coco3 docs/project/karateka-coco3-design-v0.1.md §6.7]
 
-player_run_legs_9B6B_coco3:
+player_run_legs_9B6B:
         fcb     20,10  ; height=20 rows, coco3_width=10 bytes/row (4px/byte)
         fcb     $00,$00,$00,$00,$FF,$FF,$FC,$00,$00,$00  ; row 0
         fcb     $00,$00,$00,$00,$FF,$FF,$FF,$00,$00,$00  ; row 1
@@ -28,6 +28,6 @@ player_run_legs_9B6B_coco3:
         fcb     $01,$00,$00,$00,$00,$00,$00,$FF,$F0,$00  ; row 14
         fcb     $00,$00,$00,$00,$00,$00,$00,$3F,$FC,$00  ; row 15
         fcb     $00,$00,$00,$00,$00,$00,$00,$0F,$F0,$00  ; row 16
-        fcb     $00,$00,$00,$00,$00,$00,$00,$0F,$15,$50  ; row 17
+        fcb     $00,$00,$00,$00,$00,$00,$00,$0F,$55,$50  ; row 17
         fcb     $00,$00,$00,$00,$00,$00,$00,$00,$15,$00  ; row 18
         fcb     $00,$00,$00,$00,$00,$00,$00,$00,$10,$00  ; row 19
