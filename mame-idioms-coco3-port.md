@@ -248,6 +248,19 @@ mame coco3 -rompath C:\mame\roms -window -prescale 3 -resolution 1920x1152 -spee
 1920x1152` (3× window, size only). The `*_live.lua` loads the boot-excluded `.bin` and sets
 PC. *Established:* `mame-live-gate-viewing-flags`.
 
+### 11a. Prove a behavior-preserving RENDER refactor with a FRAMEBUFFER DIFF (not a re-gate)
+For a "changed the code, not the output" refactor (extract a shared draw module, de-dup, reorganize
+includes), the objective proof is a **framebuffer byte-diff**, not Jay's eye: dump **Frame A
+`$8000-$BBFF`** (15360 B) at the driver's **hold PC** BEFORE the change, refactor, rebuild, dump
+AFTER, `cmp` — require **byte-identical** for every affected driver. The pixel diff catches a
+sub-visual one-pixel/one-colour drift the eye misses, is instant/repeatable, and doesn't spend a
+human gate cycle (the live gate is for NEW visual behaviour). Pair with a single-source `grep` to
+prove the structural goal (no duplicated routines remain). Dump via the same DECB-load Lua as the
+`*_live`/`*_confirm` scripts, then `for a=0x8000,0xBBFF do o:write(string.char(mem:read_u8(a))) end`.
+*Candidate:* `prove-a-render-refactor-with-a-framebuffer-diff-not-a-visual-re-gate`. *Established:*
+scene-6 backdrop shared-include refactor (commit `7bfb24c`; both drivers pixel-identical pre/post).
+Tool: `harness/tools/*` DECB-load pattern + a Frame-A dump.
+
 ---
 
 ## 12. Quick command idioms (coco3)
