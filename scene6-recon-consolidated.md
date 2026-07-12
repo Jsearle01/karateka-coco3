@@ -47,7 +47,7 @@ norm-half** + the **draw entry** (facing), NOT the body-cel shape.
   (normal player-win fight) + **4 unreachable-under-win-weighting** (the entire losing
   outcome: player-lose `$8EA5`/`$8EB3`, guard-win `$8000`/`$9043` — reachable only by forcing
   the prob-table row).
-- **Health arrows:** cel `$0B12` **[C]**, drawn player-LEFT bottom-row; guard-side = same cel MIRRORED via draw-B `$1909` at X=`$26` RIGHT (`$0B7C`) **[C]**. Cel bitmap ID **[C, Jay-gate PASSED 2026-07-12: "look correct"]**.
+- **Health arrows:** cel `$0B12` **[C]**, drawn player-LEFT bottom-row; guard-side = same cel MIRRORED via draw-B `$1909` at X=`$26` RIGHT (`$0B7C`) **[C]**. Cel bitmap ID + **palette group (blue/orange, not-monochrome) Jay-confirmed [C, gate 2026-07-12: "look correct"]**. **NOT resolved by this gate: the arrow's on-screen COLUMN PARITY — subject to the known color-swap converter defect** (blind column-origin bug; see `docs/project/known-issues.md`).
 
 ---
 
@@ -188,10 +188,16 @@ premise; see §9):
   `$05`=0 (LEFT), bottom row. **Redraw-N each refresh, count-driven** (not delta-blit).
 - **Low-health blink** [I, from Jay]: arrows blink at low count (1–2) — threshold + cadence
   **not yet traced** (follow-up).
-- **Starting-count progression** [I, from Jay]: player-start decreases / guard-start increases
-  as the real game progresses → a candidate **progression variable** indexing the starting
-  count. **Not reachable from the one-fight demo** (Rider 2 traces the source; the sweep is
-  controlled-player).
+- **Starting-count SEAM = `$B0`/`$B1`** [C, Rider 2]: the working counts `$B6`/`$B7` are copied
+  from **`$B0` (player) / `$B1` (guard)** (`routine_b73f`: `lda $b0; sta $b6` / `routine_b72e`:
+  `lda $b1; sta $b7`) at scene-6 init — so `$B0`/`$B1` are the starting-count register pair, **the
+  progression injection point** (where a real game's per-level table would write). In the attract
+  they are set by a **hardcoded immediate `lda #$0E`** (`scene_dispatch.s:315-318`) → **F1 =
+  CONSTANT** (14/14), not a table-index, not a formula; positions are likewise hardcoded in the
+  same init block. **No shared runtime progression index in the demo.**
+- **Progression sweep** [I, from Jay — deferred]: player-start decreases / guard-start increases
+  over real-game levels — the seam is located (above), but the **sweep is DEFERRED to controlled-
+  player** (the one-fight demo can't exercise the level-indexed load into `$B0`/`$B1`).
 
 ---
 
@@ -257,6 +263,10 @@ DAC/PIA). Carries: **hit** clicks (both combatants), **footstep** clicks.
 - **Health** — two counts (`$B6`/`$B7`), decrement-floored-on-hit, regen one-at-a-time on a
   reset-on-hit timer (threshold a **tunable data value**), count-driven arrow redraw (cel
   `$0B12`, mirrored guard-side).
+- **Progression injection point = `$B0`/`$B1`** — the starting-count register pair copied into
+  `$B6`/`$B7` at init. **Constant (14/14) in a scene-6-only build** (`lda #$0E`); a full game's
+  **per-level table** would write `$B0`/`$B1` (+ the start positions in the same init block). The
+  level-table and the player-down/guard-up sweep are a **controlled-player addition**, not the demo.
 - **Opaque-black already ships in HAL** (`HAL_gfx_blit_sprite_opaque` + `_masked`/`_stencil`
   from scene-5) — scene-6 mixed silhouettes use the existing `_masked` path with an authored
   per-cel mask (content-side, **NOT** a HAL refactor). *(Item struck — see §9.)*
@@ -329,7 +339,9 @@ Each entry: the **dead** version → the **current** version (and where it lives
   named landmarks/frames.
 
 ### 10b. Pending Jay's visual gate [J] — resolve in the sandbox
-- ~~Arrow cel `$0B12` bitmap ID~~ — **RESOLVED 2026-07-12** (Jay visual gate: "look correct"; §1).
+- Arrow cel `$0B12` — bitmap ID + palette group (blue/orange) **RESOLVED 2026-07-12** (Jay gate:
+  "look correct"; §1). **On-screen column parity NOT resolved by this gate** — tracked under the
+  color-swap converter defect (`known-issues.md`), not here.
 - Move names (the 110-cel action space; combat poses) — provisional until sandbox.
 - Feet-bands, climb Y-ascent, Fuji bottom seam (deferred to sandbox).
 - Guard-mirror visual confirm.
@@ -340,8 +352,9 @@ Each entry: the **dead** version → the **current** version (and where it lives
   Not a recon-phase or first-build-phase gate. (§7a)
 
 ### 10c. Deferred to controlled-player phase (needs the input-playback harness)
-- **Starting-count progression sweep** (player-down/guard-up over levels) — Rider 2 locates the
-  *source*; the sweep needs multi-fight input.
+- **Starting-count progression sweep** (player-down/guard-up over levels) — **seam LOCATED at
+  `$B0`/`$B1`** (constant 14/14 in the demo, `lda #$0E`); the **sweep + the real-game level-table
+  are deferred to controlled-player** (needs multi-fight input). §7/§8.
 - **Start-position level-tuning** — whether the authored start positions (§6) are level-tuned
   like the counts (a Rider-2-adjacent question).
 - **Run/walk scene-skip** (running loads fewer fight scenes) — a scene-sequencer branch reading
