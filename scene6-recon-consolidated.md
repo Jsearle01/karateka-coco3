@@ -184,8 +184,13 @@ premise; see §9):
   **Model = one-arrow-at-a-time on a repeating timer, reset-on-hit** (not refill-to-full).
   **Threshold `$B8`=`$B9`=`$FF` (255 VBL) → regen is OFF in the busy demo** (demo-tuned, like
   the win-weighting); forced `$B9`=04 → `$B7` oscillates (regen path executes).
-- **Draw** [C]: `$0B35` loop draws exactly `$B6` arrows (`jsr $1903`, X += 3/arrow), player at
-  `$05`=0 (LEFT), bottom row. **Redraw-N each refresh, count-driven** (not delta-blit).
+- **Draw** [C]: `$0B35` loop draws exactly `$B6` arrows (`jsr $1903`), player at `$05`=0/`$10`=1
+  (LEFT), Y `$06`=`$B9`=185 (bottom row); guard `$0B7C` draws `$B7` arrows draw-B mirrored (`jsr
+  $1909`) from `$05`=`$26`/`$10`=6 (RIGHT). **Advance = 10 px/arrow** [C, execution-confirmed
+  2026-07-12: `sub_0b69` does `$10 += 3` AND `$05 += 1` *always* = 10 Apple px; **supersedes the
+  earlier "X += 3" read** which captured only the `$10 += 3` part. Measured on the accepted
+  reference frame `scene6_after_05_f7400`: arrow tips at screen x 3/23/43… = 20 px = 10 Apple px].
+  **Redraw-N each refresh, count-driven** (not delta-blit).
 - **Low-health blink** [I, from Jay]: arrows blink at low count (1–2) — threshold + cadence
   **not yet traced** (follow-up).
 - **Starting-count SEAM = `$B0`/`$B1`** [C, Rider 2]: the working counts `$B6`/`$B7` are copied
