@@ -52,11 +52,8 @@
         setdp   0
         include "../../src/engine/globals.s"
 
-hud_byte        equ $60         ; scratch: current arrow byte column
-hud_sub         equ $61         ; scratch: current arrow sub-byte (0-3)
-hud_cnt         equ $62         ; scratch: arrows remaining
-ARROW_ROW       equ 185         ; Y = $B9 (bottom row, oracle $06)
-ARROW_COUNT     equ 14          ; $0E (both sides, fixed this stage)
+* (arrow-HUD constants + draw_hud + hud cel includes moved to the shared
+*  scene6_hud.s module — included below, single-source with the Stage-3 driver.)
 
 * ---------------------------------------------------------------
 * test_start — Stage-2 entry: boot + HAL init, backdrop, HUD, hold.
@@ -83,69 +80,6 @@ hold:
         bra     hold                    ; static hold
 
 * ---------------------------------------------------------------
-* draw_hud — 14 player arrows (draw-A) LEFT + 14 guard arrows (baked mirror) RIGHT,
-*   the oracle $0B35/$0B7C count-driven model: draw exactly N, advance the 10px
-*   pitch each. Transparent blit. Y=185.
-* ---------------------------------------------------------------
-draw_hud:
-        * --- player: arrow_0B12 (orange, draw-A), byte 5 / sub 1, +10px each ---
-        lda     #5
-        sta     <hud_byte
-        lda     #1
-        sta     <hud_sub
-        lda     #ARROW_COUNT
-        sta     <hud_cnt
-dp_loop:
-        lda     <hud_sub
-        sta     <blit_subbyte
-        lda     <hud_byte               ; A = byte col
-        ldb     #ARROW_ROW              ; B = row 185
-        ldx     #arrow_0B12
-        jsr     HAL_gfx_blit_sprite
-        * advance +10px = +2 sub, +2 byte (carry a byte when sub wraps past 4)
-        lda     <hud_sub
-        adda    #2
-        cmpa    #4
-        blo     dp_nocarry
-        suba    #4
-        inc     <hud_byte
-dp_nocarry:
-        sta     <hud_sub
-        lda     <hud_byte
-        adda    #2
-        sta     <hud_byte
-        dec     <hud_cnt
-        bne     dp_loop
-
-        * --- guard: arrow_0B12_mir (blue, BAKED mirror), byte 73 / sub 0, -10px each ---
-        lda     #73
-        sta     <hud_byte
-        clr     <hud_sub
-        lda     #ARROW_COUNT
-        sta     <hud_cnt
-dg_loop:
-        lda     <hud_sub
-        sta     <blit_subbyte
-        lda     <hud_byte
-        ldb     #ARROW_ROW
-        ldx     #arrow_0B12_mir
-        jsr     HAL_gfx_blit_sprite
-        * advance -10px = -2 sub, -2 byte (borrow a byte when sub goes negative)
-        lda     <hud_sub
-        suba    #2
-        bpl     dg_noborrow
-        adda    #4
-        dec     <hud_byte
-dg_noborrow:
-        sta     <hud_sub
-        lda     <hud_byte
-        suba    #2
-        sta     <hud_byte
-        dec     <hud_cnt
-        bne     dg_loop
-        rts
-
-* ---------------------------------------------------------------
 * HAL + the SHARED backdrop module (single source) + the Stage-2 hud cels.
 * The backdrop routines + content/background includes live in scene6_backdrop.s,
 * shared with the Stage-1 driver (de-dup refactor). No sprite_engine.s (STATIC).
@@ -154,8 +88,6 @@ dg_noborrow:
         include "../../src/hal/coco3-dsk/gfx.s"
 
         include "scene6_backdrop.s"
-
-        include "../../content/hud/arrow_0B12/converted.s"
-        include "../../content/hud/arrow_0B12_mir/converted.s"
+        include "scene6_hud.s"
 
         end     test_start
