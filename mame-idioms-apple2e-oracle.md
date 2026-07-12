@@ -316,6 +316,37 @@ Wave 1 (commit `0b5825b`).
 
 ---
 
+## 10a. Reference-frame capture — frame-anchored `screen:snapshot()`, seed/ptr self-verified
+Building a **visual reference set** from the running oracle (to gate the port's later stages, the
+role snap 0083 played for the logo):
+- **Apple II AUTO-BOOTS the disk** — unlike coco3 (which needs `natkeyboard:post` LOADM/EXEC, coco3
+  file §1/§2), `mame apple2e -flop1 karateka.dsk` boots straight into the game and plays the attract.
+  No input driving needed; just run and capture at frames.
+- **Capture mechanism:** a frame-notifier + `manager.machine.screens:at(1):snapshot()` fired at the
+  target frames. Snapshots write to **`<-snapshot_directory>/<system-shortname>/NNNN.png`** (MAME
+  appends the system dir, e.g. `_raw/apple2e/0000.png`, auto-incrementing in capture order) — so set
+  `-snapshot_directory` to a staging dir and **rename/move afterward** to the final tree/convention.
+- **Frame-BOUNDARY snapshot avoids the `-nothrottle` mid-frame caveat (§6):** the notifier callback
+  fires between frames, so `screen:snapshot()` grabs the last *complete* frame even under
+  `-nothrottle` — the motion-artifact caveat is about mid-frame grabs, not this. (~1200% speed for a
+  ~140-emulated-second arc.)
+- **Anchor to SEED-DETERMINISTIC frames from the recon timeline, not wall-clock** (attract is
+  seed-non-deterministic run-to-run, §3; the pre-fight intro is deterministic so its frame markers
+  are stable). **Log the frame + `$59` (LCG seed) + the `$03/$04` draw-ptr at each shot** → the set
+  is reproducible AND **self-verifying without reading the PNGs**: the ptr confirms the beat (scene-6:
+  climb shots showed climb cels `$A3E9`/`$A4F2` of the `$A3C5–$A649` chain; fight shots showed combat
+  cel `$838C` with `$59` now ACTIVE B9/AF vs `$59`=00 through the deterministic pre-fight). PNG
+  *fidelity* stays Jay's visual gate (§10); the log establishes *which beat* each frame is.
+- **NB `.dsk` vs `.woz`:** the repo oracle disk is `dumps/karateka.dsk` (what all traces use); if a
+  dispatch names `Karateka.woz`, use the repo disk and flag it.
+
+*Candidate:* `anchor-oracle-reference-captures-to-seed-deterministic-frames-and-self-verify-with-the-draw-ptr`.
+*Established:* scene-6 oracle reference capture (20 frames → `C:\karateka-capture\snap\coco3\scene6\`,
+climb/summit/after, `capture.log` manifest). Tool: `tools/scene6_oracle_capture.lua` (transient in
+the oracle repo; canonical pattern here).
+
+---
+
 ## 11. Quick command idioms (apple2e)
 ```bash
 # Fast headless trace (no watching) — full trace fast; NOT for motion snapshots (§6):
@@ -325,6 +356,10 @@ mame apple2e -rompath <roms> -flop1 <disk> -nothrottle -video none -sound none \
 mame apple2e ... -debug -script tools/<lua>.lua        # lua sets execution_state="run"
 # Operator live-watch (Jay's gate): -speed 8 -prescale 3 -resolution 1920x1152 -window -nomax
 #   (viewing-only; does not touch cadence. -nothrottle for max host speed.)
+# Reference-frame capture (§10a): auto-boots; snapshot at frame-boundary target frames:
+mame apple2e -rompath <roms> -flop1 dumps/karateka.dsk -snapshot_directory <stage>/_raw \
+     -nothrottle -seconds_to_run <N> -window -nomax -script tools/scene6_oracle_capture.lua
+#   -> writes <stage>/_raw/apple2e/NNNN.png (rename after); log frame+$59+ptr per shot.
 ```
 - **Windows-path-in-Lua gotcha:** `"C:\k…"` is an **invalid Lua escape** — a bad path
   **silently fails the script**; MAME then runs the full `-seconds_to_run` with **no tap and
@@ -367,6 +402,8 @@ Sourced to specific scene-5/6 + Q010 passes; **all already pushed to
 - `boot-time-static-bytes-arent-written-by-runtime-code`
 - `tool-render-is-not-a-mame-capture-verify-by-pixel-colour`
   · `automated-check-tautology-validate-against-ground-truth-not-rule-predictions`
+- `anchor-oracle-reference-captures-to-seed-deterministic-frames-and-self-verify-with-the-draw-ptr`
+  (§10a — frame-anchored `screen:snapshot()`, seed/ptr self-verified reference set)
 - **NEW (not yet a candidate):** `mame-frame-notifier-return-must-be-referenced-or-gcd`
   (the `_G._n=` gotcha, §2) · `mame-debugger-printf-not-captured-headless-use-tracelog`
   (§4e) · `mame-bp-action-tracelog-is-brace-free-trace-action-is-braced` (§4e).
