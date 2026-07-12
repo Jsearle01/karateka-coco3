@@ -25,6 +25,14 @@ The full scene-6 asset set was converted at correct parity and **Jay's preview h
 - Gate artifacts: `build/scene6-stage0-preview/scene6_{player,guard,background}_sheet.png` (167 cels).
   Converted assets are on-disk **untracked** pending Jay's sandbox verification, then promote to
   tracked. (`content/scenery/`+`content/floor/` are SCENE-5, not scene-6 — excluded.)
+- **OQ-6 provenance [2026-07-12]:** the 4 background cels `content/background/scene6_bg_{A948,A976,
+  A9B8,A9E2}` were **flood-filled post-hue-gate** during Stage 1 (Jay-authorized) — sky/edge/interior
+  index-0 reclassified for the opaque backdrop blit (`harness/tools/floodfill_bg_sky.py`; coco3
+  idiom §9b). Recorded so the disk matches the record; **not re-gated / not re-converted**.
+- **HUD arrow `$0B12` [2026-07-12, Stage-2 prereq]:** converted from dump05 into `content/hud/`
+  (player-orange `arrow_0B12` draw-A + guard-blue `arrow_0B12_mir` `--mirror`) per the Stage-0
+  color-target rule. Cel is **NOT left-right palindromic** (`--mirror` genuinely reverses). On-screen
+  column parity closed by Jay's hue gate on `scene6_hud_sheet.png`.
 
 ### (original 2026-07-09 report)
 **Area:** `harness/tools/sprite_convert.py`, scene-6 cast candidates
