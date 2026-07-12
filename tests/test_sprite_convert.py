@@ -12,8 +12,16 @@ Rule (TASK 4 gate, 2026-05-16):
 [ref: MAME snap 0083; 113/113 gap=1, 120/120 gap>=2]
 """
 import sys, os, unittest
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from tools.sprite_convert import convert_sprite_to_coco3, parse_byte_directive
+# The converter lives at harness/tools/sprite_convert.py (tracked). Import it
+# directly from there, with a fallback to the legacy tools/ package path so the
+# suite runs regardless of where the tools/->harness/tools/ reconciliation lands.
+_here = os.path.dirname(__file__)
+sys.path.insert(0, os.path.join(_here, '..'))
+sys.path.insert(0, os.path.join(_here, '..', 'harness', 'tools'))
+try:
+    from sprite_convert import convert_sprite_to_coco3, parse_byte_directive
+except ImportError:  # pragma: no cover - legacy layout fallback
+    from tools.sprite_convert import convert_sprite_to_coco3, parse_byte_directive
 
 
 class TestParseByteDirective(unittest.TestCase):
@@ -147,6 +155,97 @@ class TestConvertSpriteColorModel(unittest.TestCase):
     def test_isolated_bit7_0_quantizes_to_blue(self):
         result, cw = convert_sprite_to_coco3([0x01], 1, 1, start_col=0)
         self.assertEqual(self._decode(result, cw)[0], 2)
+
+
+def _decode_pixels(coco3_bytes, coco3_width):
+    """Unpack CoCo3 packed bytes -> flat list of 2-bit palette indices."""
+    idx = []
+    for b in coco3_bytes:
+        for pix in range(4):
+            idx.append((b >> (6 - pix * 2)) & 0b11)
+    return idx
+
+
+class TestMirror(unittest.TestCase):
+    """--mirror: pixel-granularity horizontal flip, palette-index preserving.
+
+    HS-2 correctness (asymmetric cel: pixel [x] -> [W-1-x], palette preserved),
+    HS-3 round-trip (mirror twice = identity), HS-4 additive (default unchanged).
+    Parity (HS-5) is a COMPOSITION concern documented on the flag, not gated here:
+    --mirror reverses SHAPE and preserves each pixel's baked color, so the mirrored
+    cel's on-screen hue is set at draw time by --render-col-byte (+ --flip-parity
+    for even width) — not by the reversal.
+    """
+
+    # An ASYMMETRIC, non-palindromic multi-byte cel (content weighted left).
+    ASYM = [0x8D, 0x81, 0x83, 0x9C]  # 1 row, 4 bytes -> W = 28 px
+    H, W_BYTES = 1, 4
+    W = W_BYTES * 7  # 28 logical pixels
+
+    def test_mirror_maps_x_to_Wminus1minusx_palette_preserved(self):
+        # HS-2: the mirrored output at position x equals the normal output at W-1-x,
+        # with the palette index carried verbatim (a pure pixel reversal).
+        normal, cw = convert_sprite_to_coco3(self.ASYM, self.H, self.W_BYTES, start_col=0)
+        mirror, cwm = convert_sprite_to_coco3(self.ASYM, self.H, self.W_BYTES,
+                                              start_col=0, mirror=True)
+        self.assertEqual(cw, cwm, "mirror must not change output width")
+        n = _decode_pixels(normal, cw)
+        m = _decode_pixels(mirror, cwm)
+        for x in range(self.W):
+            self.assertEqual(m[x], n[self.W - 1 - x],
+                             f"mirror[{x}] must equal normal[{self.W-1-x}]")
+        # every mirrored palette index must be one that exists in the normal cel
+        # (preserved, never a corrupted 2-bit pair)
+        self.assertEqual(sorted(m[:self.W]), sorted(n[:self.W]),
+                         "mirror preserves the multiset of palette indices")
+
+    def test_mirror_is_non_vacuous_asymmetric(self):
+        # Guard: the test cel must actually be asymmetric, else the mapping test
+        # would pass trivially on a palindrome.
+        normal, cw = convert_sprite_to_coco3(self.ASYM, self.H, self.W_BYTES, start_col=0)
+        mirror, cwm = convert_sprite_to_coco3(self.ASYM, self.H, self.W_BYTES,
+                                              start_col=0, mirror=True)
+        n = _decode_pixels(normal, cw)[:self.W]
+        m = _decode_pixels(mirror, cwm)[:self.W]
+        self.assertNotEqual(n, m, "test cel must be asymmetric (mirror != normal)")
+
+    def test_mirror_twice_is_identity(self):
+        # HS-3: a horizontal flip is its own inverse. Mirror the mirrored pixel
+        # layout again -> must reproduce the normal (unmirrored) layout.
+        normal, cw = convert_sprite_to_coco3(self.ASYM, self.H, self.W_BYTES, start_col=0)
+        mirror, cwm = convert_sprite_to_coco3(self.ASYM, self.H, self.W_BYTES,
+                                              start_col=0, mirror=True)
+        n = _decode_pixels(normal, cw)[:self.W]
+        m = _decode_pixels(mirror, cwm)[:self.W]
+        double = [m[self.W - 1 - x] for x in range(self.W)]  # reverse again
+        self.assertEqual(double, n, "mirror(mirror(cel)) must equal cel")
+
+    def test_mirror_multirow_reverses_each_row_independently(self):
+        # Each row is flipped on its own axis (no cross-row bleed).
+        rows = [0x8D, 0x81, 0x83]  # 3 rows x 1 byte
+        normal, cw = convert_sprite_to_coco3(rows, 3, 1, start_col=0)
+        mirror, cwm = convert_sprite_to_coco3(rows, 3, 1, start_col=0, mirror=True)
+        n = _decode_pixels(normal, cw)
+        m = _decode_pixels(mirror, cwm)
+        W = 7
+        for r in range(3):
+            base = r * cw * 4
+            for x in range(W):
+                self.assertEqual(m[base + x], n[base + W - 1 - x],
+                                 f"row {r} pixel {x}")
+
+    def test_mirror_default_off_is_byte_identical(self):
+        # HS-4: the flag is opt-in; mirror=False (and the default) must reproduce
+        # the pre-existing output exactly.
+        for apple, h, w, sc in [
+            (self.ASYM, 1, 4, 0),
+            ([0x80, 0xAA, 0xD5, 0xCE, 0x9C] * 3, 3, 5, 0),
+            ([0x81], 1, 1, 119),
+        ]:
+            default, cwd = convert_sprite_to_coco3(apple, h, w, start_col=sc)
+            explicit, cwe = convert_sprite_to_coco3(apple, h, w, start_col=sc, mirror=False)
+            self.assertEqual((list(default), cwd), (list(explicit), cwe),
+                             "mirror=False must equal the default path byte-for-byte")
 
 
 if __name__ == '__main__':

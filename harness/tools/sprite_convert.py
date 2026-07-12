@@ -139,7 +139,7 @@ def _classify_row_convert(row_bytes, width_pixels):
 
 
 def convert_sprite_to_coco3(apple_ii_bytes, height, apple_width_bytes, start_col=0,
-                            parity_flip=False):
+                            parity_flip=False, mirror=False):
     """
     Apple II sprite bitmap → CoCo3 4-color packed bytes.
 
@@ -156,6 +156,22 @@ def convert_sprite_to_coco3(apple_ii_bytes, height, apple_width_bytes, start_col
       apple_width_bytes: Apple II bytes per row (7 pixels each)
       start_col: Apple II screen pixel column of sprite left edge
                  Karateka: Logo 1 = 119, Logo 2 = 84
+      mirror: horizontally flip the cel — reverse the per-row PIXEL list
+              (each pixel = a 2-bit CoCo3 palette index) BEFORE packing, so the
+              output is the left-right flip of the input with every pixel's
+              palette index PRESERVED. This is a pixel-granularity reversal, NOT
+              a byte- or bit-reverse (which would split/corrupt the 2-bit pairs).
+              CoCo3-side analog of the oracle's $0900 pixel_flip (7-bit HGR),
+              at 2-bit-pixel granularity for the GIME 4-color format. Used to
+              pre-bake the guard's draw-B (faces-left) cels at convert time so no
+              runtime pixel-mirror primitive is needed [ref: scene6-guard-facing
+              STATIC, ae2502e; draw-B scope 4001a0f].
+              PARITY NOTE: this reverses SHAPE and PRESERVES each pixel's baked
+              color; the chroma (blue/orange) was computed at the pre-mirror
+              screen columns, so a mirrored cel's on-screen hue is correct only
+              when placed at a render column of matching parity — compose with
+              --render-col-byte (the guard's actual column) and, for even
+              width_pixels, --flip-parity. See the CLI help + the report.
 
     Returns:
       (coco3_bitmap: bytearray, coco3_width: int)
@@ -225,6 +241,15 @@ def convert_sprite_to_coco3(apple_ii_bytes, height, apple_width_bytes, start_col
                     elif right in (1, 2):
                         row_indices[c] = right
 
+        # Horizontal mirror (opt-in): reverse the per-PIXEL list — each element is
+        # a 2-bit CoCo3 palette index — so pixel [x] -> [width_pixels-1-x], every
+        # palette index preserved. A pure list reversal at pixel granularity; NOT a
+        # byte/bit reverse (which would corrupt the 2-bit pairs). Its own inverse
+        # (mirror twice = identity). Done before packing so the packed bytes come
+        # out already flipped. [--mirror: pre-baked draw-B cels, 2026-07-12]
+        if mirror:
+            row_indices = row_indices[::-1]
+
         for byte_idx in range(coco3_width):
             packed = 0
             for pix_idx in range(4):
@@ -290,6 +315,16 @@ def main():
                              'shape change). Use when a sprite was converted at '
                              "the wrong column parity and its blues/oranges are "
                              'reversed. [column-parity fix, 2026-06-14]')
+    parser.add_argument('--mirror', action='store_true',
+                        help='Horizontally flip the cel at convert time — reverse '
+                             'the per-row PIXEL list (2-bit palette indices) before '
+                             'packing, so the output is the left-right mirror with '
+                             'every palette index preserved (NOT a byte/bit reverse). '
+                             'Pre-bakes the guard draw-B (faces-left) cels so no '
+                             'runtime pixel-mirror is needed. Compose with '
+                             '--render-col-byte for the mirrored cel\'s render '
+                             'column; for even total pixel-width add --flip-parity '
+                             'to keep chroma correct. [draw-B pre-bake, 2026-07-12]')
     args = parser.parse_args()
 
     # Trace-driven column origin: screen pixel col = byte*7 + shift (from routine_1927,
@@ -310,7 +345,8 @@ def main():
         bitmap_bytes += [0] * (expected_data - len(bitmap_bytes))
 
     coco3_bitmap, coco3_width = convert_sprite_to_coco3(bitmap_bytes, height, apple_width,
-                                                         args.start_col, args.flip_parity)
+                                                         args.start_col, args.flip_parity,
+                                                         args.mirror)
 
     # Trim trailing and leading all-zero byte columns (P2.3a.11-followup-2)
     original_width = coco3_width
