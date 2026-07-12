@@ -160,6 +160,30 @@ reorder). Tool: `harness/tools/palette_derive.py` (index derivation),
 
 ---
 
+## 9a. **OPAQUE blit + a sub-byte shift writes the shifted-in edge zeros as BLACK bars**
+`HAL_gfx_blit_sprite_opaque` stores **every** pixel of the sprite's byte span. When the sprite is
+placed with `blit_subbyte > 0`, the sub-byte shift brings **zeros (index-0 black) into the leading/
+trailing edge pixels** of the partial edge bytes — and opaque mode writes them, so each shifted
+sprite shows a **thin black vertical bar at its left and right edge** (a transparent blit keys these
+out, so the bug only appears with opaque). **Symptom:** a stack of opaque backdrop sprites shows
+1-2px black bars at every sub-byte-shifted sprite's edges (scene-6 Fuji: A9B8 sub1 + A948 sub2 →
+4 bars at X144-145 / X174-175). **Fix (backdrop):** **byte-align** the sprites (`blit_subbyte = 0`);
+the ≤3px position loss is negligible for a static backdrop and the shifted-in zeros disappear. (For
+sub-pixel-critical actors, pad the cel's edge with the sky index or use a masked/transparent blit
+instead.) *Established:* scene-6 Stage-1 Fuji backdrop gate. Tool: `harness/tools/scene6_stage1_confirm.lua`
++ a per-column black-count framebuffer scan.
+
+## 9b. **Index-0 is overloaded (transparent-pad vs meaningful-black) — flood-fill to separate them**
+The Apple→CoCo3 converter emits index-0 (black) for BOTH the sprite's meaningful black AND the
+transparent bounding-box padding/edges, so a single opaque/transparent blit flag can't render both
+right (opaque → padding shows as black boxes/bars; transparent → the real black shows sky). Separate
+them by **flood-fill from the cel border through {index-0, index-2(sky-blue)}**: black *reached* from
+the border is edge/outline (choose per the art); black *walled off by index-3 white* is interior. On
+scene-6's Fuji, Jay's ruling was **edge-connected black = OPAQUE** (mountain outline), **white-
+surrounded interior black = TRANSPARENT** (sky-holes → convert to blue), plus **fully-black columns =
+trim-boundary artifact → blue**. Tool: `harness/tools/floodfill_bg_sky.py`. *Established:* scene-6
+Stage-1 Fuji cel-data fix.
+
 ## 10. Instrumentation — **6809 read-taps WORK** (the key cross-target asymmetry) + shared Lua
 - **On 6809, program-space read-taps DO fire** — unlike the 6502 oracle side, where opcode
   fetches bypass them. So the single most important cross-target difference: **on coco3 you
