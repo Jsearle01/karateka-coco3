@@ -488,6 +488,39 @@ Three yes/no observations decompose the bias:
   damage-race win then **falls out of the geometry for free**. This closes the last fight-model
   mechanic question.
 
+## Rider 2 — the progression seam (starting-count/position source) `[VERIFIED 2026-07-11]`
+Tools `harness/tools/rider2_count.lua` / `rider2_dump.lua` + live dasm. **LEAD-GENERATING, not
+closeable** — the one-fight demo can't show the sweep; ceiling = seam located + named, sweep
+deferred to controlled-player.
+- **Starting-count SOURCE = `$B0` (player) / `$B1` (guard) [C]:** `routine_b73f` (`lda $b0; sta
+  $b6`) and `routine_b72e` (`lda $b1; sta $b7`) copy `$B0`/`$B1` into the working counts
+  `$B6`/`$B7` at scene-6 init. So `$B0`/`$B1` are the starting-count register pair — **the seam**.
+- **Source classification → CONSTANT (F1, honest) [C]:** `$B0`/`$B1` are set by an **immediate
+  literal** — `scene_dispatch.s:315-318` `lda #$0E; sta $B0; sta $B1`. **NOT a table-index, NOT a
+  formula.** The whole scene-6 init block (scene_dispatch.s ~303-330) is immediate-constants
+  (`$52`=`$30` position, `$B8`/`$B9`=`$FF` regen thresholds, etc.). **The attract HARDCODES one
+  level's parameters** — the per-level indexing (the real-game player-down/guard-up progression)
+  is **not at this write**; it would live in a real-play code path (a level-indexed load into
+  `$B0`/`$B1`) the one-fight demo never runs.
+- **VALUE CORRECTION [C, flag for Jay]:** the true **starting count = `$0E` = 14** for both
+  (from `lda #$0E`), **not 13** — the earlier "13" (`$0D`) was a read taken *after the first hit*
+  had already decremented it. Consolidation §1/§7 "13" should read **14**. (Finding-correction →
+  Jay per the standing rule.)
+- **Position source [C]:** the start positions are set in the **same immediate-constant init
+  block** (e.g. `$52`=`$30`), not a per-level table — **also CONSTANT** in the demo (F4-split does
+  not fire; count and position are *both* hardcoded constants, co-located in one init routine, but
+  **neither is a shared runtime index**).
+- **Sequencer link → DISTINCT/none-in-demo [C]:** because the counts/positions are hardcoded
+  immediates (no runtime index), there is **no shared progression variable** for a scene-sequencer
+  to read in the attract. Unified progression (health↔position↔scene-skip through one index) is
+  **not present in the one-fight demo** — if it exists in the real game, it is a level-counter the
+  loader uses to pick each level's data (including `$B0`/`$B1`), in a path the attract doesn't
+  exercise.
+- **SEAM STATEMENT:** the starting-count seam is **located + named (`$B0`/`$B1` → `$B6`/`$B7`)**;
+  in the attract it is a hardcoded constant (14/14); the **per-level sweep is DEFERRED to
+  controlled-player** (needs the input harness to load multiple levels). No "progression mapped"
+  claim. **F1 fired — a constant is the honest outcome, not a failure.**
+
 ## Scene-6 SOUND triggers — TWO paths; the fight IS voiced `[CORRECTED 2026-07-11]`
 > **CORRECTION (operator ground truth refutes the prior F2):** the block below originally
 > concluded "the fight is silent-by-no-trigger (F2)". **WRONG — Jay plays the game and HEARS
