@@ -4,8 +4,30 @@ Tracked defects in the CoCo3 port and their resolution status. Most recent first
 
 ---
 
-## RESOLVED (converter) / OPEN (per-candidate parity) — Scene-6 cast color-swap: blind column origin
-**Date:** 2026-07-09 · **Area:** `harness/tools/sprite_convert.py`, scene-6 cast candidates
+## PREVIEW-GATE PASSED (Stage 0) — Scene-6 cast color-swap: blind column origin
+**Date:** 2026-07-09; resolved 2026-07-12 · **Area:** `harness/tools/sprite_convert.py`, scene-6 assets
+
+### RESOLUTION — Stage-0 mass-convert + Jay's authored parity rule + preview hue gate `[2026-07-12]`
+The full scene-6 asset set was converted at correct parity and **Jay's preview hue gate PASSED**
+("they all look good", pending further sandbox verification). Three sub-resolutions:
+- **Combatants (player/guard), the CROSS-parity movers:** parity is an **authored choice** (a mover
+  has no single true column) — Jay's rule: **player = ORANGE-dominant, guard = BLUE-dominant**
+  (guard cels also `--mirror`, STATIC draw-B). Implemented in `stage0_convert_scene6.py` by
+  converting both parities and picking the target-dominant one. This **supersedes** the old
+  "3 CROSS candidates flagged" note below — CROSS parity is resolved by the authored target, not by
+  a single traced column.
+- **Background (Fuji `$A948`/`$A976`/`$A9B8`/`$A9E2`, floor `$AA11`, scroll `$A6/A7/A8` bank):** these
+  are **static-position, single-parity** → parity correct **by construction** from the traced column
+  (`stage0_convert_scene6_bg.py`, columns from the background-inclusive trace `scene6_bg.log`). No
+  target guessing, no mirror.
+- **Existing blind scene-6 player cels:** re-converted in place at correct parity (16 `player_run_*`
+  color-only diffs, `46df721`).
+- Gate artifacts: `build/scene6-stage0-preview/scene6_{player,guard,background}_sheet.png` (167 cels).
+  Converted assets are on-disk **untracked** pending Jay's sandbox verification, then promote to
+  tracked. (`content/scenery/`+`content/floor/` are SCENE-5, not scene-6 — excluded.)
+
+### (original 2026-07-09 report)
+**Area:** `harness/tools/sprite_convert.py`, scene-6 cast candidates
 
 ### Symptom
 Scene-6 cast candidates converted with a **blind/default column origin** (`--start-col 0`
