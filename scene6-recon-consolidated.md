@@ -125,7 +125,8 @@ f6019 reference frame.
 **NOT converted** (`content/` has only fight cels + run legs/torso) → **convert-first**
 (Stage-0-style, no hand-authoring). The `$AA11`/`$AA7D`/`$AA23`/`$AA31`/`$A948`/`$A976`/
 `$A9B8`/`$A9E2` backdrop cels ARE in `content/background/`; `$AA03`/`$AB03` are not.
-Grounding vs the `scene6_climb_*` reference frames = **pending Jay** (AC-6).
+Grounding vs the `scene6_climb_*` reference frames = **Jay-confirmed 2026-07-12**
+("looks correct for now" — provisional; the identified tableau is the Stage-3 target).
 
 ---
 
