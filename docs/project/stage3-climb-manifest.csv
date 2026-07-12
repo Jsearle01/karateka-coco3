@@ -1,0 +1,20 @@
+ptr,hxw,kind,target,flip,mirror,start_col,orange,blue,white,black,dominant,note,dir
+A3C5,17x2,player,orange,False,False,0,19,23,130,100,blue,jay-flip(hue-gate swap-fix),content/player/scene6_climb_A3C5
+A3E9,8x4,player,orange,False,False,0,35,33,67,89,orange,F3:near-half-and-half,content/player/scene6_climb_A3E9
+A40B,8x3,player,orange,True,False,0,14,4,47,127,orange,ok,content/player/scene6_climb_A40B
+A425,17x3,player,orange,False,False,0,40,36,183,149,orange,F3:near-half-and-half,content/player/scene6_climb_A425
+A45A,24x3,player,orange,False,False,0,78,49,171,278,orange,ok,content/player/scene6_climb_A45A
+A4A4,22x2,player,orange,True,False,0,48,26,132,146,orange,ok,content/player/scene6_climb_A4A4
+A4D2,6x5,player,orange,True,False,0,18,5,88,105,orange,ok,content/player/scene6_climb_A4D2
+A4F2,21x4,player,orange,False,False,0,68,104,232,184,blue,jay-flip(hue-gate swap-fix),content/player/scene6_climb_A4F2
+A548,10x4,player,orange,True,False,0,15,6,111,148,orange,ok,content/player/scene6_climb_A548
+A572,22x4,player,orange,False,False,0,73,107,197,239,blue,jay-flip(hue-gate swap-fix),content/player/scene6_climb_A572
+A5CC,7x2,player,orange,False,False,0,16,0,25,71,orange,ok,content/player/scene6_climb_A5CC
+A5DC,36x3,player,orange,True,False,0,76,74,214,500,orange,F3:near-half-and-half,content/player/scene6_climb_A5DC
+AB8E,1x4,scenery,native(col0A),False,False,70,0,9,0,19,blue,native-parity,content/scenery/scene6_cliff_AB8E
+AB94,4x15,scenery,native(col0A),False,False,70,0,0,36,396,tie/none,native-parity,content/scenery/scene6_cliff_AB94
+AB7C,8x2,scenery,native(col0A),False,False,70,5,63,3,57,blue,native-parity,content/scenery/scene6_cliff_AB7C
+AB4A,4x12,scenery,native(col00),False,False,0,0,274,0,62,blue,native-parity,content/scenery/scene6_cliff_AB4A
+AA7D,29x6,scenery,native(col06),False,False,42,299,417,0,560,blue,native-parity,content/scenery/scene6_cliff_AA7D
+AA23,12x1,scenery,native(col0B),False,False,79,0,0,20,76,tie/none,native-parity,content/scenery/scene6_cliff_AA23
+AA31,12x1,scenery,native(col0B),False,False,79,0,35,14,47,blue,native-parity,content/scenery/scene6_cliff_AA31
