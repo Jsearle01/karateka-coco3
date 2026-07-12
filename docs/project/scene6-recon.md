@@ -377,7 +377,7 @@ Tools `harness/tools/h2_zpdiff.lua` / `h2_watch.lua` / `h4_force.lua` / `h5_read
 per-frame from `$7292`. Each claim **[C]** confirmed / **[I]** inferred.
 - **H2 — two count bytes [C]:** **`$B6` = PLAYER count, `$B7` = GUARD count** — two DISTINCT
   adjacent bytes (not one shared), found by ZP-diff (they drop over the fight) + write-watch.
-  **Both start at `$0D` = 13 → EQUAL, even in the demo** (F6 does NOT fire; Jay's "equal in the
+  **Both start at `$0E` = 14 → EQUAL, even in the demo** (F6 does NOT fire; Jay's "equal in the
   first fight" holds). The two regen thresholds mirror them: **`$B8` (player) / `$B9` (guard)**.
 - **H3 — damage [C]:** `$0BC1` (player: `lda $b6; beq; lda #0; sta $5b; dec $b6`) and `$0BD2`
   (guard: `... sta $5c; dec $b7`) — **`dec` the count on a landed hit, floored at 0, and RESET
@@ -399,7 +399,7 @@ per-frame from `$7292`. Each claim **[C]** confirmed / **[I]** inferred.
   the mirror check are NOT cleanly captured** [I] — the `$1903` read-tap didn't fire on the
   arrow-draw `jsr` (the 6502 read-tap subtlety), so guard-right + same-cel-mirrored is a
   **follow-up**; the cel *bitmap* ID is **Jay's visual gate** (AC-H1.3 pending Jay).
-- **Coupling / port:** the port reproduces the rules — two counts (`$B6`/`$B7`) start-equal at 13;
+- **Coupling / port:** the port reproduces the rules — two counts (`$B6`/`$B7`) start-equal at 14;
   damage `dec`-on-hit floored at 0 + resets the regen timer; regen = per-frame timer, reset-on-hit,
   +1 at threshold (`$B8`/`$B9`, set to 255 = off in the demo); count-driven arrow redraw (cel
   `$0B12`, player-left, bottom row).
@@ -520,6 +520,40 @@ deferred to controlled-player.
   in the attract it is a hardcoded constant (14/14); the **per-level sweep is DEFERRED to
   controlled-player** (needs the input harness to load multiple levels). No "progression mapped"
   claim. **F1 fired — a constant is the honest outcome, not a failure.**
+
+## H1 health draw-path remainder + C1 residual-edge disposition `[VERIFIED 2026-07-11]`
+Tools `harness/tools/h1_arrow_bp.lua` / `h1_blink.lua` / `h1_cel_dump.lua`.
+### TRACK H1 — CLOSED
+- **Guard-side arrow draw [C]:** the missed path is **`$0B06`→`$0B7C`** (reads `$B7`, draws `$B7`
+  arrows). It draws the **SAME cel `$0B12`** via **`$1909` = draw-B (h-MIRROR)** at **X=`$26` (RIGHT
+  side)** — vs the player's `$0B35` (`$1903` draw-A, X=`$00` LEFT). So **guard arrows = the same
+  arrow cel, MIRRORED (draw-B), right-side** — the confirmed guard-sprite pattern. (The prior miss
+  was tapping only `$1903`; the guard uses `$1909`.)
+- **Low-health BLINK [C]:** both loops (`$0B35` player / `$0B7C` guard) branch `cmp #$03; bcs
+  normal` — **threshold: count < 3 (≤2)**. Below it: `lda $07; cmp #$20; beq skip-draw` — the
+  arrows are **hidden when `$07`=`$20`, shown when `$07`=`$40`** (a 2-phase toggle). Cadence
+  (forced `$B6`=1): the low-health arrow pass runs ~every 10 VBL and `$07` alternates each pass →
+  **blink period ≈ 20 VBL (~3 Hz, ~10 on / 10 off)**.
+- **Arrow cel [C / Jay-gate]:** `$0B12` = **7 rows × 1 byte** (`81 85 95 D5 95 85 81` — arrowhead);
+  bytes surfaced for Jay's visual gate (cel bitmap ID = Jay's call).
+### TRACK C1 — residual edges dispositioned (force-artifact guarded)
+Each `fight_ai` decision-function branch, dispositioned {**confirmed-real** = natural state
+reaches it / **force-suspect** = fires only when the state is jammed, verify under real input /
+**nonexistent** = dead even forced}:
+
+| Edge | Disposition | Evidence |
+|---|---|---|
+| in-range attack (`$33`∈[7,0B]→D7/C5) | **confirmed-real** | natural fight fires it |
+| out-of-range idle (`$33`≥`$0C`→00) | **confirmed-real** | forced `$33`=0x10 AND natural (guard drifts to `$33`=0B) |
+| `$2F`≠0 suppressed (`$9B`/`$C2`→`$66FE`, guard-win) | **force-suspect** | `$2F` held 0 all natural fires; only forced opens it — the guard-win line, real in real-play LOSING but never in the win-demo |
+| `$5E`==0 disabled-idle | **force-suspect** | `$5E`=1 every natural fire; forcing `$5E`=0 surfaced `$29`=D1 — may be an artifact; verify under real input |
+| `$70`==`$13` special (`$29`=01/`$9B`) | **force-suspect** | `$70` (opponent anim) never `$13` at a natural decision; forcing surfaced FF/01/9B |
+
+- **nonexistent: none** — every forced edge produced a downstream action (no dead branch found).
+- **Remainder NARROWED to the 3 force-suspect edges** (`$2F`-suppressed / `$5E`==0 / `$70`==`$13`)
+  → **verify under real input (controlled-player)**, not eliminated. The 2 confirmed-real edges are
+  the natural fight. **C1 status: dispositioned, remainder narrowed** (not fully closed — honest,
+  as expected for a stateless multi-input function).
 
 ## Scene-6 SOUND triggers — TWO paths; the fight IS voiced `[CORRECTED 2026-07-11]`
 > **CORRECTION (operator ground truth refutes the prior F2):** the block below originally
