@@ -12,12 +12,17 @@
 *   §3 and the bg manifest AGREE (no HS-1 conflict): manifest start_col == the
 *   trace X for each Fuji cel.
 *
-* Per-cel placement (byte col = X>>2, sub-byte = X&3, row = Y):
-*   $A9E2 base  X84  Y108 -> byte 21 sub 0
-*   $A9B8       X105 Y100 -> byte 26 sub 1
-*   $A976       X112 Y92  -> byte 28 sub 0
-*   $A948 peak  X126 Y81  -> byte 31 sub 2   (drawn last = on top, §3 "peak un-occluded")
-*   $AA11 floor X0   Y104 -> tiled across (4 bytes wide), overpaints the lower Fuji (§3)
+* CENTERING (Jay gate): the Apple scene is 280px wide; centered in the 320px GIME
+* field with a 20px black border each side. 20px = exactly 5 bytes, so every X is
+* offset +20px (+5 bytes): CoCo3_X = Apple_X + 20; content region = bytes 5..74
+* (X 20..299); borders = bytes 0..4 (X 0..19) and 75..79 (X 300..319).
+*
+* Per-cel placement (CoCo3 byte col = (Apple_X+20)>>2, sub-byte = (Apple_X+20)&3, row = Y):
+*   $A9E2 base  AppleX84  ->X104 Y108 -> byte 26 sub 0
+*   $A9B8       AppleX105 ->X125 Y100 -> byte 31 sub 1
+*   $A976       AppleX112 ->X132 Y92  -> byte 33 sub 0
+*   $A948 peak  AppleX126 ->X146 Y81  -> byte 36 sub 2   (drawn last = on top, §3)
+*   $AA11 floor tiled across the content region (bytes 5..74), overpaints lower Fuji (§3)
 *
 * Cels are the Stage-0 Jay-hue-gated content/background/ assets — rendered AS-IS,
 * no re-flip (HS-8). SKY = BLUE (index 2), the oracle-faithful $0A00 fill ($11=$AA
@@ -76,6 +81,8 @@ test_start:
         jsr     HAL_sys_init            ; MMU/task, $FF90 CoCo3 mode
         lda     #$00                    ; palette set 0 (0=blk 1=org 2=blu 3=wht)
         jsr     HAL_gfx_init            ; GIME 320x192x4 (mode BEFORE palette, §9)
+        * GIME border left BLACK (default) — the black top/bottom band is the
+        * hardware display border, intentionally not filled. [Jay gate]
 
         lda     #PAGE_A_TOKEN           ; draw target = buffer A ($8000)
         sta     <page_register
@@ -93,31 +100,31 @@ hold:
 *   lower Fuji (§3). blit_subbyte set per cel; A = byte col, B = row.
 * ---------------------------------------------------------------
 draw_fuji_backdrop:
-        * sky fill FIRST: rows 0-103 of buffer A = blue (index 2, byte $AA)
+        * sky fill FIRST: rows 0-103, content region bytes 5-74 (X20-299) = blue
         jsr     fill_sky
-        * base $A9E2  X84  Y108  byte 21 sub 0
+        * base $A9E2  X104 (Apple84+20)  Y108  byte 26 sub 0
         clr     <blit_subbyte
-        lda     #21
+        lda     #26
         ldb     #108
         ldx     #scene6_bg_A9E2
         jsr     HAL_gfx_blit_sprite
-        * $A9B8  X105 Y100  byte 26 sub 1
+        * $A9B8  X125 (Apple105+20)  Y100  byte 31 sub 1
         lda     #1
         sta     <blit_subbyte
-        lda     #26
+        lda     #31
         ldb     #100
         ldx     #scene6_bg_A9B8
         jsr     HAL_gfx_blit_sprite
-        * $A976  X112 Y92  byte 28 sub 0
+        * $A976  X132 (Apple112+20)  Y92  byte 33 sub 0
         clr     <blit_subbyte
-        lda     #28
+        lda     #33
         ldb     #92
         ldx     #scene6_bg_A976
         jsr     HAL_gfx_blit_sprite
-        * peak $A948  X126 Y81  byte 31 sub 2  (last = on top)
+        * peak $A948  X146 (Apple126+20)  Y81  byte 36 sub 2  (last = on top)
         lda     #2
         sta     <blit_subbyte
-        lda     #31
+        lda     #36
         ldb     #81
         ldx     #scene6_bg_A948
         jsr     HAL_gfx_blit_sprite
@@ -125,21 +132,32 @@ draw_fuji_backdrop:
         jsr     draw_floor_line
         rts
 
-* fill_sky — fill buffer A rows 0-103 (above the floor line) with BLUE (index 2).
-*   Each byte $AA = 4 pixels of index 2. 104 rows x 80 bytes = 8320 B = 4160 words.
+* fill_sky — fill the CONTENT region (bytes 5-74 = X20-299, the centered 280px)
+*   of buffer A rows 0-103 with BLUE (index 2, byte $AA). Left/right 20px (bytes
+*   0-4, 75-79) left BLACK = the side borders. Per-row (70 bytes = 35 words/row).
 fill_sky:
-        ldx     #$8000                  ; buffer A top-left
-        ldd     #$AAAA                  ; two blue bytes (index-2 x8 px)
-        ldy     #4160                   ; 104*80/2 words
-fs_loop:
+        ldy     #104                    ; Y = row counter (rows 0-103)
+        ldx     #$8005                  ; row 0, col 5 (X=20px, content left edge)
+fs_row:
+        pshs    x,y                     ; save row start + row counter
+        ldd     #$AAAA                  ; blue (index 2) x8 px
+        ldy     #35                     ; 70 content bytes = 35 words
+fs_byte:
         std     ,x++
         leay    -1,y
-        bne     fs_loop
+        bne     fs_byte
+        puls    x,y                     ; restore
+        leax    80,x                    ; next row start
+        leay    -1,y
+        bne     fs_row
         rts
 
-* draw_floor_line — tile the $AA11 floor cel across the row at Y104.
+* draw_floor_line — tile the $AA11 floor cel (4 bytes wide) across the CONTENT
+*   region at Y104: byte cols 5..69 (X20..292), staying inside the 280px area
+*   (last tile ends at byte 72; 70 not divisible by 4, so ~7px shy of the right
+*   content edge — left as sky rather than spill into the 20px border).
 draw_floor_line:
-        ldb     #0                      ; B = byte col
+        ldb     #5                      ; B = byte col (content left edge)
 fl_tile:
         pshs    b
         clr     <blit_subbyte
@@ -149,7 +167,7 @@ fl_tile:
         jsr     HAL_gfx_blit_sprite
         puls    b
         addb    #4                      ; next tile (AA11 width = 4)
-        cmpb    #80
+        cmpb    #73                     ; stop before the right border (byte 75)
         blo     fl_tile
         rts
 
