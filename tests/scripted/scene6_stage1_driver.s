@@ -98,6 +98,10 @@ hold:
 * draw_fuji_backdrop — Fuji 4-stack (base->peak) then the floor line.
 *   Back-to-front so the peak lands on top (§3); floor last so it overpaints the
 *   lower Fuji (§3). blit_subbyte set per cel; A = byte col, B = row.
+*   Fuji cels blit OPAQUE (Jay gate) — their index-0 (black) detail pixels render
+*   as solid black instead of keying to the sky; safe because the cel PADDING is
+*   $AA (blue index-2), not black, so opaque doesn't box the sprite. Floor stays
+*   transparent.
 * ---------------------------------------------------------------
 draw_fuji_backdrop:
         * sky fill FIRST: rows 0-103, content region bytes 5-74 (X20-299) = blue
@@ -107,27 +111,27 @@ draw_fuji_backdrop:
         lda     #26
         ldb     #108
         ldx     #scene6_bg_A9E2
-        jsr     HAL_gfx_blit_sprite
+        jsr     HAL_gfx_blit_sprite_opaque
         * $A9B8  X125 (Apple105+20)  Y100  byte 31 sub 1
         lda     #1
         sta     <blit_subbyte
         lda     #31
         ldb     #100
         ldx     #scene6_bg_A9B8
-        jsr     HAL_gfx_blit_sprite
+        jsr     HAL_gfx_blit_sprite_opaque
         * $A976  X132 (Apple112+20)  Y92  byte 33 sub 0
         clr     <blit_subbyte
         lda     #33
         ldb     #92
         ldx     #scene6_bg_A976
-        jsr     HAL_gfx_blit_sprite
+        jsr     HAL_gfx_blit_sprite_opaque
         * peak $A948  X146 (Apple126+20)  Y81  byte 36 sub 2  (last = on top)
         lda     #2
         sta     <blit_subbyte
         lda     #36
         ldb     #81
         ldx     #scene6_bg_A948
-        jsr     HAL_gfx_blit_sprite
+        jsr     HAL_gfx_blit_sprite_opaque
         * floor line: tile $AA11 (4 bytes wide) across at Y104
         jsr     draw_floor_line
         rts
