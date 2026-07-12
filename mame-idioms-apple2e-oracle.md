@@ -402,6 +402,37 @@ mame apple2e -rompath <roms> -flop1 dumps/karateka.dsk -snapshot_directory <stag
 
 ---
 
+## 10b. Enumerate a draw program by watching the cel-pointer write — read draws in FILE order
+To recover *what cels a scene draws + where* when you don't know the blit entry, watch the
+**cel-pointer write** rather than a specific dispatch address. On this engine the blit source
+pointer is ZP **`$03/$04`** (`$1A61` copies it to `$1B/$1C`, then `lda ($03),y` reads the
+cel width/height header); position is **`$05`=col, `$06`=row**. A `wpset` on `$04` (hi byte)
+with a `tracelog` of `wpdata`,`$03`,`$05`,`$06`,`pc` dumps the whole draw program:
+```lua
+cpu.debug:wpset(cpu.spaces["program"],"w",0x04,1,nil,
+  'tracelog "cel=%02X%02X col=%02X row=%02X pc=%04X\\n",wpdata,b@0x03,b@0x05,b@0x06,pc; go')
+```
+Three gotchas that each cost a run in the climb-window investigation:
+- **The climb blits through `$1AF1`/`$1A17`/`$B1B6`, NOT the `$1903`–`$190C` fight dispatch.**
+  Tapping only the known fight entry returned ~0 draws (cf. `tap-every-draw-entry-not-just-the-first`).
+  Watching the *pointer* is entry-agnostic — it catches every path.
+- **Watching only the HIGH byte `$04` misses same-page cels** (a `$A3C5→$A3E9` step writes only
+  `$03`). It still enumerates the page structure, but to pin the *first/start* cel, **read the
+  draws in FILE (execution) order** over a window that starts *before* the phase — the first
+  player-bank line is the start pose. (Frame-tagging by poking the frame# into text page `$0400`
+  FAILED here — 0 draws — either perturbing state or all sampled frames were static holds; the
+  reliable move was the wide continuous window + file-order, not per-frame tagging.)
+- **Sparse-redraw scenes trap even sampling.** The climb redraws the whole tableau only at its
+  ~5–6 step transitions and holds statically between; evenly-spaced frame samples (every 9f)
+  land on static holds and capture *nothing*. A single continuous window spanning a transition
+  captures the program; each cel's repeat-count then reads as static-vs-scroll (identical
+  col/row across redraws = static; drifting row = scroll).
+
+*Established:* climb-window investigation 2026-07-12 (climb tableau = `$AB` cliff bank +
+`$AA`/`$A9`, static; start pose `$A3C5` Y158; HUD `$0B12` present player-side).
+
+---
+
 ## 12. Tool index — which harness tool exercises each idiom
 | Idiom | Tool | Knobs |
 |---|---|---|

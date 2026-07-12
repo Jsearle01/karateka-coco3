@@ -96,6 +96,37 @@ Three layers:
 
 - **Bottom seam** deferred to sandbox **[J]**.
 
+### 3a. Climb-start tableau (f6019–6105) — TRACE-CONFIRMED [climb-window investigation 2026-07-12]
+
+The **climb phase has its own scenery bank, distinct from the fight background above.**
+Draws go through blit routines `$1AF1`/`$1A17`/`$B1B6` (NOT the `$1903`–`$190C` fight
+dispatch). All scenery is **STATIC** (redrawn identically at each of ~5–6 step transitions;
+no scroll). **The `$A684` fight midground is ABSENT during the climb** (HS-1: verified — it
+does not appear in the climb draw program). Center scenery (Apple col,row):
+- **Cliff / climbing surface = `$AB` bank:** `$AB8E` **vertically tiled at col `$0A`,
+  rows `$75–$97` (117–151), step 2** = the climbable face; caps `$AB94` (col `$0A`
+  rows `$70`/`$97`); edges `$AB7C` (col `$06` row `$98`, col `$0A` row `$68`); `$AB4A`
+  (col `$00`); `$AB03` (col `$06` row `$98`).
+- **Ground/floor = `$AA` bank:** floor `$AA11` tiled across cols `$00–$12` at row `$68`
+  (104); `$AA7D`/`$AA03`/`$AA23`/`$AA31`/`$AA02` at rows `$98`(152)/`$64`/`$6C`.
+- **Fuji backdrop `$A9` bank** also drawn (`$A948` col`$12` r`$51`, `$A976` col`$10` r`$5C`,
+  `$A9B8` col`$0F` r`$64`, `$A9E2` col`$0C` r`$6C`) — the same fixed backdrop as the fight.
+
+**HUD present during the climb:** the **player-side** health bar (cel `$0B12`, ~14 arrows,
+row `$B9`=185, cols `$00–$12`) IS drawn (via `$0B59`) — the climb tableau **accretes the
+player HUD**. The **guard side is absent** (no cols >`$12`; consistent with pre-fight).
+
+**Player climb-start pose (crawl anchor):** cel **`$A3C5`(+`$A3E9`)** at **row `$9E`=Y158
+(bottom)**, col `$09–0A` — confirms the recon chain `$A3C5–$A649`, start Y158. Ascends
+through `$A400–$A602` toward row ~`$78` (Y120). Drawn just **before** f6019, held at the
+f6019 reference frame.
+
+**Convert status [D4]:** the `$AB` cliff bank and the `$A3xx–$A6xx` climb-pose cels are
+**NOT converted** (`content/` has only fight cels + run legs/torso) → **convert-first**
+(Stage-0-style, no hand-authoring). The `$AA11`/`$AA7D`/`$AA23`/`$AA31`/`$A948`/`$A976`/
+`$A9B8`/`$A9E2` backdrop cels ARE in `content/background/`; `$AA03`/`$AB03` are not.
+Grounding vs the `scene6_climb_*` reference frames = **pending Jay** (AC-6).
+
 ---
 
 ## 4. Action selection — [C]
