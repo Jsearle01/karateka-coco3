@@ -93,13 +93,18 @@ guard 3-part composite re-hits the trim and needs its own table).
   compositing pattern) → **REUSE**.
 
 **draw-B horizontal MIRROR — MISSING (BUILD).** A grep for `mirror|flip|draw-b|reverse|1909|190C`
-across all of `src/` returns nothing (only the buffer-*flip* toggle and unrelated comments). The
-engine leaf is draw-A only (§2). Scene 6's guard uses the oracle **draw-B mirror** (`$1909`) for the
-guard-side health arrows (`$0B7C`) and, if the guard reuses mirrored player combat cels, for
-left-facing combat. **Caveat:** the arrow cel `$0B12` is **palindromic** (`81 85 95 D5 95 85 81`),
-so the *arrows* may need only a mirrored **position**, not a pixel-flip; whether the guard **combat
-cels** are stored pre-mirrored (no primitive needed) or require a true mirror blit is a **sandbox
-question**. Classify draw-B as **BUILD (or confirm-unneeded in the sandbox).**
+across all of `src/` returns nothing. The engine leaf is draw-A only (§2). Scene 6's guard uses the
+oracle **draw-B mirror** (`$1909`) for the guard-side health arrows (`$0B7C`) and combat cels.
+**[CORRECTED 2026-07-12 — see `scene6-drawB-mirror-scope.md`]:** the oracle draw-B is a **genuine
+runtime PIXEL-reversal** (per-byte bit-reversal via the `$0900` pixel_flip table + caller
+X-reflection), confirmed for both guard combat cels (`draw_combatant_mirror`→`$190C`) and guard
+arrows (`$B7`→`$1909`). The earlier "arrow is palindromic ⇒ position-math may suffice" was a
+**misread** — `81 85 95 D5 95 85 81` is *vertically* (row-order) symmetric, NOT horizontally; the
+guard arrow IS pixel-mirrored. **Refined scope:** pixel-reversal is genuinely required for all
+guard-side actors, **but its cheapest correct home is a CONVERTER EXTEND** (`--mirror`: bake the
+pre-mirrored cel at convert time) + engine position-math — **not a runtime HAL primitive** (unless
+the guard flips dynamically mid-scene; sandbox to confirm). Reclassify draw-B: **EXTEND the
+converter** (small), runtime HAL primitive = fallback only.
 
 ---
 
@@ -110,7 +115,7 @@ question**. Classify draw-B as **BUILD (or confirm-unneeded in the sandbox).**
 | Two combatants animating **concurrently** | **New** — engine is single-character; needs the per-character struct-array scale-up (l37-38) |
 | Guard **3-part composite** (per-frame X-offset case) | Method reused (§3/§4 `_masked`); **new per-actor align data + cels** |
 | Specific **combat cels** (110-cel action space) | **New** — no scene-6 sprite-data in `src/engine` (only princess `fig_*`) |
-| Health-arrow draw path (`$0B35`/`$1903` player + `$0B7C`/`$1909` guard-mirror) | **New code**; draw-B mirror (§4) — position-mirror may suffice (palindromic cel) |
+| Health-arrow draw path (`$0B35`/`$1903` player + `$0B7C`/`$1909` guard-mirror) | **New code**; guard arrow IS pixel-mirrored (draw-B, §4 corrected) — via converter `--mirror`, not position-only |
 | **Event-driven** timing ($20 per-tick advance) | **New** — engine sequencer is cadence-cycle only; event timing is the combat layer (INT-3) |
 | **Referee-mediated mechanics** (hit detection, round manager, distance) | **New** — explicitly INT-3, "NOT here" (`sprite_engine.s:6-8`) |
 
@@ -126,7 +131,7 @@ question**. Classify draw-B as **BUILD (or confirm-unneeded in the sandbox).**
 | HAL blit surface (transparent/opaque/masked/mixed/stencil) | **REUSE** | `gfx.s:441,448,734,824,888` — guard 3-part via `_masked`/`_mixed` |
 | Converter color/parity mechanism | **REUSE** | `sprite_convert.py:175-188,279-299`; known-issues "RESOLVED (converter)" |
 | Per-sprite parity **data** (the OPEN defect) | **BUILD (data)** | known-issues l7 "OPEN per-candidate parity"; trace each actor's `$05`/`$10`, re-convert — not a code change |
-| draw-B horizontal **mirror** primitive | **BUILD** (or confirm-unneeded) | no mirror/draw-B anywhere in `src/`; leaf is draw-A only; arrow cel palindromic (position-mirror may suffice) |
+| draw-B horizontal **mirror** (guard-side pixel-reversal) | **EXTEND converter** (`--mirror`); runtime HAL primitive = fallback | oracle draw-B = runtime bit-reversal via `$0900` pixel_flip table (`hires_rows.s:18-21`); bake pre-mirror at convert time (offline pipeline). See `scene6-drawB-mirror-scope.md` |
 | Multi-character state (2 combatants) | **EXTEND** | `sprite_engine.s:37-38` "scales to a per-character struct array" |
 | Scene-6 cel **data** (guard 3-part, combat cels, arrows) | **BUILD** | no scene-6 sprite-data in `src/engine` (only princess `fig_*`) |
 | Health-arrow draw path | **BUILD** | count-driven redraw-N; new code + data |
@@ -135,8 +140,10 @@ question**. Classify draw-B as **BUILD (or confirm-unneeded in the sandbox).**
 
 **Net:** the **shared engine + HAL + converter are REUSE-ready**; the real build is (a) the **combat
 layer** (INT-3: two-combatant interaction, referee, event timing — new), (b) **scene-6 cel data**
-(convert + per-actor align + per-sprite traced parity), and (c) **one HAL primitive gap** (draw-B
-mirror — or confirm the guard cels are stored pre-mirrored). No believed capability was found
+(convert + per-actor align + per-sprite traced parity), and (c) the **guard-side mirror** — a
+**converter EXTEND** (`--mirror` bake at convert time), NOT a runtime HAL primitive (draw-B is a
+runtime pixel-reversal in the oracle, but the offline pipeline can bake it; see
+`scene6-drawB-mirror-scope.md`). No believed capability was found
 missing; both believed capabilities EXIST but are **narrower than "covers scene 6"** in a
 data-shaped way (converter parity needs per-sprite render columns; the X-offset method needs
 per-actor align data).
