@@ -515,6 +515,12 @@ Sourced to specific scene-5/6 + Q010 passes; **all already pushed to
 - **NEW (not yet a candidate):** `identify-a-scene-by-draw-program-content-not-frame-number`
   (§10c — frame #s are boot-relative; anchor captures to bank signatures + `$06` climb-Y +
   `cel=1C`-absent proof, never to a frame label reused from a sibling boot).
+- **NEW (not yet a candidate):** `separate-shared-bank-scenes-by-clean-per-beat-drawprogram-positions`
+  (Stage-3 re-scope 2026-07-13: climb/fight/princess share `$A4/$AA/$AB/$8A` banks, so bank-signature
+  can't tell them apart — but a CLEAN per-beat draw-program trace with cel POSITIONS + discriminator
+  cels does. Climb beat = `$A4/$A5` poses at col 0A low + `$AB8E` cliff + player HUD, and NO `$A684`
+  fight-midground; the `$A684` presence/absence is the climb-vs-fight discriminator. A blanket
+  "these cels are fight" over-generalizes; trace the beat. See `docs/project/climb-beat-composition-map.md`).
 - **NEW (not yet a candidate):** `run-from-verify-an-entry-by-cold-setting-pc-from-a-stable-loop-point`
   (scene-sequencer audit 2026-07-13: to prove a claimed scene entry address, `cpu.state["PC"].value=
   0xADDR` in a frame-notifier + verify the readback + content-verify the scene boots. **Arm at a
