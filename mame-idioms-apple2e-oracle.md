@@ -515,6 +515,13 @@ Sourced to specific scene-5/6 + Q010 passes; **all already pushed to
 - **NEW (not yet a candidate):** `identify-a-scene-by-draw-program-content-not-frame-number`
   (§10c — frame #s are boot-relative; anchor captures to bank signatures + `$06` climb-Y +
   `cel=1C`-absent proof, never to a frame label reused from a sibling boot).
+- **NEW (not yet a candidate):** `run-from-verify-an-entry-by-cold-setting-pc-from-a-stable-loop-point`
+  (scene-sequencer audit 2026-07-13: to prove a claimed scene entry address, `cpu.state["PC"].value=
+  0xADDR` in a frame-notifier + verify the readback + content-verify the scene boots. **Arm at a
+  STABLE post-boot-load loop point — NOT mid boot/disk-protection (`$03xx`), which diverts to
+  `$0301 brk`** instead of executing the target. A failed cold-jump = wrong injection-point/entry-state
+  OR wrong address; vary the injection point before concluding wrong-address. Confirmed `$B400`=scene-5:
+  cold PC:=$B400 from f2500 → `$1CC4` princess draws. See `docs/project/attract-scene-sequencer-map.md`).
 - **NEW (not yet a candidate):** `classify-prior-findings-by-run-mode-then-clean-re-verify`
   (contamination audit 2026-07-13: a capture-mechanism defect partitions by run-mode — headless
   `-video none` traces/dumps are CLEAN, old windowed snapshots are CONTAMINATED. Don't assume
