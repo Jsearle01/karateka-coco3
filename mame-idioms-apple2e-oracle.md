@@ -515,6 +515,12 @@ Sourced to specific scene-5/6 + Q010 passes; **all already pushed to
 - **NEW (not yet a candidate):** `identify-a-scene-by-draw-program-content-not-frame-number`
   (§10c — frame #s are boot-relative; anchor captures to bank signatures + `$06` climb-Y +
   `cel=1C`-absent proof, never to a frame label reused from a sibling boot).
+- **NEW (not yet a candidate):** `classify-prior-findings-by-run-mode-then-clean-re-verify`
+  (contamination audit 2026-07-13: a capture-mechanism defect partitions by run-mode — headless
+  `-video none` traces/dumps are CLEAN, old windowed snapshots are CONTAMINATED. Don't assume
+  contaminated⇒invalid: clean-re-run and check the finding reproduces in the ATTRACT. Tells:
+  `$59`=00 through the deterministic pre-fight = clean; code-derived geometry is run-mode-invariant.
+  See `docs/project/contamination-footprint-ledger.md`).
 - **NEW (not yet a candidate):** `mame-frame-notifier-return-must-be-referenced-or-gcd`
   (the `_G._n=` gotcha, §2) · `mame-debugger-printf-not-captured-headless-use-tracelog`
   (§4e) · `mame-bp-action-tracelog-is-brace-free-trace-action-is-braced` (§4e).
