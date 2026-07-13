@@ -433,6 +433,33 @@ Three gotchas that each cost a run in the climb-window investigation:
 
 ---
 
+## 10c. Identify a scene by draw-program CONTENT, never by frame number (frame #s are boot-relative)
+Frame numbers are **not comparable across runs** — the attract phase that lands at frame N
+shifts run-to-run (disk/boot timing offsets the whole timeline). A prior capture set named
+`scene6_climb_00_f6019` turned out to be **scene-5 (princess in cell)**: in that boot f6019
+fell inside scene-5; in a fresh boot f6019 is the climb bottom-start. **Anchor every capture
+to what the draw program draws, not to a frame label.** Mechanism:
+- **Per-scene bank signatures.** Sweep a wide window with a **frame-tagged write-tap** on `$04`
+  (idiom §10b + the tap-GC rule) whose Lua callback reads `scr:frame_number()` and buckets the
+  first/last frame each cel *bank* appears. Distinct scenes = distinct banks:
+  scene-5 princess = `$1CC4` shadow + `$1Dxx` figure; scene-6 climb = `$A3–$A6` pose + `$AB`
+  cliff + `$AA` scenery. The boundary is where one bank set stops and the next starts (here:
+  princess ends ~f5653, climb pose `$A3C5` starts f6018, with a `$96/$99` transition between).
+- **Content-verify each snapshot, not its frame #.** A frame is the climb bottom-start iff its
+  window draws `$A3C5`+`$AB` with the player low (`$06`=Y158) and **no** `$1Cxx` princess cel.
+  `grep -c 'cel=1C'` over the capture window = 0 is the scene-5-excluded proof.
+- **Find a phase's start/hold via a per-frame ZP read in the notifier.** The player climb-Y is
+  ZP `$06`; reading it each frame shows it settle+hold at 158 (bottom-start held f6019–6058)
+  then decrement as the crawl ascends — pins the "lowest/first" frame without pixel reads.
+- **Name captures by content, keep the frame only as provenance.** `scene6_climbstart_00_bottom_Y158_f6030`
+  — the tag is the verified content; `f6030` is a boot-local provenance stamp, not an anchor.
+  Never reuse a sibling boot's frame label to name a new boot's capture.
+
+*Established:* scene-6 climb re-capture 2026-07-13 (content-anchored; prior `scene6_climb_*`
+f6019-set flagged as scene-5, replaced by the content-verified `scene6_climbstart_*` set).
+
+---
+
 ## 12. Tool index — which harness tool exercises each idiom
 | Idiom | Tool | Knobs |
 |---|---|---|
@@ -464,6 +491,9 @@ Sourced to specific scene-5/6 + Q010 passes; **all already pushed to
   · `automated-check-tautology-validate-against-ground-truth-not-rule-predictions`
 - `anchor-oracle-reference-captures-to-seed-deterministic-frames-and-self-verify-with-the-draw-ptr`
   (§10a — frame-anchored `screen:snapshot()`, seed/ptr self-verified reference set)
+- **NEW (not yet a candidate):** `identify-a-scene-by-draw-program-content-not-frame-number`
+  (§10c — frame #s are boot-relative; anchor captures to bank signatures + `$06` climb-Y +
+  `cel=1C`-absent proof, never to a frame label reused from a sibling boot).
 - **NEW (not yet a candidate):** `mame-frame-notifier-return-must-be-referenced-or-gcd`
   (the `_G._n=` gotcha, §2) · `mame-debugger-printf-not-captured-headless-use-tracelog`
   (§4e) · `mame-bp-action-tracelog-is-brace-free-trace-action-is-braced` (§4e).
