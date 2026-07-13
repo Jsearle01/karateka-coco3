@@ -349,8 +349,15 @@ Wave 1 (commit `0b5825b`).
 Building a **visual reference set** from the running oracle (to gate the port's later stages, the
 role snap 0083 played for the logo):
 - **Apple II AUTO-BOOTS the disk** — unlike coco3 (which needs `natkeyboard:post` LOADM/EXEC, coco3
-  file §1/§2), `mame apple2e -flop1 karateka.dsk` boots straight into the game and plays the attract.
+  file §1/§2), `mame apple2e -flop1 karateka.dsk` boots straight in and plays the ATTRACT.
   No input driving needed; just run and capture at frames.
+- **⚠ ZERO KEYBOARD INPUT — a focused `-window` run LEAKS host keys into the emulation (2026-07-13).**
+  `apple2e.cfg` has the natural keyboard enabled; ANY keystroke after intro-start makes Karateka
+  **disk-load into the ACTUAL GAME** (not the attract). A windowed snapshot run therefore silently
+  jumps to real gameplay while a **headless (`-video none`) run stays in the attract** — same frames,
+  different scene (verified: f5670–5990 = fight windowed / climb headless). **Capture snapshots
+  headless** (`-video none` + `screen:snapshot()`, which reads the screen-device bitmap without a
+  window) or disable the natural keyboard. This bug mislabeled the entire scene-6 "climb" set below.
 - **Capture mechanism:** a frame-notifier + `manager.machine.screens:at(1):snapshot()` fired at the
   target frames. Snapshots write to **`<-snapshot_directory>/<system-shortname>/NNNN.png`** (MAME
   appends the system dir, e.g. `_raw/apple2e/0000.png`, auto-incrementing in capture order) — so set
@@ -362,10 +369,13 @@ role snap 0083 played for the logo):
 - **Anchor to SEED-DETERMINISTIC frames from the recon timeline, not wall-clock** (attract is
   seed-non-deterministic run-to-run, §3; the pre-fight intro is deterministic so its frame markers
   are stable). **Log the frame + `$59` (LCG seed) + the `$03/$04` draw-ptr at each shot** → the set
-  is reproducible AND **self-verifying without reading the PNGs**: the ptr confirms the beat (scene-6:
-  climb shots showed climb cels `$A3E9`/`$A4F2` of the `$A3C5–$A649` chain; fight shots showed combat
-  cel `$838C` with `$59` now ACTIVE B9/AF vs `$59`=00 through the deterministic pre-fight). PNG
+  is reproducible AND **self-verifying without reading the PNGs**: the ptr confirms the beat. PNG
   *fidelity* stays Jay's visual gate (§10); the log establishes *which beat* each frame is.
+  **⚠ CORRECTION (2026-07-13):** the earlier claim that `$A3E9`/`$A4F2`/`$A3C5–$A649` are "climb"
+  cels was WRONG — those (and `$838C`, `$59` ACTIVE) are the **actual-game FIGHT**, reached only
+  because the windowed capture leaked a key (see the ZERO-KEYBOARD note above). The real attract
+  **climb** = player-crawl poses in the **`$12`–`$18` banks** over the **`$96`–`$9A` cliff**, drawn
+  right after the princess falls (scene-5 `$1CC4` shadow ends), captured HEADLESS.
 - **NB `.dsk` vs `.woz`:** the repo oracle disk is `dumps/karateka.dsk` (what all traces use); if a
   dispatch names `Karateka.woz`, use the repo disk and flag it.
 
@@ -385,9 +395,12 @@ mame apple2e -rompath <roms> -flop1 <disk> -nothrottle -video none -sound none \
 mame apple2e ... -debug -script tools/<lua>.lua        # lua sets execution_state="run"
 # Operator live-watch (Jay's gate): -speed 8 -prescale 3 -resolution 1920x1152 -window -nomax
 #   (viewing-only; does not touch cadence. -nothrottle for max host speed.)
-# Reference-frame capture (§10a): auto-boots; snapshot at frame-boundary target frames:
+# Reference-frame capture (§10a): auto-boots; snapshot at frame-boundary target frames.
+#   ⚠ HEADLESS ONLY — `-video none`, NO `-window`. A focused window leaks host keys → the disk
+#   loads the ACTUAL GAME and the "attract" capture is silently wrong (§10a ZERO-KEYBOARD note).
+#   screen:snapshot() reads the screen-device bitmap without a window, so it still writes PNGs.
 mame apple2e -rompath <roms> -flop1 dumps/karateka.dsk -snapshot_directory <stage>/_raw \
-     -nothrottle -seconds_to_run <N> -window -nomax -script tools/scene6_oracle_capture.lua
+     -nothrottle -video none -sound none -seconds_to_run <N> -script tools/scene6_oracle_capture.lua
 #   -> writes <stage>/_raw/apple2e/NNNN.png (rename after); log frame+$59+ptr per shot.
 ```
 - **Windows-path-in-Lua gotcha:** `"C:\k…"` is an **invalid Lua escape** — a bad path
@@ -455,8 +468,12 @@ to what the draw program draws, not to a frame label.** Mechanism:
   — the tag is the verified content; `f6030` is a boot-local provenance stamp, not an anchor.
   Never reuse a sibling boot's frame label to name a new boot's capture.
 
-*Established:* scene-6 climb re-capture 2026-07-13 (content-anchored; prior `scene6_climb_*`
-f6019-set flagged as scene-5, replaced by the content-verified `scene6_climbstart_*` set).
+*Established:* scene-6 climb re-capture 2026-07-13. Content-anchoring alone was necessary but
+NOT sufficient — the deeper defect was a key-leak that put the emulator in a different SCENE
+(see §10a ZERO-KEYBOARD): the `$A3C5`/`$AB` "climb" was the actual-game fight. Real attract
+climb = `$12`–`$18` crawl poses over the `$96`–`$9A` cliff, right after the princess falls;
+capture HEADLESS. Anchor to bank signatures + a headless/zero-input run, never a frame label
+carried from a windowed (possibly game-not-attract) boot.
 
 ---
 
