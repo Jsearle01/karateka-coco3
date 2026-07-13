@@ -374,8 +374,11 @@ role snap 0083 played for the logo):
   **⚠ CORRECTION (2026-07-13):** the earlier claim that `$A3E9`/`$A4F2`/`$A3C5–$A649` are "climb"
   cels was WRONG — those (and `$838C`, `$59` ACTIVE) are the **actual-game FIGHT**, reached only
   because the windowed capture leaked a key (see the ZERO-KEYBOARD note above). The real attract
-  **climb** = player-crawl poses in the **`$12`–`$18` banks** over the **`$96`–`$9A` cliff**, drawn
-  right after the princess falls (scene-5 `$1CC4` shadow ends), captured HEADLESS.
+  **climb** (Jay visual gate on clean keyboard-off captures) = the hero crawling up then holding
+  on the **`$8ACB` figure at row y124** over `$AA`/`$AB` cliff scenery, my-boot ~f6068–6408 —
+  AFTER a princess-fall (`$96`/`$99`, still scene-5) and an `$A3E9`/`$A4CC` transition. **Climb
+  and fight SHARE banks (`$A4`/`$AA`/`$AB`/`$8Axx`); bank signatures do NOT separate them — only
+  the visual gate on a CLEAN (keyboard-off) capture does.**
 - **NB `.dsk` vs `.woz`:** the repo oracle disk is `dumps/karateka.dsk` (what all traces use); if a
   dispatch names `Karateka.woz`, use the repo disk and flag it.
 
@@ -470,10 +473,11 @@ to what the draw program draws, not to a frame label.** Mechanism:
 
 *Established:* scene-6 climb re-capture 2026-07-13. Content-anchoring alone was necessary but
 NOT sufficient — the deeper defect was a key-leak that put the emulator in a different SCENE
-(see §10a ZERO-KEYBOARD): the `$A3C5`/`$AB` "climb" was the actual-game fight. Real attract
-climb = `$12`–`$18` crawl poses over the `$96`–`$9A` cliff, right after the princess falls;
-capture HEADLESS. Anchor to bank signatures + a headless/zero-input run, never a frame label
-carried from a windowed (possibly game-not-attract) boot.
+(see §10a ZERO-KEYBOARD): the windowed `$A3C5`/`$AB` "climb" was the actual-game fight. In the
+CLEAN keyboard-off attract the real climb is a distinct SCENE Jay identified visually (hero
+crawling then holding on `$8ACB` y124, my-boot ~f6068+) — and it SHARES banks with the fight and
+the princess-fall, so bank signatures cannot separate them. Capture keyboard-off + gate visually;
+never anchor a scene to bank signature alone or to a frame label from a windowed boot.
 
 ---
 
