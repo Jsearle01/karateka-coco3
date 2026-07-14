@@ -261,6 +261,22 @@ prove the structural goal (no duplicated routines remain). Dump via the same DEC
 scene-6 backdrop shared-include refactor (commit `7bfb24c`; both drivers pixel-identical pre/post).
 Tool: `harness/tools/*` DECB-load pattern + a Frame-A dump.
 
+### 11b. Render PNGs at NATIVE 1:1 square pixels — MAME `screen:snapshot()` STRETCHES
+For oracle-vs-port **by-eye** matching, a MAME `screen:snapshot()` is NOT square-pixel: **apple2e
+snaps are 560×192** — each logical HGR dot is rendered as **2 horizontal pixels** (280 logical → 560;
+~97% of even-column pairs are identical, differing only at NTSC colour fringes), so at 1:1 the image
+is ~2.9:1, badly horizontally stretched vs the real ~4:3 display. Precise visual matching is
+impossible against a stretched render. **Fix (standing):** emit native-resolution 1:1 square-pixel
+PNGs — **apple2e: halve the 560 width → 280×192** (NEAREST, keep the left of each pair; box-resize
+blends the fringe); **coco3: decode the raw `$8000-$BBFF` framebuffer (2bpp MSB-first, 80 B/row) →
+320×192** directly (already square, no MAME snapshot involved). Optionally **uniform integer upscale**
+(×N NEAREST) for visibility — never fractional. Pixel-aspect is 1:1 **logical** (not 4:3 hardware-
+corrected); use the SAME convention for both targets so an apple2e px X lines up with coco3 px X+20
+(the port's +20 centering of 280-in-320). *Candidate:*
+`render-native-square-pixel-pngs-mame-snapshot-stretches-apple2e-560-is-280-doubled`. *Established:*
+wall-top reference capture 2026-07-14 (commit TBD). Tool: `harness/tools/render_square.py`
+(`--apple2e <560png>` / `--coco3 <15360 dump>` / `--scale N`); pairs with `fbdump_stage.lua`.
+
 ---
 
 ## 12. Quick command idioms (coco3)
