@@ -13,16 +13,25 @@ attract scene-renderer code (`attract_dispatch.s`) — the actual draw program, 
 - **The `$96/$99` cels (`9600/964A/96CE`) are FLOOR cels (scene-5)** — converted in
   `content/floor/`, appear in the princess-fall, NOT the climb wall-top.
 
-## The REAL wall-top (post + runners) — MASKED-BLIT
+## The REAL wall-top (post + runners) — MASKED-BLIT  [range + registration CORRECTED 2026-07-14]
 | Property | Value (execution-confirmed) |
 |---|---|
-| Cels | **`$AA27`–`$AA30`** (10-cel run) |
-| Render mechanism | **masked-blit `$1BF4`** (SMC blend + `$0900` screen-address/shift table) |
-| Sub-byte shift | **5** (`$10`=5 — Apple 7px/byte; needs 7→4px conversion for CoCo3) |
-| Position | row **100** (`$64`), two X instances at cols **`$17`(23)** and **`$23`(35)** |
-| Convert status | **ALL 10 UNCONVERTED** (`content/` has none of `$AA27–$AA30`) |
-This is why coordinate-placement failed ~20×: the wall-top is a **masked, sub-byte-shifted blit**,
-not a cel placed at `$05` — and `$05` is the scroll-relative compute, not the render column.
+| Cels | **`$AA25`–`$AA30`** (12-cel run — reconciled; the earlier `$AA27–$AA30` missed AA25/AA26 in a narrow window) |
+| Render mechanism | **masked-blit `$1BF4`** (SMC AND-mask blend + `$0900` screen-address/shift table) |
+| Sub-byte shift | **5** (`$10`=5, Apple 7px/byte) |
+| Position | **TWO posts at Apple byte-offsets 23 & 35** (12 bytes apart); `$05`-compute=23/35, **`$06`=100** |
+| HGR-VERIFIED render row | **Apple row 104** (masked-blit `($00),Y` pointer decoded — NOT `$05`/`$06` directly) |
+| CoCo3 placement | Apple byte 23 → `px=23*7+5+20=186` → **byte 46, sub 2**; byte 35 → `px=270` → **byte 67, sub 2**; row 104 |
+| Convert status | **ALL 12 UNCONVERTED** (`content/` has none of `$AA25–$AA30`) |
+Coordinate-placement failed ~20× because `$05`(=23/35) is the SCROLL-RELATIVE compute, not the
+render column — the true position comes from the masked-blit's `($00),Y` HGR pointer (row 104).
+
+## PRIMITIVE-GAP RESOLVED (2026-07-14): the existing HAL blit suffices — NO new primitive
+`HAL_gfx_blit_sprite` already does **mask+data transparency blend + sub-byte shift 0–3** (gfx.s
+§P2.4.1). The oracle masked-blit `$1BF4` is an AND-mask+OR-data blend = the same operation; the
+Apple shift-5 folds into the CoCo3 byte+sub-byte via `px = col*7 + shift + 20` (sub-byte 0–3). So
+the runner builds with the EXISTING blit (a transparent cel at byte 46/67, sub 2, row 104) — the
+earlier "masked-blit primitive-gap" was over-cautious. Only convert-first is required.
 
 ## The rest of the climb scenery (for completeness)
 - **Cliff face** (standard blit `$1903`): `$AB8E` stacked at col `$0A`, rows 117–151 (`$75–$97`,
