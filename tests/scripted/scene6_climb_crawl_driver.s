@@ -54,13 +54,16 @@ test_start:
         sta     <page_register
         andcc   #$EF                    ; enable IRQ (VBL frame sync)
 
-        * --- static substrate -> buffer A ---
-        jsr     fill_sky
-        jsr     draw_fuji_cels
-        jsr     draw_floor_line
-        jsr     draw_climb_scenery_back
-        jsr     draw_climb_scenery
-        jsr     draw_hud_player
+        * --- static substrate -> buffer A (mirrors the Jay-gated scene6_stage3 tableau) ---
+        jsr     fill_sky                ; sky rows 0-103
+        jsr     fill_walltop            ; wall-top sky band rows 104-116
+        jsr     draw_climb_scenery_back ; posts BEHIND the Fuji
+        jsr     draw_fuji_cels          ; Fuji cels
+        jsr     draw_climb_ledge        ; AA11 ledge
+        jsr     draw_climb_striations   ; blue cliff-face lines
+        jsr     draw_climb_scenery      ; posts + rails + AA7D base
+        jsr     draw_climb_ground_right ; ground lines right of the base
+        jsr     draw_hud_player         ; player-side arrow HUD
 
         * --- mirror buffer A -> buffer B (both carry the substrate) ---
         jsr     copy_a_to_b
@@ -82,6 +85,69 @@ cab_l:
         std     ,y++
         cmpx    #$BC00
         blo     cab_l
+        rts
+
+* --- climb cliff-face detail (mirrors scene6_stage3_driver.s, Jay-gated 2026-07-12):
+*     hand fills direct to buffer-A logical base $8000, drawn as part of the static
+*     substrate so the clean-restore behind the crawler carries them. ---
+draw_climb_striations:
+        ldb     #117                    ; BLUE odd rows 117..179, bytes 5..24 (cliff face)
+dcst_cf:
+        pshs    b
+        tfr     b,a
+        ldb     #80
+        mul
+        addd    #$8005
+        tfr     d,x
+        ldd     #$AAAA                  ; blue (index 2)
+        ldy     #10                     ; bytes 5..24 (cliff-face width)
+dcst_cff:
+        std     ,x++
+        leay    -1,y
+        bne     dcst_cff
+        puls    b
+        addb    #2
+        cmpb    #180
+        blo     dcst_cf
+        rts
+
+draw_climb_ground_right:
+        ldb     #153                    ; BLUE odd ground rows 153..179, bytes 25..74
+dcgr_b:
+        pshs    b
+        tfr     b,a
+        ldb     #80
+        mul
+        addd    #$8019                  ; byte 25
+        tfr     d,x
+        ldd     #$AAAA                  ; blue (index 2)
+        ldy     #25                     ; bytes 25..74
+dcgr_bf:
+        std     ,x++
+        leay    -1,y
+        bne     dcgr_bf
+        puls    b
+        addb    #2
+        cmpb    #180
+        blo     dcgr_b
+        ldb     #152                    ; ORANGE even ground rows 152..180
+dcgr_o:
+        pshs    b
+        tfr     b,a
+        ldb     #80
+        mul
+        addd    #$8019                  ; byte 25
+        tfr     d,x
+        ldd     #$5555                  ; orange (index 1)
+        ldy     #25                     ; bytes 25..74
+dcgr_of:
+        std     ,x++
+        leay    -1,y
+        bne     dcgr_of
+        puls    b
+        addb    #2
+        cmpb    #182
+        blo     dcgr_o
         rts
 
 * --- REAL engine controller + HAL + shared substrate modules (single source) ---
