@@ -562,6 +562,26 @@ wall-top is `$AA27–$AA30` via masked-blit at sub-byte shift 5. *Established:* 
 
 ---
 
+## A blit's source pointer WALKS the cel data — consecutive `$03` values are ROWS, not cels
+When you trace a blit by its source pointer (`$03`/`$04`), the pointer **increments through the
+cel's row data as it renders** — so a masked-blit reading a 12-row×1-byte cel logs `$03` =
+`$AA25,$AA26,…,$AA30` (12 *consecutive* addresses, one per row). Read naively, that looks like
+**"12 separate cels `$AA25–$AA30`"** — a PHANTOM. It is actually the **12 data bytes of ONE cel**
+whose 2-byte header sits just below (`$AA23` = `0C 01` → h=12,w=1; data `$AA25`–`$AA30`). The tells:
+- **Consecutive one-apart addresses** (`$AA25,26,27…`) are almost never distinct cels — cels are
+  header+data blocks, not 1 byte apart. Distinct cels come from a *table* of pointers, not a walk.
+- **`extract_cel(base)` returns garbage dims** (176×176) when `base` is mid-data, not a header.
+  A real cel header gives small sane h/w. **Decode the header at the candidate base before believing
+  a "cel range."** (`$AA25` gave 176×176 → not a header → `$AA25` is data, so back up to `$AA23`.)
+- The write-pointer rows still decode correctly (rows 100–111 here) — they're just **the rows of
+  one cel**, not one row each of twelve cels. Anchor = the cel's top row + its header dims.
+This dissolved the entire "wall-top runner `$AA25–$AA30`" sub-arc: the wall-top is cels `$AA23` +
+`$AA31` (already converted), masked at bytes 23 & 35, rows 100–111 — and the earlier "`$AA23`/`$AA31`
+are spurious off-screen combatants" was a *second* draw-path confusion (shared-bank cel drawn both
+off-screen as a combatant AND on-screen as the wall-top). *Established:* wall-top row/identity
+reconcile 2026-07-13. See `docs/project/walltop-render-map.md`. Candidate:
+`a-blit-source-pointer-walks-cel-data-consecutive-addresses-are-rows-not-cels`.
+
 ## Enumerate the WHOLE setup window, not the one element you came for
 When a static scene is wrong, don't trace only the suspect element — trace every render routine
 from the beat's setup up to the FIRST character sprite (the animation boundary), enumerate the

@@ -1,5 +1,18 @@
 # Climb-beat static setup inventory — clean, execution-confirmed (2026-07-14)
 
+> ## ⚠⚠ SUPERSEDED IN PART (2026-07-13) — see `walltop-render-map.md`
+> Two claims below are **INVERTED** by write-pointer + raw-dump evidence:
+> - **"MISSING wall-top runner `$AA25–$AA30` (12 cels)"** — PHANTOM. `$AA25–$AA30` are the 12
+>   **data rows of cel `$AA23`** (header `0C 01` = 12×1 post); `$AA33–$AA3E` are `$AA31`'s data.
+>   No 12-cel run exists; nothing to convert.
+> - **"REMOVE the spurious `$AA23`/`$AA31` posts (off-screen combatants)"** — WRONG. The masked-
+>   blit draws `$AA23` **and** `$AA31` **ON-SCREEN** at Apple bytes 23 & 35, rows 100–111, shift 5:
+>   they ARE the wall-top runner. The off-screen-combatant reading saw a different draw path.
+> **Actual wall-top delta (port vs oracle):** (1) drop the port's extra **col-11** post (keep 23 & 35);
+> (2) apply **sub-byte shift 5 → CoCo3 sub 2** (bytes 46 & 67) instead of byte-aligning; (3) masked
+> (`HAL_gfx_blit_sprite`) vs the port's opaque — no new primitive. The rows below stand except these.
+
+
 **Type:** READ-ONLY identification. **Recipe:** CLEAN `-video none -keyboardprovider none`.
 **Prod ROM:** `88eba89b15cdf17c8d25e082d2d3e1f3cce57d38` untouched. Frames my-boot (provenance).
 **Method:** bp every render routine (`$1903` std / `$190C` mirror / `$1BF4` masked / `$0A09`

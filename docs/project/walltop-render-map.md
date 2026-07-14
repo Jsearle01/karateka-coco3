@@ -5,33 +5,42 @@
 **Method:** bp the oracle render routines during the clean climb (f6068–6120) + read the
 attract scene-renderer code (`attract_dispatch.s`) — the actual draw program, not labels.
 
-## ⚠ PRIOR IDENTIFICATION CORRECTED (the arc's root error)
-- **`$AA23`/`$AA31` are NOT the wall-top posts — they are the fight COMBATANTS.** In the oracle
-  (`attract_dispatch.s`), `draw_combatant_ad56` draws combatant A = `sprite_AA23` (pos `$51/$50`),
-  `draw_combatant_ad75` draws combatant B = `sprite_AA31` (pos `$AC/$AE`), dirty-flag cached,
-  174×/cycle. During the CLEAN climb they fire but at **x=`$FE` (OFF-SCREEN)** — not visible.
-- **The `$96/$99` cels (`9600/964A/96CE`) are FLOOR cels (scene-5)** — converted in
-  `content/floor/`, appear in the princess-fall, NOT the climb wall-top.
+## ⚠⚠ THE "$AA25–$AA30 RUNNER" IS A PHANTOM — it is cel `$AA23`'s DATA (RESOLVED 2026-07-13)
+The raw dump settles the whole arc. `$AA23` header = `0C 01` → **h=12, w=1** (a 1-byte-wide ×
+12-row vertical post); its 12 data bytes live at **`$AA25`–`$AA30`**. Likewise `$AA31` header =
+`0C 01`, data **`$AA33`–`$AA3E`**. The write-pointer trace that read "cel = `$AA25`…`$AA30`" was
+capturing the masked-blit's **source pointer `$03` walking `$AA23`'s 12 row-bytes** (one byte per
+row → rows 100–111) — **NOT 12 separate cels.** There are **no cels to convert**; `$AA23` and
+`$AA31` are **already converted** (`content/scenery/scene6_cliff_{AA23,AA31}`).
 
-## The REAL wall-top (post + runners) — MASKED-BLIT  [range + registration CORRECTED 2026-07-14]
+## ⚠⚠ AND `$AA23`/`$AA31` ARE THE WALL-TOP, not spurious combatants (PRIOR "CORRECTION" INVERTED)
+Direct execution evidence (`tools/walltop_masked_inventory.lua`, bp `$1BF4`, `b@$04==0xAA`,
+clean climb f5900–6300): the masked-blit draws **cel `$AA23` (data `$AA25`–`$AA30`) AND cel
+`$AA31` (data `$AA33`–`$AA3E`) ON-SCREEN**, each at **exactly two X posts — Apple bytes 23 & 35**
+(no col-11 instance ever), **rows 100–111**, sub-byte shift 5. So `$AA23`/`$AA31` are the wall-top
+runner rendered on-screen — the commit-`18cf9b6` claim that they are "off-screen fight combatants
+to remove" was **wrong** (that finding saw a *different* draw path — `draw_combatant_ad56/ad75`
+parked off-screen — and missed that the same shared-bank cels are drawn on-screen as the wall-top
+via the scene-sprite masked path; shared bank, two draw sites). **The port's original instinct to
+draw `$AA23`/`$AA31` as wall-top scenery was correct.**
+- **The `$96/$99` cels (`9600/964A/96CE`) are FLOOR cels (scene-5)** — unchanged; not the wall-top.
+
+## The REAL wall-top — cels `$AA23` + `$AA31`, MASKED-BLIT, TWO posts, rows 100–111
 | Property | Value (execution-confirmed) |
 |---|---|
-| Cels | **`$AA25`–`$AA30`** (12-cel run — reconciled; the earlier `$AA27–$AA30` missed AA25/AA26 in a narrow window) |
-| Render mechanism | **masked-blit `$1BF4`** (SMC AND-mask blend + `$0900` screen-address/shift table) |
-| Sub-byte shift | **5** (`$10`=5, Apple 7px/byte) |
-| Position | **TWO posts at Apple byte-offsets 23 & 35** (12 bytes apart); `$05`-compute=23/35, **`$06`=100** |
-| HGR-VERIFIED render row | **Apple row 104** (masked-blit `($00),Y` pointer decoded — NOT `$05`/`$06` directly) |
-| CoCo3 placement | Apple byte 23 → `px=23*7+5+20=186` → **byte 46, sub 2**; byte 35 → `px=270` → **byte 67, sub 2**; row 104 |
-| Convert status | **ALL 12 UNCONVERTED** (`content/` has none of `$AA25–$AA30`) |
-Coordinate-placement failed ~20× because `$05`(=23/35) is the SCROLL-RELATIVE compute, not the
-render column — the true position comes from the masked-blit's `($00),Y` HGR pointer (row 104).
+| Cels | **`$AA23`** (data `$AA25`–`$AA30`) **and `$AA31`** (data `$AA33`–`$AA3E`) — each h=12 w=1, ALREADY converted |
+| Render mechanism | **masked-blit `$1BF4`** (SMC AND-mask blend + `$0900` shift table), sub-byte shift **5** |
+| Position (X) | **TWO posts only: Apple bytes 23 & 35** (`$05`=`$17`/`$23`, the real byte col here). **No col-11 post.** |
+| Position (Y) | **rows 100–111** (`$06`=`$64`=100 top; each cel is 12 rows tall, one source byte per row) |
+| CoCo3 placement | byte 23 → `px=23*7+5+20=186` → **byte 46, sub 2**; byte 35 → `px=270` → **byte 67, sub 2**; rows 100–111 |
+| Convert status | **NONE needed** — `$AA23`/`$AA31` already in `content/scenery/` |
 
-## PRIMITIVE-GAP RESOLVED (2026-07-14): the existing HAL blit suffices — NO new primitive
-`HAL_gfx_blit_sprite` already does **mask+data transparency blend + sub-byte shift 0–3** (gfx.s
-§P2.4.1). The oracle masked-blit `$1BF4` is an AND-mask+OR-data blend = the same operation; the
-Apple shift-5 folds into the CoCo3 byte+sub-byte via `px = col*7 + shift + 20` (sub-byte 0–3). So
-the runner builds with the EXISTING blit (a transparent cel at byte 46/67, sub 2, row 104) — the
-earlier "masked-blit primitive-gap" was over-cautious. Only convert-first is required.
+## PORT vs ORACLE — the ACTUAL wall-top delta (small; premise was inverted)
+The port ALREADY draws `$AA23` (`draw_climb_scenery`) and `$AA31` (`draw_climb_scenery_back`).
+Three real differences, none involving new cels or removing `$AA23`/`$AA31`:
+1. **Extra col-11 post** — the port draws each at cols **11, 23, 35**; the oracle draws only **23 & 35**. → drop the col-11 (`$0B`) instances.
+2. **Sub-byte shift** — oracle shift 5 → CoCo3 **sub 2** (bytes 46 & 67); the port byte-aligns (sub 0 forced). → the two posts sit a few px off.
+3. **Opaque vs masked** — port uses `HAL_gfx_blit_sprite_opaque`; oracle is masked/transparent. For a 1px-wide post the visible difference is the sub-byte black seam. `HAL_gfx_blit_sprite` (transparent, sub 0–3) reproduces it — **NO new primitive** (that conclusion still holds).
 
 ## The rest of the climb scenery (for completeness)
 - **Cliff face** (standard blit `$1903`): `$AB8E` stacked at col `$0A`, rows 117–151 (`$75–$97`,
