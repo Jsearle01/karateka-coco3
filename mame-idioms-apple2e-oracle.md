@@ -541,3 +541,21 @@ Sourced to specific scene-5/6 + Q010 passes; **all already pushed to
 *Cross-target note:* the debugger/Lua mechanics in §4 (`execution_state="run"`, `bpset`/
 `wpset`, `b@`/`pb@`, `debugger:command`, trace+`tracelog`) are **MAME-general** and apply to
 coco3 too; only **§1 (read-tap bypass)** is 6502-specific. See `mame-idioms-coco3-port.md`.
+
+---
+
+## Read the render MECHANISM per cel from execution (which routine), not from coordinates
+When a scene won't reproduce by placing cels at `$05`/`$06` (Karateka wall-top, ~20 gate failures),
+bp the render routines and see WHICH draws each cel — the mechanism differs per asset and dictates
+the port primitive:
+- `$1903`→`routine_1a42` = **standard sprite blit** (`$0900` vert-addr table + `L1A84` sub-byte).
+- `$190C` = mirror blit. `$1BF4` = **masked-blit** (SMC blend opcode + `$0900` shift table).
+- `$0A09` render_pass_a / `$0A40` render_pass_b = **pattern-fill** (single/dual-colour pixel fill).
+And read the SCENE-SPRITE loader: `load_scene_sprite_ae3f` computes X = `$52`(scroll) ± `xadj[i]`
+→ so `$05` is a scroll-relative COMPUTE, not the render column (the historical registration trap).
+**Two gotchas:** (1) a cel firing at `$05`=`$FE` is parked OFF-SCREEN (e.g. combatants `AA23/AA31`
+during the climb) — a traced cel is not necessarily visible; (2) labels lie — `AA23/AA31` were
+called "wall-top posts" for the whole arc but the code draws them as the fight combatants; the real
+wall-top is `$AA27–$AA30` via masked-blit at sub-byte shift 5. *Established:* wall-top identify
+2026-07-14. See `docs/project/walltop-render-map.md`. Candidate:
+`read-the-render-mechanism-per-cel-from-execution-not-coordinates`.
