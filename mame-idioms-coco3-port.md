@@ -322,3 +322,19 @@ in the companion **`mame-idioms-apple2e-oracle.md`**. The two targets differ mos
 difference. The debugger/Lua mechanics (`execution_state="run"` headless-unpause, `bpset`/
 `wpset`, `b@`/`pb@`, `debugger:command`, trace+`tracelog`, the brace rule) and the
 tap-GC/visual-provenance/`-seconds_to_run` gotchas are **shared** and appear in both files.
+
+---
+
+## Verify a VBL animation runs headless — sample the frame-index ZP + check for dwell-drift
+To confirm a port ANIMATION actually runs (not just assembles), load the driver `.bin` into
+coco3 (fbdump DECB-inject + set PC=exec, `harness/tools/fbdump_stage.lua` pattern) and sample
+the controller's **frame-index ZP** (e.g. `cl_idx $40`, `cl_dwctr $41`) + `page_register $50`
+every N frames. Two things fall out at once:
+- **It runs** iff the index cycles through its range (crawl: `cl_idx` 0→6→0) and `page_register`
+  toggles ($20↔$40 = double-buffer flipping).
+- **Each render fits ONE VBL** iff the measured per-frame **dwell does not DRIFT** — if a heavy
+  render (clean-restore + composite blit) overran its VBL, `HAL_time_vbl_wait` would miss the
+  next VBL and the dwell would stretch run-to-run. Exact, stable dwells (21 / 7×5 / 60 VBL as
+  authored) ⇒ the render completes within budget. This is a cheaper one-VBL-budget check than
+  cycle-counting the render path. *Established:* climb-crawl first-animation build 2026-07-13
+  (`scene6_climb_crawl_driver`, `climb_controller.s`).
