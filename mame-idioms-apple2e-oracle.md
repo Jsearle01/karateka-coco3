@@ -559,3 +559,17 @@ called "wall-top posts" for the whole arc but the code draws them as the fight c
 wall-top is `$AA27–$AA30` via masked-blit at sub-byte shift 5. *Established:* wall-top identify
 2026-07-14. See `docs/project/walltop-render-map.md`. Candidate:
 `read-the-render-mechanism-per-cel-from-execution-not-coordinates`.
+
+---
+
+## Enumerate the WHOLE setup window, not the one element you came for
+When a static scene is wrong, don't trace only the suspect element — trace every render routine
+from the beat's setup up to the FIRST character sprite (the animation boundary), enumerate the
+full inventory (cel / HGR-pos / technique / order), then cross-check it against what the port
+already draws. This arc chased "the wall-top" ~20× while TWO other setup elements were wrong: the
+port drew `$AA23`/`$AA31` as scenery "posts" — but those are the fight COMBATANTS, parked
+**off-screen (`$05`=`$FE`)** in the climb, so the port has spurious posts the oracle never draws;
+and the cliff-face is the `$AB8E` cel-stack (std blit) vs the port's fill approximation. A single
+completeness pass (missing / wrong-technique / mis-positioned / spurious) beats N one-element
+fixes. *Established:* climb setup-inventory 2026-07-14. See `docs/project/climb-setup-inventory.md`.
+Candidate: `enumerate-the-whole-setup-window-and-cross-check-not-the-one-suspect-element`.
