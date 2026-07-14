@@ -35,6 +35,25 @@ draw `$AA23`/`$AA31` as wall-top scenery was correct.**
 | CoCo3 placement | byte 23 → `px=23*7+5+20=186` → **byte 46, sub 2**; byte 35 → `px=270` → **byte 67, sub 2**; rows 100–111 |
 | Convert status | **NONE needed** — `$AA23`/`$AA31` already in `content/scenery/` |
 
+## OVERLAP RESOLVED (2026-07-14, HS-1) — back/front COMPOSITE, not a 2-frame animation
+`$AA23` and `$AA31` both render at bytes 23 & 35, rows 100–111 (overlap). Execution
+(`tools/walltop_overlap.lua`, read-tap the cel DATA regions + frame + PC) shows the draw
+sequence per tableau is **`$AA31` → FUJI → `$AA23`** (verified twice, one Fuji between each
+pair) — i.e. a **single tableau redraw** draws `$AA31` first (BACK, occluded by the Fuji upper
+rows) then `$AA23` after the Fuji (FRONT). NOT a 2-frame animation. (The naive per-`frame_number`
+co-occurrence read "0 same-frame" is a red herring: a compute-bound redraw spans ~13 display
+frames (§8a), so back and front land in different frame numbers within ONE redraw — the single
+Fuji between them is the tell.) **The port's existing back/front split is structurally correct.**
+
+## BUILD positions (variant delta, CoCo3, place() w/ leading-trim, sh5, row 100)
+| Cel | leading-trim | post @ Apple col 23 (sh5) | post @ Apple col 35 (sh5) | layer |
+|---|---|---|---|---|
+| `$AA31` (back) | L=0 | byte **46**, sub 2 | byte **67**, sub 2 | before Fuji |
+| `$AA23` (front) | L=1 | byte **47**, sub 2 | byte **68**, sub 2 | after Fuji |
+Both masked (`HAL_gfx_blit_sprite`). Col-11 post dropped. Built as `scene6_cliff_variant_a.s`
+(+ `scene6_climb_crawl_driver_a.s`); framebuffer-diff vs the fallback = differences ONLY in
+rows 100–111 (wall-top), everything else pixel-identical.
+
 ## PORT vs ORACLE — the ACTUAL wall-top delta (small; premise was inverted)
 The port ALREADY draws `$AA23` (`draw_climb_scenery`) and `$AA31` (`draw_climb_scenery_back`).
 Three real differences, none involving new cels or removing `$AA23`/`$AA31`:

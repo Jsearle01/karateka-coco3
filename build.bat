@@ -50,6 +50,14 @@ lwasm --decb -o tests/scripted/scene6_climb_crawl_driver.bin tests/scripted/scen
 if errorlevel 1 goto :error
 call :size tests/scripted/scene6_climb_crawl_driver.bin
 
+lwasm --decb -o tests/scripted/scene6_climb_crawl_driver_a.bin tests/scripted/scene6_climb_crawl_driver_a.s
+if errorlevel 1 goto :error
+call :size tests/scripted/scene6_climb_crawl_driver_a.bin
+
+lwasm --decb -o tests/scripted/scene6_climb_crawl_driver_b.bin tests/scripted/scene6_climb_crawl_driver_b.s
+if errorlevel 1 goto :error
+call :size tests/scripted/scene6_climb_crawl_driver_b.bin
+
 lwasm --decb -o tests/scripted/scene6_stage2_driver.bin tests/scripted/scene6_stage2_driver.s
 if errorlevel 1 goto :error
 call :size tests/scripted/scene6_stage2_driver.bin
