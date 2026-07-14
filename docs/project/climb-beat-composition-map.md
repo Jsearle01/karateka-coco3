@@ -14,15 +14,16 @@ reuse." **The clean climb-beat trace refutes this for most of them:**
 - `content/player/scene6_climb_A425…A5DC` and `content/scenery/scene6_cliff_AB8E/AB94/AB7C/AB4A/AA*`
   are **correctly named + already converted** — they match the clean climb cels at the right
   positions. They are NOT fight cels.
-- What IS genuinely not-in-the-clean-climb: the **`$A3` bank** (`scene6_climb_A3C5`, `A3E9`) —
-  absent from the clean climb (they're the princess→climb transition / fight poses), and the
-  fight-midground `$A684` (absent, 0 draws).
-**Interpretation:** the earlier "climb = fight" retraction over-generalized. The climb and the
-subsequent guard-fight happen on the SAME cliff, so they legitimately SHARE the `$AB` cliff +
-Fuji + `$AA11` floor banks. The pose set differs: climb = `$A4`/`$A5` + `$8ACB`; the `$A3C5/A3E9`
-start-pose the Stage-3 build used is transition/fight, not the climb crawl. So the Stage-3
-backdrop+cliff+HUD were substantially RIGHT; its errors were (a) using `$A3C5` as the pose and
-(b) a static tableau instead of the crawl animation. **Jay to confirm this reframing.**
+- **CORRECTION 2026-07-13 (Jay-confirmed):** `$A3C5`(torso)+`$A3E9`(legs) ARE the climb — the
+  **anim_00 START pose** (Y158), drawn at the princess→climb transition and HELD through anim_00
+  (so they don't RE-draw inside f6058–6118, but they ARE the displayed start frame). The real
+  climb-vs-fight discriminator is the fight-midground **`$A684`** (absent from the climb, 0 draws).
+**Interpretation:** the earlier "climb = fight" retraction was an over-generalization of a
+PIXEL contamination (windowed runs booted the actual game — Jay's "that's fight" was right for
+those pixels). The climb and the later guard-fight happen on the SAME cliff, so they SHARE the
+`$AB`/Fuji/`$AA11` banks. The full climb pose set = `$A3C5/A3E9` start → `$A4`/`$A5` crawl →
+`$8ACB` settle. So the Stage-3 backdrop+cliff+HUD AND the `$A3C5` start pose were RIGHT; its only
+error was a **static tableau instead of the 7-frame crawl animation**. **Jay confirmed this reframing.**
 
 ## D1 — Backdrop (D-4 resolved: core SAME as the fight backdrop)
 | Cel | Position | Role |
@@ -44,13 +45,18 @@ cliff on top, no fight midground.
 | `$AA31/$AA23/$AA03/$AB03` | — | scenery band |
 Static (redrawn each step). Shared `$AA/$AB` banks with the fight, arranged as the climb cliff.
 
-## D3 — Crawl animation (the 7 displayed poses)
-Pose cels: `$A4`/`$A5` chain (`A400/A40B/A425/A45A/A4A4/A4D2/A4F2/A500/A502/A548/A572/A5CC/A5DC`)
-+ `$8Axx` figure (`8ACB` settle, `899C/8E9B/8EC1`), at col 0A–0C (X40–48), rows Y120–148,
-ascending. **No `$A3` bank.** Displayed animation = 7 frames (`scene6_climb_anim_00–06`):
-**21 VBL start-hold, then 5 crawl poses at a steady 7 VBL each, then settle on `$8ACB` (y124)**
-(held ~294 VBL). anim_00 start (y158) is transition-adjacent (manifest drawptr `$A3E9`); the
-crawl proper (anim_01–05) is `$A4`/`$A5`.
+## D3 — Crawl animation (7 frames, each a torso+legs composite — clean blit-entry positions)
+| Frame | Torso | Legs | Dwell |
+|---|---|---|---|
+| anim_00 START (Y158) | `$A3C5` | `$A3E9` | 21 VBL |
+| anim_01 | `$A40B` (0B,Y140) | `$A425` (0A,Y148) | 7 |
+| anim_02 | `$A45A` (0C,Y139) | `$A4A4` (0A,Y143) | 7 |
+| anim_03 | `$A4D2` (0B,Y137) | `$A4F2` (0A,Y143) | 7 |
+| anim_04 | `$A548` (0B,Y131) | `$A572` (0A,Y141) | 7 |
+| anim_05 | `$A5CC` (0C,Y120) | `$A5DC` (0B,Y127) | 7 |
+| anim_06 SETTLE | `$8ACB` (0B,Y124) + `899C/8E9B/8EC1` | — | hold (~294 VBL) |
+Cadence: **21 VBL start, 5×7 VBL crawl, settle**. anim_00 (start) is drawn at the transition and
+held; the crawl proper (anim_01–05) is `$A4`/`$A5`, all ascending to the `$8ACB` settle.
 
 ## D4 — HUD: PRESENT (re-opened finding resolved)
 `$0B12` drawn ×90 during the clean climb, at cols 00–18, **row Y185 = player-side (LEFT), bottom**.
@@ -66,9 +72,11 @@ not apply — this is the clean trace.)
 | base/band `$AA*` | `content/scenery/scene6_cliff_AA*`, `content/background/scene6_bg_AA*` | converted |
 | floor `$AA11` / Fuji `$A9*` | `content/background/scene6_bg_AA11/A9B8/A948/A9E2/A976` | converted (shared backdrop) |
 | HUD `$0B12` | `content/hud/arrow_0B12` | converted |
-| **`$A3C5`/`$A3E9`** | `content/player/scene6_climb_A3C5`, `A3E9` | **MISLABELED** — absent from clean climb (transition/fight); flag for rename, don't delete (Jay) |
-Most climb cels are already converted + correctly named. The only mislabels: `scene6_climb_A3C5/A3E9`
-(not climb) and `fig_8ACB` (under guard/, is the climb settle). No unconverted climb cel found.
+| `$A3C5`/`$A3E9` START | `content/player/scene6_climb_A3C5`, `A3E9` | **converted, correctly named** (climb anim_00 start pose) |
+All climb cels are already converted + correctly named (`scene6_climb_A3C5…A5DC` are the crawl,
+`scene6_cliff_*` the cliff). Only labeling note: `fig_8ACB` sits under `content/guard/` but is the
+climb settle figure. No unconverted climb cel found. **No cel needs renaming** (the earlier
+"rename `$A3C5/A3E9` as fight" was withdrawn — they are the climb start).
 
 ## Port consequence
 Stage-3 target = Fuji+floor backdrop (same as fight) + the `$AB/$AA` cliff scenery + the
