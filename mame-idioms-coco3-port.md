@@ -277,6 +277,23 @@ corrected); use the SAME convention for both targets so an apple2e px X lines up
 wall-top reference capture 2026-07-14 (commit TBD). Tool: `harness/tools/render_square.py`
 (`--apple2e <560png>` / `--coco3 <15360 dump>` / `--scale N`); pairs with `fbdump_stage.lua`.
 
+### 11c. Render a cel PREVIEW in the REAL palette + a NON-palette transparency mark (decode the mask)
+A sprite preview must use the **actual 4-index scene palette** the cel will ship in (0 blk / 1 orange
+/ 2 blue / 3 white — MAME-authoritative RGB), and show **transparency in a colour that CANNOT occur
+in that palette** (a **gray checkerboard**), with the convention **stated** in the image/report. Two
+traps this avoids, both real defects on this project: (1) a **debug placeholder colour** (magenta)
+reads as "the art is wrong" when it's a render artifact — Jay's gate flagged a magenta sheet whose
+composite (same bytes) looked correct; the tell that it's the render not the art is *same source,
+different output*. (2) The **index-0 collision**: opaque-black (`b`) and transparent (`t`) BOTH pack
+to colour index 0 — distinguished ONLY by the mask plane. So a preview must **decode the MASK** (mask
+00 → transparent-checker, 11 → `PALETTE[colour]`), not the colour index — ignore the mask and `t`
+looks like whatever bg (blue), or a wrong flag paints it magenta. **Render FROM the packed
+color+mask bytes** (and assert the decode matches the authored grid) so the preview is faithful to
+what ships AND validates the packing. Emit **1:1 AND integer-NEAREST magnified** (factor stated).
+*Candidate:* `render-cel-preview-in-real-palette-decode-the-mask-checkerboard-transparency-not-a-debug-colour`.
+*Established:* wall post/rail preview fix 2026-07-15 (2nd preview defect after the 560-stretch).
+Tool: `harness/tools/gen_wall_post_rail.py` (`render_from_planes`).
+
 ---
 
 ## 12. Quick command idioms (coco3)

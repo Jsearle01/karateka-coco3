@@ -41,6 +41,8 @@ Computed from **posts 2 & 3 only** (post 1 excluded per HS-4). Post width = 4 px
 - **F2 not triggered** — 80 is highly composite.
 - **W is Jay's choice** (scroll-reveal granularity vs blit count). Sub-byte options (5,10 = 2/1 bytes
   + shift; 1,2 = fine but many blits) available if he wants finer reveal.
+- **✅ JAY'S PICK (2026-07-15): W = 8 px (2 bytes) → 10 segments across G=80.** Byte-aligned (no
+  sub-byte shift cost). **Recorded only — NOT built/placed here** (placement dispatch input).
 
 ## HS-7 — the gap is `[I]` (single sample)
 Only **one** complete post-to-post span exists in the data (posts 2→3). "Uniform 84-px pitch /

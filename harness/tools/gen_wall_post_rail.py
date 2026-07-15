@@ -45,10 +45,21 @@ RAIL = [row[3] for row in POST]            # -> ['t','t','w','b','b','t','t','w'
 IDX  = {'w': 3, 'b': 0, 't': 0}            # color index; t is black-index but masked out
 MASKBITS = {'w': 3, 'b': 3, 't': 0}        # mask pixel-pair: 11=opaque, 00=transparent
 
-# render RGB (t shown distinctly so Jay SEES transparency vs opaque black)
+# REAL 4-index GIME scene palette (the climb tableau's colours) — MAME-authoritative RGB.
+PALETTE = {0: (0, 0, 0),        # index 0 black  (b, opaque)
+           1: (230, 111, 0),    # index 1 orange
+           2: (25, 144, 255),   # index 2 blue (sky)
+           3: (255, 255, 255)}  # index 3 white  (w)
 RGB  = {'w': (255, 255, 255), 'b': (0, 0, 0)}
-TRANSPARENT_MARK = (200, 40, 200)          # magenta = mask-out (sheet only)
-BG_SKY = (25, 144, 255)                    # composite bg so t reads as background-shows
+BG_SKY = PALETTE[2]                         # composite bg (sky) so t reads as background-shows
+# Transparency in the INDIVIDUAL sheet = a gray CHECKERBOARD (NOT a palette colour, so it can't be
+# mistaken for art). b=0 and t=0 share colour index 0 — distinguished ONLY by the mask plane, so the
+# sheet decodes the MASK: mask 00 -> checker (transparent), mask 11 -> PALETTE[colour].
+CK_A, CK_B = (64, 64, 64), (128, 128, 128)
+
+
+def checker(x, y):
+    return CK_A if ((x ^ y) & 1) else CK_B
 
 
 def pack_row(cells, valmap):
@@ -79,15 +90,26 @@ def emit_s(label, grid, path):
     return h, w_cells
 
 
-def render_cell_grid(grid, scale, mark_transparent):
+def render_from_planes(grid, scale):
+    """Render the individual cel by DECODING the authored color+mask bytes (faithful to what
+    ships): mask pixel-pair 00 -> transparent (gray checker); 11 -> PALETTE[color pixel-pair].
+    NEAREST integer scale. Also asserts the decode matches Jay's grid (validates the packing)."""
     h = len(grid); w = len(grid[0])
-    im = Image.new('RGB', (w, h), BG_SKY)
+    im = Image.new('RGB', (w, h), (24, 24, 24))
     px = im.load()
     for y, row in enumerate(grid):
-        for x, c in enumerate(row):
-            px[x, y] = TRANSPARENT_MARK if (c == 't' and mark_transparent) else \
-                       (BG_SKY if c == 't' else RGB[c])
-    return im.resize((w * scale, h * scale), Image.NEAREST)
+        cbyte = pack_row(row, IDX)          # color plane byte for this row
+        mbyte = pack_row(row, MASKBITS)     # mask plane byte for this row
+        for x in range(w):
+            col2 = (cbyte >> (6 - 2 * x)) & 3
+            msk2 = (mbyte >> (6 - 2 * x)) & 3
+            cell = row[x]
+            # validation: decoded transparency/colour must equal Jay's authored cell
+            assert (msk2 == 0) == (cell == 't'), f"mask/grid mismatch at ({x},{y})"
+            px[x, y] = checker(x, y) if msk2 == 0 else PALETTE[col2]
+    if scale != 1:
+        im = im.resize((w * scale, h * scale), Image.NEAREST)
+    return im
 
 
 def divisors(n):
@@ -123,20 +145,31 @@ def main():
     print(f"multi-segment byte-aligned (exclude W={G}): "
           f"{[d for d in divs if d % 4 == 0 and d != G]}")
 
-    # --- gate renders (HS-10) ---
-    s = args.scale
-    post_im = render_cell_grid(POST, s, mark_transparent=True)
-    rail_im = render_cell_grid([[c] for c in RAIL], s, mark_transparent=True)
+    # --- gate renders (HS-2/3/4/5): individual cels in the REAL palette, transparent=checker,
+    #     integer NEAREST, BOTH 1:1 and magnified. Rendered by DECODING the authored planes. ---
+    Z = args.scale
+    RAILG = [[c] for c in RAIL]
+    post_1, post_z = render_from_planes(POST, 1), render_from_planes(POST, Z)
+    rail_1, rail_z = render_from_planes(RAILG, 1), render_from_planes(RAILG, Z)
     outdir = os.path.join(REPO, '..', 'build', 'wall_ref')
     os.makedirs(outdir, exist_ok=True)
-    # sheet
-    PAD = s
-    sheet = Image.new('RGB', (post_im.width + rail_im.width + PAD * 4, post_im.height + PAD * 3),
-                      (24, 24, 24))
+    PAD, TXT = Z, 34
+    colW = max(post_z.width, 120)
+    sheetW = PAD + colW + PAD * 3 + max(rail_z.width, 120) + PAD
+    sheetH = TXT + post_z.height + PAD + 30
+    sheet = Image.new('RGB', (sheetW, sheetH), (24, 24, 24))
     d = ImageDraw.Draw(sheet)
-    sheet.paste(post_im, (PAD, PAD * 2)); sheet.paste(rail_im, (post_im.width + PAD * 3, PAD * 2))
-    d.text((PAD, 2), "POST 4x8 (magenta=transparent)", fill=(255, 255, 255))
-    d.text((post_im.width + PAD * 3, 2), "RAIL(=col3)", fill=(255, 255, 255))
+    d.text((4, 2), f"WALL CELS — real 4-idx palette; transparent = GRAY CHECKER; NEAREST x{Z} + 1:1;"
+                   f" art bytes UNCHANGED", fill=(255, 255, 255))
+    d.text((PAD, TXT - 14), f"POST 4x8  (x{Z})", fill=(200, 200, 200))
+    sheet.paste(post_z, (PAD, TXT))
+    sheet.paste(post_1, (PAD, TXT + post_z.height + 6))           # 1:1 beneath
+    d.text((PAD + post_1.width + 6, TXT + post_z.height + 4), "1:1", fill=(160, 160, 160))
+    rx = PAD + colW + PAD * 3
+    d.text((rx, TXT - 14), f"RAIL 1x8 (=post col3)  (x{Z})", fill=(200, 200, 200))
+    sheet.paste(rail_z, (rx, TXT))
+    sheet.paste(rail_1, (rx, TXT + rail_z.height + 6))
+    d.text((rx + rail_1.width + 6, TXT + rail_z.height + 4), "1:1", fill=(160, 160, 160))
     sheet.save(os.path.join(outdir, 'wall_post_rail_sheet.png'))
 
     # composite: two posts + rail filling the TRUE gap G, at scale, on sky bg (HS-10)
@@ -153,7 +186,7 @@ def main():
     for gx in range(G):                     # rail tiled across the gap (1px unit repeated)
         stamp([[c] for c in RAIL], PW + gx)
     stamp(POST, PW + G)                     # post B
-    comp = comp.resize((W_full * s, len(POST) * s), Image.NEAREST)
+    comp = comp.resize((W_full * Z, len(POST) * Z), Image.NEAREST)
     comp.save(os.path.join(outdir, 'wall_composite_true_spacing.png'))
     print(f"\nrendered build/wall_ref/wall_post_rail_sheet.png + wall_composite_true_spacing.png "
           f"(composite span={W_full}px at true G={G})")
