@@ -19,33 +19,22 @@ from PIL import Image, ImageDraw
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, '..'))
-PAL = {'w': (255, 255, 255), 'b': (0, 0, 0)}
-SKY = (25, 144, 255)
-# Jay's gated post (w/b/t); rail = post col 3 (= horizontal bands: white rows 2&7, black rows 3&4)
-POST = ["wbbt", "wbbt", "wbbw", "bbbb", "bbbb", "wbbt", "wbbt", "wbbw"]
-RAIL = [r[3] for r in POST]
-
-POST_ROW = 100                      # wall-top top row
+PALI = [(0, 0, 0), (230, 111, 0), (25, 144, 255), (255, 255, 255)]   # coco3 4-index
 BAND = (94, 116)                    # crop rows for the comparison
-P2_PX, P3_PX, PW = 186, 270, 4      # byte 46/67 sub 2 -> px; post width 4
-GAP0, GAP1 = P2_PX + PW, P3_PX      # rail span px [190, 270)
 
 
 def port_preview():
-    im = Image.new('RGB', (320, 192), SKY)
+    """Decode the ACTUAL variant framebuffer dump (build/logs/fb_wt.bin, 15360B, 2bpp) -> 320x192,
+    so the port side is exactly what the driver renders (incl. any sub-byte edge artifact)."""
+    p = os.path.join(REPO, '..', 'build', 'logs', 'fb_wt.bin')
+    data = open(p, 'rb').read()
+    im = Image.new('RGB', (320, 192))
     px = im.load()
-    def stamp_post(x0):
-        for dy, row in enumerate(POST):
-            for dx, c in enumerate(row):
-                if c == 't':
-                    continue
-                px[x0 + dx, POST_ROW + dy] = PAL[c]
-    stamp_post(P2_PX); stamp_post(P3_PX)               # post 1 (col-11) DROPPED
-    for dy, c in enumerate(RAIL):                       # rail = horizontal bands across the gap
-        if c == 't':
-            continue
-        for x in range(GAP0, GAP1):
-            px[x, POST_ROW + dy] = PAL[c]
+    for row in range(192):
+        for col in range(80):
+            b = data[row * 80 + col]
+            for k in range(4):
+                px[col * 4 + k, row] = PALI[(b >> (6 - k * 2)) & 3]
     return im
 
 
@@ -91,8 +80,8 @@ def main():
         c.paste(orc.resize((320 * scale, bandH * scale), Image.NEAREST), (0, yo + RULER))
         ruler(yo)
         yp = yo + RULER + bandH * scale + GAPY
-        d.text((2, yp - LBL), f"PORT placement PREVIEW: posts @px186/270 (byte46/67 sub2), rail fills,"
-                              f" col-11 DROPPED  x{scale}", fill=(255, 255, 255))
+        d.text((2, yp - LBL), f"PORT variant FRAMEBUFFER: posts byte46/67 sub2 (px186/270), rail fills,"
+                              f" col-11 dropped  x{scale}", fill=(255, 255, 255))
         c.paste(prt.resize((320 * scale, bandH * scale), Image.NEAREST), (0, yp + RULER))
         ruler(yp)
         out = os.path.join(REPO, '..', 'build', 'walltop_ref', name)

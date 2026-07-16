@@ -312,6 +312,24 @@ the port target byte 46 sub 2 = 46*4+2 = **px186** — they land together only b
 *Candidate:* `cross-platform-side-by-side-needs-one-stated-coordinate-system-plus20-integer-nearest`.
 *Established:* wall-top placement side-by-side 2026-07-16. Tool: `harness/tools/walltop_side_by_side.py`.
 
+### 11e. Decompose authored art into an OPAQUE block + uniform FILLS to avoid a masked-blit primitive
+When authored art seems to need a per-pixel masked composite blit (opaque-black `b`=0 vs transparent
+`t`=0, both index 0), **check whether the transparency is separable by geometry** before building the
+primitive. The scene-6 wall post (9×7) put **every** `t` in **one column** (col 6) that is itself a
+**uniform repeating rail** → the art decomposed into (a) **cols 0–5 = a fully-opaque block** (no `t`
+anywhere → no mask; the plain opaque blit suffices — and `HAL_gfx_blit_sprite_opaque` DOES sub-byte
+shift 0–3, sharing `blit_dispatch`), and (b) **col 6 = the rail = direct horizontal ROW-FILLS** (every
+tiled column identical → white/black row-runs, no cel/mask/tiling). This **designed out** the
+substantial Stage-4 masked-composite primitive entirely. **Assert the decomposition** (no `t` in the
+opaque region; the transparent column == the fill pattern) — don't assume it. Watch the **§9a edge**:
+an opaque *shifted* blit stamps the shifted-in leading pixels black (pre-shift with a sky-filled edge,
+or flag for the gate). *Candidate:*
+`decompose-authored-art-into-opaque-block-plus-uniform-fills-to-avoid-a-masked-blit-primitive`.
+*Established:* wall-top 9×7 placement 2026-07-16 (`scene6_cliff_walltop.s`; framebuffer-diff-verified,
+zero leak outside the band). The combatants may still need the primitive (non-decomposable art).
+*Gotcha caught by the framebuffer-diff:* `ldd #colour` **clobbers B** — if a fill routine takes the
+row in B, load the colour into **U** (survives `MUL`) instead; the diff flagged a stray row-0 fill.
+
 ---
 
 ## 12. Quick command idioms (coco3)

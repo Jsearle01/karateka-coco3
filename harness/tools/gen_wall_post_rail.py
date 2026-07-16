@@ -1,205 +1,133 @@
 #!/usr/bin/env python3
 """
-gen_wall_post_rail.py — HAND-AUTHOR the scene-6 wall post + rail sprites (art + masks)
-and compute the post-gap geometry. NO converter, NO parity (HS-9): Jay's palette indices
-emitted directly. The RAIL is DERIVED from POST COLUMN 3 (HS-1), single-sourced.
+gen_wall_post_rail.py — HAND-AUTHOR the scene-6 wall from Jay's RATIFIED 9x7 spec, and derive the
+build decomposition. NO converter, NO parity (Jay's palette indices direct).
 
-Jay's spec (w=white, b=opaque-black, t=transparent-black/mask-out):
-POST 4x8:                RAIL 1x8 (= post col 3):
-  w b b t                  t
-  w b b t                  t
-  w b b w                  w
-  b b b b                  b
-  b b b b                  b
-  w b b t                  t
-  w b b t                  t
-  w b b w                  w
+Jay's POST (9 rows x 7 cols; w=white=idx3, b=black=idx0, t=transparent):
+  w w b b b b t      col 6 (rightmost) = t,t,w,b,b,b,t,t,w  == the RAIL cross-section.
+  w w b b b b t
+  w w b b b b w      DECOMPOSITION (verified by assert):
+  b b b b b b b        * cols 0-5 contain NO 't' -> a 6x9 FULLY OPAQUE block (no per-pixel mask)
+  b b b b b b b        * col 6 == the rail column -> drawn as DIRECT ROW-FILLS, not a tiled cel
+  b b b b b b b      => wall-top = 5 horizontal rail fills + 2 opaque 6x9 blocks stamped on top.
+  w w b b b b t
+  w w b b b b t      Placement: opaque blocks at CoCo3 bytes 46 & 67, SUB 2 (px 186 & 270), row 100.
+  w w b b b b w      The opaque path (HAL_gfx_blit_sprite_opaque) DOES sub-byte shift 0-3 (shares
+                     blit_dispatch) -> NO new primitive. (Caveat: opaque+shift writes the shifted-in
+                     leading 2px as black, idiom 9a -> handle/flag the left edge.)
 
-Palette indices (CoCo3 explicit, no column-parity): w=3 (white), b=0 (black), t=0 (black,
-but MASKED OUT). Color plane can't distinguish b from t (both black index 0) -> a per-pixel
-MASK plane marks opaque(11) vs transparent(00). Post needs PER-ROW-varying transparency
-(col 3 alternates t/opaque by row) -> the mask MUST be per-pixel/2D, NOT per-column.
-
-Emits content .s (color plane + mask plane) + a sheet + a true-spacing composite for Jay's gate.
+Supersedes the prior 4x8 art. Emits the opaque BLOCK (cols 0-5) as content (no mask) + a sky-bg
+preview of the full 9x7 + the rail-fill descriptor + geometry.
 """
-import os, sys, argparse
+import os, argparse
 from PIL import Image, ImageDraw
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-REPO = os.path.abspath(os.path.join(HERE, '..'))
+HERE = os.path.dirname(os.path.abspath(__file__)); REPO = os.path.abspath(os.path.join(HERE, '..'))
+POST = ["wwbbbbt", "wwbbbbt", "wwbbbbw",
+        "bbbbbbb", "bbbbbbb", "bbbbbbb",
+        "wwbbbbt", "wwbbbbt", "wwbbbbw"]
+RAIL = [row[6] for row in POST]          # DERIVED: rail = post col 6 (code-enforced single-source)
+BLOCK = [row[0:6] for row in POST]       # DERIVED: opaque block = cols 0-5
 
-# --- SINGLE SOURCE OF TRUTH: the post grid (rows of 4 cells) ---
-POST = [
-    "wbbt",
-    "wbbt",
-    "wbbw",
-    "bbbb",
-    "bbbb",
-    "wbbt",
-    "wbbt",
-    "wbbw",
-]
-# RAIL = post column 3 (index 3), DERIVED — never authored independently (HS-1).
-RAIL = [row[3] for row in POST]            # -> ['t','t','w','b','b','t','t','w']
-
-IDX  = {'w': 3, 'b': 0, 't': 0}            # color index; t is black-index but masked out
-MASKBITS = {'w': 3, 'b': 3, 't': 0}        # mask pixel-pair: 11=opaque, 00=transparent
-
-# REAL 4-index GIME scene palette (the climb tableau's colours) — MAME-authoritative RGB.
-PALETTE = {0: (0, 0, 0),        # index 0 black  (b, opaque)
-           1: (230, 111, 0),    # index 1 orange
-           2: (25, 144, 255),   # index 2 blue (sky)
-           3: (255, 255, 255)}  # index 3 white  (w)
-RGB  = {'w': (255, 255, 255), 'b': (0, 0, 0)}
-BG_SKY = PALETTE[2]                         # composite bg (sky) so t reads as background-shows
-# Transparency in the INDIVIDUAL sheet = a gray CHECKERBOARD (NOT a palette colour, so it can't be
-# mistaken for art). b=0 and t=0 share colour index 0 — distinguished ONLY by the mask plane, so the
-# sheet decodes the MASK: mask 00 -> checker (transparent), mask 11 -> PALETTE[colour].
-CK_A, CK_B = (64, 64, 64), (128, 128, 128)
+IDX = {'w': 3, 'b': 0, 't': 0}
+PALETTE = {0: (0, 0, 0), 1: (230, 111, 0), 2: (25, 144, 255), 3: (255, 255, 255)}
+SKY = PALETTE[2]
 
 
-def checker(x, y):
-    return CK_A if ((x ^ y) & 1) else CK_B
+def pack_rowbytes(cells):
+    """Pack a row of cells into ceil(len/4) bytes, 2bpp MSB-first (pixel 0 = top 2 bits)."""
+    wb = (len(cells) + 3) // 4
+    out = []
+    for byi in range(wb):
+        b = 0
+        for i in range(4):
+            ci = byi * 4 + i
+            v = IDX[cells[ci]] if ci < len(cells) else 0
+            b |= (v & 3) << (6 - i * 2)
+        out.append(b)
+    return out
 
 
-def pack_row(cells, valmap):
-    """Pack up to 4 cells into one 2bpp byte (MSB-first, pixel 0 = top 2 bits)."""
-    b = 0
-    for i in range(4):
-        v = valmap[cells[i]] if i < len(cells) else 0
-        b |= (v & 3) << (6 - i * 2)
-    return b
-
-
-def emit_s(label, grid, path):
-    h = len(grid); w_cells = len(grid[0]); wbytes = (w_cells + 3) // 4
-    L = [f"* {label} — HAND-AUTHORED wall sprite (gen_wall_post_rail.py). NOT converted (HS-9).",
-         f"* color plane: w=3(white) b=0(black) t=0(black,masked). mask: 11=opaque 00=transparent.",
-         f"* {w_cells}px wide x {h} tall; {wbytes} byte/row.", ""]
-    L.append(f"{label}:")
-    L.append(f"        fcb     {h},{wbytes}                  ; height, width(bytes)")
-    for r in grid:
-        L.append(f"        fcb     ${pack_row(r, IDX):02X}                    ; {' '.join(r)}")
-    L.append("")
-    L.append(f"{label}_mask:                        ; per-pixel 2D mask (11=opaque 00=transparent)")
-    for r in grid:
-        L.append(f"        fcb     ${pack_row(r, MASKBITS):02X}                    ; {' '.join(r)}")
+def emit_block(path):
+    h = len(BLOCK); w = len(BLOCK[0]); wb = (w + 3) // 4
+    L = ["* scene6_wall_post — HAND-AUTHORED opaque block (cols 0-5 of Jay's 9x7 post).",
+         "* w=3(white) b=0(black); NO 't' in this block -> fully OPAQUE (no mask plane needed).",
+         "* col 6 (rail) is NOT here — it is drawn as direct row-fills. Placement: byte 46/67 sub 2,",
+         "* row 100, via HAL_gfx_blit_sprite_opaque (sub-byte shift 2).",
+         f"* {w}px wide x {h} tall; {wb} byte/row.", "",
+         "scene6_wall_post:",
+         f"        fcb     {h},{wb}                  ; height, width(bytes)"]
+    for r in BLOCK:
+        bs = pack_rowbytes(r)
+        L.append("        fcb     " + ",".join(f"${b:02X}" for b in bs) + f"          ; {' '.join(r)}")
     L.append("")
     os.makedirs(os.path.dirname(path), exist_ok=True)
     open(path, 'w').write('\n'.join(L) + '\n')
-    return h, w_cells
 
 
-def render_from_planes(grid, scale, bg='sky'):
-    """Render the individual cel by DECODING the authored color+mask bytes (faithful to what
-    ships): mask pixel-pair 00 -> transparent; 11 -> PALETTE[color pixel-pair]. NEAREST integer
-    scale. Asserts the decode matches Jay's grid (validates the packing).
-    bg='sky' (DEFAULT, HS-10): transparent shows the real sky background (index 2) — how the cel
-    actually appears; unambiguous here because the post/rail palette is {w=3,b=0} with NO blue.
-    bg='checker': gray checkerboard — use only when the cel's palette INCLUDES the bg index."""
-    h = len(grid); w = len(grid[0])
-    im = Image.new('RGB', (w, h), (24, 24, 24))
+def emit_rail(path):
+    """Rail-fill descriptor: the row-runs derived from col 6 (single-source)."""
+    L = ["* scene6_wall_rail — the rail is DIRECT ROW-FILLS (post col 6 = t,t,w,b,b,b,t,t,w),",
+         "* NOT a tiled cel/sprite. Row-runs (relative to the post top row 100):"]
+    for i, c in enumerate(RAIL):
+        if c != 't':
+            L.append(f"* rail_band row+{i} (CoCo3 row {100+i}): {'WHITE $FF' if c=='w' else 'BLACK $00'}")
+    L.append("* rows +0/+1/+6/+7 = nothing (sky). Drawn across the derived span between the placed posts.")
+    L.append("")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    open(path, 'w').write('\n'.join(L) + '\n')
+
+
+def render_full(scale, bg='sky'):
+    """Preview of the FULL 9x7 (block + rail col): w->white, b->black, t->sky (HS-10 default)."""
+    h = len(POST); w = len(POST[0])
+    im = Image.new('RGB', (w, h))
     px = im.load()
-    for y, row in enumerate(grid):
-        cbyte = pack_row(row, IDX)          # color plane byte for this row
-        mbyte = pack_row(row, MASKBITS)     # mask plane byte for this row
-        for x in range(w):
-            col2 = (cbyte >> (6 - 2 * x)) & 3
-            msk2 = (mbyte >> (6 - 2 * x)) & 3
-            cell = row[x]
-            # validation: decoded transparency/colour must equal Jay's authored cell
-            assert (msk2 == 0) == (cell == 't'), f"mask/grid mismatch at ({x},{y})"
-            if msk2 == 0:
-                px[x, y] = PALETTE[2] if bg == 'sky' else checker(x, y)
-            else:
-                px[x, y] = PALETTE[col2]
-    if scale != 1:
-        im = im.resize((w * scale, h * scale), Image.NEAREST)
-    return im
-
-
-def divisors(n):
-    return [d for d in range(1, n + 1) if n % d == 0]
+    for y, row in enumerate(POST):
+        for x, c in enumerate(row):
+            px[x, y] = SKY if (c == 't') else PALETTE[IDX[c]]
+    return im.resize((w * scale, h * scale), Image.NEAREST) if scale != 1 else im
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--scale', type=int, default=16)
-    ap.add_argument('--bg', choices=('sky', 'checker'), default='sky',
-                    help='transparent-pixel background in the sheet (HS-10: sky is the default)')
-    ap.add_argument('--emit', action='store_true', help='write content .s files')
+    ap.add_argument('--scale', type=int, default=24)
+    ap.add_argument('--emit', action='store_true')
     args = ap.parse_args()
 
-    # sanity: rail == post col 3 (HS-1 single-source proof)
-    assert RAIL == [r[3] for r in POST], "rail must be post col 3"
+    assert RAIL == [r[6] for r in POST], "rail must be post col 6"
+    assert all('t' not in r for r in BLOCK), "block (cols 0-5) must contain no transparent"
+    assert len(POST) == 9 and all(len(r) == 7 for r in POST), "post must be 9x7"
 
     if args.emit:
-        emit_s("scene6_wall_post", POST,
-               os.path.join(REPO, '..', 'content', 'scenery', 'scene6_wall_post', 'authored.s'))
-        emit_s("scene6_wall_rail", [c for c in [[x] for x in RAIL]],
-               os.path.join(REPO, '..', 'content', 'scenery', 'scene6_wall_rail', 'authored.s'))
-        print("emitted content/scenery/scene6_wall_{post,rail}/authored.s")
+        emit_block(os.path.join(REPO, '..', 'content', 'scenery', 'scene6_wall_post', 'authored.s'))
+        emit_rail(os.path.join(REPO, '..', 'content', 'scenery', 'scene6_wall_rail', 'authored.s'))
+        print("emitted content/scenery/scene6_wall_{post(6x9 opaque block),rail(fill descriptor)}")
 
-    # --- geometry (HS-5): posts 2 & 3 (oracle-matching); post 1 known-bad, excluded ---
-    # scene6_cliff.s front-layer (AA23) byte cols, sub 0, 4px/byte:
-    X2, X3, PW = 46 * 4, 67 * 4, 4          # px 184, 268; post width 4
-    G = X3 - (X2 + PW)
-    divs = divisors(G)
-    print(f"\n=== GEOMETRY (HS-5) — from posts 2/3 (post 1 excluded, HS-4) ===")
-    print(f"post2 X={X2}px  post3 X={X3}px  pitch={X3-X2}px  post_width={PW}px")
-    print(f"G (gap) = X3 - (X2+{PW}) = {G} px = {G/4:g} bytes")
-    print(f"divisors of {G}: {divs}")
-    print(f"byte-aligned (W%4==0): {[d for d in divs if d % 4 == 0]}")
-    print(f"multi-segment byte-aligned (exclude W={G}): "
-          f"{[d for d in divs if d % 4 == 0 and d != G]}")
+    # geometry — positions fixed; rail is fills so no tiling/W. Re-derive the SPAN from placed posts.
+    P2, P3 = 46 * 4 + 2, 67 * 4 + 2       # sub 2 -> px 186, 270
+    BW = 6                                 # opaque block width (cols 0-5)
+    print("\n=== GEOMETRY (7x9 model) ===")
+    print(f"post blocks: byte 46 sub 2 = px {P2}; byte 67 sub 2 = px {P3}; block width {BW}px; row 100")
+    print(f"post pitch = {P3-P2}px (84); RAIL = direct fills (no tile/W; old G=80/W=8 SUPERSEDED)")
+    print(f"rail span (derived, between placed posts): px {P2} .. {P3+BW} "
+          f"(left block left edge .. right block right edge) = {P3+BW-P2}px  [I] extent past outer posts unknown")
+    print(f"rail bands: white rows {[100+i for i,c in enumerate(RAIL) if c=='w']}, "
+          f"black rows {[100+i for i,c in enumerate(RAIL) if c=='b']}")
 
-    # --- gate renders (HS-2/3/4/5): individual cels in the REAL palette, transparent=checker,
-    #     integer NEAREST, BOTH 1:1 and magnified. Rendered by DECODING the authored planes. ---
+    # preview
+    outdir = os.path.join(REPO, '..', 'build', 'wall_ref'); os.makedirs(outdir, exist_ok=True)
     Z = args.scale
-    bg = args.bg
-    RAILG = [[c] for c in RAIL]
-    post_1, post_z = render_from_planes(POST, 1, bg), render_from_planes(POST, Z, bg)
-    rail_1, rail_z = render_from_planes(RAILG, 1, bg), render_from_planes(RAILG, Z, bg)
-    outdir = os.path.join(REPO, '..', 'build', 'wall_ref')
-    os.makedirs(outdir, exist_ok=True)
+    post_z, post_1 = render_full(Z), render_full(1)
     PAD, TXT = Z, 34
-    colW = max(post_z.width, 120)
-    sheetW = PAD + colW + PAD * 3 + max(rail_z.width, 120) + PAD
-    sheetH = TXT + post_z.height + PAD + 30
-    sheet = Image.new('RGB', (sheetW, sheetH), (24, 24, 24))
+    sheet = Image.new('RGB', (post_z.width + PAD * 2, TXT + post_z.height + PAD + 20), (24, 24, 24))
     d = ImageDraw.Draw(sheet)
-    tlabel = "SKY (real bg)" if bg == 'sky' else "GRAY CHECKER"
-    d.text((4, 2), f"WALL CELS — real 4-idx palette; transparent = {tlabel}; NEAREST x{Z} + 1:1;"
-                   f" art bytes UNCHANGED", fill=(255, 255, 255))
-    d.text((PAD, TXT - 14), f"POST 4x8  (x{Z})", fill=(200, 200, 200))
-    sheet.paste(post_z, (PAD, TXT))
-    sheet.paste(post_1, (PAD, TXT + post_z.height + 6))           # 1:1 beneath
+    d.text((4, 2), f"WALL POST 9x7 (Jay spec) — w=white b=black t=SKY; NEAREST x{Z}; cols0-5=opaque "
+                   f"block, col6=rail", fill=(255, 255, 255))
+    sheet.paste(post_z, (PAD, TXT)); sheet.paste(post_1, (PAD, TXT + post_z.height + 6))
     d.text((PAD + post_1.width + 6, TXT + post_z.height + 4), "1:1", fill=(160, 160, 160))
-    rx = PAD + colW + PAD * 3
-    d.text((rx, TXT - 14), f"RAIL 1x8 (=post col3)  (x{Z})", fill=(200, 200, 200))
-    sheet.paste(rail_z, (rx, TXT))
-    sheet.paste(rail_1, (rx, TXT + rail_z.height + 6))
-    d.text((rx + rail_1.width + 6, TXT + rail_z.height + 4), "1:1", fill=(160, 160, 160))
-    sheet.save(os.path.join(outdir, 'wall_post_rail_sheet.png'))
-
-    # composite: two posts + rail filling the TRUE gap G, at scale, on sky bg (HS-10)
-    W_full = PW + G + PW                    # post | gap | post  (= pitch + post width)
-    comp = Image.new('RGB', (W_full, len(POST)), BG_SKY)
-    cpx = comp.load()
-    def stamp(grid, x0):
-        for y, row in enumerate(grid):
-            for x, c in enumerate(row):
-                if c == 't':
-                    continue               # transparent -> leave bg
-                cpx[x0 + x, y] = RGB[c]
-    stamp(POST, 0)                          # post A
-    for gx in range(G):                     # rail tiled across the gap (1px unit repeated)
-        stamp([[c] for c in RAIL], PW + gx)
-    stamp(POST, PW + G)                     # post B
-    comp = comp.resize((W_full * Z, len(POST) * Z), Image.NEAREST)
-    comp.save(os.path.join(outdir, 'wall_composite_true_spacing.png'))
-    print(f"\nrendered build/wall_ref/wall_post_rail_sheet.png + wall_composite_true_spacing.png "
-          f"(composite span={W_full}px at true G={G})")
+    sheet.save(os.path.join(outdir, 'wall_post_9x7_sheet.png'))
+    print("\nrendered build/wall_ref/wall_post_9x7_sheet.png")
 
 
 if __name__ == '__main__':

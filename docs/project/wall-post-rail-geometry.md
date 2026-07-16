@@ -1,5 +1,28 @@
 # Scene-6 wall post + rail — captured positions, geometry, flags (2026-07-15)
 
+> ## ⚠ SUPERSEDED BY JAY'S 9×7 REVISION (2026-07-16) — see below; the 4×8 / G=80 / W=8 are void
+> Jay re-authored the post to **9 rows × 7 cols** (`wwbbbbt`×2, `wwbbbbw`, `bbbbbbb`×3, `wwbbbbt`×2,
+> `wwbbbbw`). **RAIL = post col 6** (`t,t,w,b,b,b,t,t,w`). This **designs out** the masked-composite
+> primitive:
+> - **DECOMPOSITION (asserted):** cols 0–5 contain NO `t` → a **6×9 FULLY OPAQUE block** (no mask);
+>   col 6 == the rail column → **direct row-fills**, not a tiled cel. ⇒ wall-top = **5 rail fills +
+>   2 opaque blocks**. **No per-pixel mask, no tiling, no W, no G — the 4×8/G=80/W=8 below are VOID.**
+> - **PHASE 0 (code-quoted):** `HAL_gfx_blit_sprite_opaque` **supports sub-byte shift 0–3** — it sets
+>   `blit_opaque` then falls into the SHARED `blit_have_mode`→`blit_dispatch`→`blit_do_sb0..sb3`
+>   (opaque table → store the shifted byte verbatim). **No new primitive needed.**
+> - **PLACEMENT (built as `scene6_cliff_walltop.s` + `scene6_climb_crawl_driver_walltop.s`):** drop the
+>   spurious col-11 post; **2 opaque 6×9 blocks** (`content/scenery/scene6_wall_post`) at **byte 46 &
+>   67, sub 2 (px 186 & 270), row 100** via `HAL_gfx_blit_sprite_opaque`; **rail fills** white rows
+>   102 & 108, black rows 103/104/105, bytes 48–67 (px 192–271); AB rails + AA7D + start-pose
+>   byte-identical. **Framebuffer-diff:** 164 bytes differ, ALL within rows 100–111, byte-cols 24–69;
+>   **zero leak outside the band** (HS-8 OK).
+> - **⚠ §9a EDGE FLAG (for Jay's gate):** opaque+shift stamps the left block's shifted-in leading 2px
+>   (px 184–185) as **black** → a 2px nub left of the left post on the white rows. If Jay dislikes it,
+>   the fix is a build-time pre-shift with sky-filled leading edge (byte-aligned opaque blit).
+> - **RAIL EXTENT `[I]`:** span taken as between the placed posts (px 192–269); whether the rail
+>   continues past the outer posts is a single-sample assumption — verify when scroll reveals more.
+
+
 **Type:** authoring-pass record (art + geometry; NO placement — next dispatch). Prod `88eba89…`
 untouched; authored content `content/scenery/scene6_wall_{post,rail}/` stays UNTRACKED until Jay's
 visual gate. Generator: `harness/tools/gen_wall_post_rail.py` (rail derived from post col 3).
