@@ -90,6 +90,14 @@ def main():
     build(Z, 'walltop_oracle_vs_port_x%d.png' % Z)
     build(1, 'walltop_oracle_vs_port_1to1.png')
 
+    # SEPARATE layers for overlay: identical geometry (same crop, same 320-space, same zoom) so
+    # pixel (x,y) corresponds 1:1 between them. No labels/ruler baked in -> clean overlay.
+    outdir = os.path.join(REPO, '..', 'build', 'walltop_ref')
+    for name, img in (('walltop_LAYER_oracle', orc), ('walltop_LAYER_port', prt)):
+        big = img.resize((320 * Z, bandH * Z), Image.NEAREST)
+        p = os.path.join(outdir, f'{name}_x{Z}.png')
+        big.save(p); print("wrote", p, big.size, "(rows %d-%d, CoCo3 320-space x%d)" % (y0, y1, Z))
+
 
 if __name__ == '__main__':
     main()
