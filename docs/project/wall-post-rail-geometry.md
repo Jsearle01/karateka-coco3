@@ -1,5 +1,16 @@
 # Scene-6 wall post + rail — captured positions, geometry, flags (2026-07-15)
 
+> ## ⚑ REVISION 4 — 3 posts + rail extended LEFT (2026-07-16)
+> Jay: "extend the rail to the left and place the first post using the correct geometry." Added the
+> **first post** one pitch (84px) left of post-2: byte **25 sub 0 = px 100** (posts now px **100 / 184 /
+> 268**, bytes 25/46/67). **Rail extended** to span post1→post3 (px 106–274), white rows 104 & 111,
+> black 105–107. Now a SINGLE table-driven RMW over bytes **25–68** (Python from Jay's grid) draws
+> posts + rail together; the separate rail-fill routine is gone. **VERIFIED (framebuffer):** 3 posts at
+> px 100/184/268; rail band white 104&111 / black 105–107 across both gaps. Art frozen
+> (`e5fbcb66`/`e703565b`), `$AA7D` kept, ledge/AB rails still pulled, backdrop untouched; diff band rows
+> 100–115, zero leak; prod `88eba89`, fallback `2a8188fc` unchanged. (Fuji still shows in gap1 at the
+> rail's sky rows — the pulled-ledge exposure, Jay's gate.)
+>
 > ## ⚑ REVISION 3 — placement correction (2026-07-16): posts sub 1→**sub 0** (px 185→**184**), row 99→**101**
 > Jay's live gate: "post 1px left + structure 2px down." **Premise-check (measured, not assumed):** the
 > Rev-2 build was ALREADY at **sub 1 / px 185** (source + framebuffer agreed) — the dispatch's "still at
