@@ -90,10 +90,13 @@ def emit_s(label, grid, path):
     return h, w_cells
 
 
-def render_from_planes(grid, scale):
+def render_from_planes(grid, scale, bg='sky'):
     """Render the individual cel by DECODING the authored color+mask bytes (faithful to what
-    ships): mask pixel-pair 00 -> transparent (gray checker); 11 -> PALETTE[color pixel-pair].
-    NEAREST integer scale. Also asserts the decode matches Jay's grid (validates the packing)."""
+    ships): mask pixel-pair 00 -> transparent; 11 -> PALETTE[color pixel-pair]. NEAREST integer
+    scale. Asserts the decode matches Jay's grid (validates the packing).
+    bg='sky' (DEFAULT, HS-10): transparent shows the real sky background (index 2) — how the cel
+    actually appears; unambiguous here because the post/rail palette is {w=3,b=0} with NO blue.
+    bg='checker': gray checkerboard — use only when the cel's palette INCLUDES the bg index."""
     h = len(grid); w = len(grid[0])
     im = Image.new('RGB', (w, h), (24, 24, 24))
     px = im.load()
@@ -106,7 +109,10 @@ def render_from_planes(grid, scale):
             cell = row[x]
             # validation: decoded transparency/colour must equal Jay's authored cell
             assert (msk2 == 0) == (cell == 't'), f"mask/grid mismatch at ({x},{y})"
-            px[x, y] = checker(x, y) if msk2 == 0 else PALETTE[col2]
+            if msk2 == 0:
+                px[x, y] = PALETTE[2] if bg == 'sky' else checker(x, y)
+            else:
+                px[x, y] = PALETTE[col2]
     if scale != 1:
         im = im.resize((w * scale, h * scale), Image.NEAREST)
     return im
@@ -119,6 +125,8 @@ def divisors(n):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--scale', type=int, default=16)
+    ap.add_argument('--bg', choices=('sky', 'checker'), default='sky',
+                    help='transparent-pixel background in the sheet (HS-10: sky is the default)')
     ap.add_argument('--emit', action='store_true', help='write content .s files')
     args = ap.parse_args()
 
@@ -148,9 +156,10 @@ def main():
     # --- gate renders (HS-2/3/4/5): individual cels in the REAL palette, transparent=checker,
     #     integer NEAREST, BOTH 1:1 and magnified. Rendered by DECODING the authored planes. ---
     Z = args.scale
+    bg = args.bg
     RAILG = [[c] for c in RAIL]
-    post_1, post_z = render_from_planes(POST, 1), render_from_planes(POST, Z)
-    rail_1, rail_z = render_from_planes(RAILG, 1), render_from_planes(RAILG, Z)
+    post_1, post_z = render_from_planes(POST, 1, bg), render_from_planes(POST, Z, bg)
+    rail_1, rail_z = render_from_planes(RAILG, 1, bg), render_from_planes(RAILG, Z, bg)
     outdir = os.path.join(REPO, '..', 'build', 'wall_ref')
     os.makedirs(outdir, exist_ok=True)
     PAD, TXT = Z, 34
@@ -159,7 +168,8 @@ def main():
     sheetH = TXT + post_z.height + PAD + 30
     sheet = Image.new('RGB', (sheetW, sheetH), (24, 24, 24))
     d = ImageDraw.Draw(sheet)
-    d.text((4, 2), f"WALL CELS — real 4-idx palette; transparent = GRAY CHECKER; NEAREST x{Z} + 1:1;"
+    tlabel = "SKY (real bg)" if bg == 'sky' else "GRAY CHECKER"
+    d.text((4, 2), f"WALL CELS — real 4-idx palette; transparent = {tlabel}; NEAREST x{Z} + 1:1;"
                    f" art bytes UNCHANGED", fill=(255, 255, 255))
     d.text((PAD, TXT - 14), f"POST 4x8  (x{Z})", fill=(200, 200, 200))
     sheet.paste(post_z, (PAD, TXT))

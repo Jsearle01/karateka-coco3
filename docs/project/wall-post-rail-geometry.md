@@ -64,6 +64,37 @@ leaf `(dest AND ~mask) OR source` walking a 2D mask, or reuse `stencil_punch` to
 transparent blit to fill — TBD). **Authoring is unaffected**; this only affects how the next
 (placement) dispatch renders it. Flagged, not silently refactored (no HAL change this pass).
 
+## PRIMITIVE RECONCILE (2026-07-16, code-quoted) — the story flipped 3×; here's the truth
+The three claims are **different capabilities on different code paths, NOT contradictions**:
+- **(ii) `HAL_gfx_blit_sprite`** — transparency is **INDEX-0-KEYED**: per output byte the mask comes
+  from `blit_trans_table[source_byte]` (`gfx.s:532/566/614 lda b,u`; comment `gfx.s:512` "11 per
+  non-black pixel pair, 00 per black"), and it DOES sub-byte shift 0–3 (`blit_do_sb0..sb3`). So:
+  **per-pixel transparency keyed on source=black, + sub-byte shift.** It CANNOT render an
+  **opaque-black** pixel (a `b`=index-0 pixel is keyed transparent). It built the converted-cel delta
+  fine only because those cels' black WAS transparent.
+- **(iii) `HAL_gfx_blit_sprite_masked`** — takes a **separate** mask array `U`, but **reloads it
+  every row** (`gfx.s:857` at `emask_row`) → **per-COLUMN** (same mask each row) and **byte-aligned
+  only** (`gfx.s:819`). So: separate mask (can express opaque-black) BUT no per-row variation, no shift.
+- **The authored post needs BOTH**: a **separate per-pixel mask** (b=0 opaque vs t=0 transparent —
+  both index 0, no free palette index to split them) AND **sub-byte shift** (placement sub 2).
+  **Neither path provides both** → a **per-pixel masked COMPOSITE blit WITH sub-byte shift** is
+  genuinely required. (i) was right (gap), (ii) right for converted cels, (iii) right for authored art.
+
+## PLACEMENT PLAN (for the focused placement dispatch — NOT built here; HS-2/F1 = substantial)
+Two findings that de-risk it:
+1. **The RAIL needs NO mask.** Tiled W=8×10, every column is identical (`t,t,w,b,b,t,t,w`), so the
+   80-px gap is just **horizontal bands**: white at rows 102 & 107, black at rows 103–104,
+   transparent elsewhere — direct fills (like the striations). Only the **2 POSTS** need masking.
+2. **A NO-NEW-PRIMITIVE 2-pass path exists** for each post (avoids the substantial shift-masked
+   primitive): pre-shift the frozen art to sub-2 (build-time transform, pixels preserved,
+   `authored.s` untouched) → **Pass 1** byte-aligned `HAL_gfx_blit_sprite` (transparent) of the
+   white plane draws `w`; **Pass 2** byte-aligned `HAL_gfx_blit_stencil_punch` of the `b`-mask forces
+   black at `b` — both byte-aligned so they align; `t` untouched (background shows). Alternative =
+   build the general per-pixel masked+shift composite (the deferred **Stage-4 combatant primitive**).
+   **The placement dispatch picks + must framebuffer-diff + Jay live-gate.** Placement target
+   (unchanged): drop the spurious col-11 post; posts at **bytes 46 & 67, sub 2, row 100**; rail bands
+   across px 190–269.
+
 ## Authored art (single-sourced)
 `POST` grid is the single source of truth in the generator; **`RAIL = [row[3] for row in POST]`**
 (asserted) — the rail is post col 3, never authored twice (HS-1). Color plane: w=3 b=0 t=0;

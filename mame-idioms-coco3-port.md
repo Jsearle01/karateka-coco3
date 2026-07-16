@@ -293,6 +293,24 @@ what ships AND validates the packing. Emit **1:1 AND integer-NEAREST magnified**
 *Candidate:* `render-cel-preview-in-real-palette-decode-the-mask-checkerboard-transparency-not-a-debug-colour`.
 *Established:* wall post/rail preview fix 2026-07-15 (2nd preview defect after the 560-stretch).
 Tool: `harness/tools/gen_wall_post_rail.py` (`render_from_planes`).
+**Refinement (2026-07-16, HS-10):** DEFAULT the transparent background to the **real sky (index 2)** —
+it shows the cel as it will actually appear (why the composite read right). Use the checkerboard
+**only** when the cel's own palette **includes** the bg index (then sky is ambiguous). Post/rail
+palette is {w=3,b=0} with no blue → sky default is unambiguous. `--bg sky|checker` (default sky).
+
+### 11d. A cross-platform side-by-side MUST be reconciled onto ONE stated coordinate system
+Comparing oracle (apple2e) vs port (coco3) pixel positions is worse than useless unless both are on
+**one coordinate system with the mapping STATED** — else it invents a phantom offset. Apple HGR = 280
+logical px (7 px/byte); CoCo3 = 320 px (4 px/byte); the bridge is the port's **+20 centering**:
+`CoCo3_px = Apple_px + 20` ((320−280)/2), and the native oracle render is 280 wide (the 560 MAME snap
+halved, §11b) → **pad it +20 left** into 320-space. Then integer-NEAREST only (no interpolation — it
+blurs the boundaries being read), **stack vertically (oracle top / port bottom) with columns aligned**
+(X-checking is the point, not literal left-right), overlay a **byte ruler** (4-px CoCo3 boundaries +
+mark the target bytes), crop to the band, emit **1:1 + magnified**, and **print the mapping on the
+image**. Sanity check the reconcile: oracle post (Apple col 23 sh5 = px166) +20 = **px186** must equal
+the port target byte 46 sub 2 = 46*4+2 = **px186** — they land together only because sub 2 is the fix.
+*Candidate:* `cross-platform-side-by-side-needs-one-stated-coordinate-system-plus20-integer-nearest`.
+*Established:* wall-top placement side-by-side 2026-07-16. Tool: `harness/tools/walltop_side_by_side.py`.
 
 ---
 
