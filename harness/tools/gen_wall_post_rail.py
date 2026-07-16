@@ -23,11 +23,13 @@ import os, argparse
 from PIL import Image, ImageDraw
 
 HERE = os.path.dirname(os.path.abspath(__file__)); REPO = os.path.abspath(os.path.join(HERE, '..'))
-POST = ["wwbbbbt", "wwbbbbt", "wwbbbbw",
+# Jay's revised 11x7 (2026-07-16): 3 sky / white / 3 black / 3 sky / white. Placement row 99, sub 1.
+POST = ["wwbbbbt", "wwbbbbt", "wwbbbbt", "wwbbbbw",
         "bbbbbbb", "bbbbbbb", "bbbbbbb",
-        "wwbbbbt", "wwbbbbt", "wwbbbbw"]
+        "wwbbbbt", "wwbbbbt", "wwbbbbt", "wwbbbbw"]
 RAIL = [row[6] for row in POST]          # DERIVED: rail = post col 6 (code-enforced single-source)
 BLOCK = [row[0:6] for row in POST]       # DERIVED: opaque block = cols 0-5
+POST_ROW = 99                            # placement row (grows upward from the 9x7's 100)
 
 IDX = {'w': 3, 'b': 0, 't': 0}
 PALETTE = {0: (0, 0, 0), 1: (230, 111, 0), 2: (25, 144, 255), 3: (255, 255, 255)}
@@ -97,7 +99,7 @@ def main():
 
     assert RAIL == [r[6] for r in POST], "rail must be post col 6"
     assert all('t' not in r for r in BLOCK), "block (cols 0-5) must contain no transparent"
-    assert len(POST) == 9 and all(len(r) == 7 for r in POST), "post must be 9x7"
+    assert len(POST) == 11 and all(len(r) == 7 for r in POST), "post must be 11x7"
 
     if args.emit:
         emit_block(os.path.join(REPO, '..', 'content', 'scenery', 'scene6_wall_post', 'authored.s'))
@@ -105,15 +107,15 @@ def main():
         print("emitted content/scenery/scene6_wall_{post(6x9 opaque block),rail(fill descriptor)}")
 
     # geometry — positions fixed; rail is fills so no tiling/W. Re-derive the SPAN from placed posts.
-    P2, P3 = 46 * 4 + 2, 67 * 4 + 2       # sub 2 -> px 186, 270
+    P2, P3 = 46 * 4 + 1, 67 * 4 + 1       # sub 1 -> px 185, 269 (Jay's side-by-side 1px-left read)
     BW = 6                                 # opaque block width (cols 0-5)
-    print("\n=== GEOMETRY (7x9 model) ===")
-    print(f"post blocks: byte 46 sub 2 = px {P2}; byte 67 sub 2 = px {P3}; block width {BW}px; row 100")
+    print(f"\n=== GEOMETRY (11x7 model, row {POST_ROW}, sub 1) ===")
+    print(f"post blocks: byte 46 sub 1 = px {P2}; byte 67 sub 1 = px {P3}; block width {BW}px; row {POST_ROW}")
     print(f"post pitch = {P3-P2}px (84); RAIL = direct fills (no tile/W; old G=80/W=8 SUPERSEDED)")
     print(f"rail span (derived, between placed posts): px {P2} .. {P3+BW} "
           f"(left block left edge .. right block right edge) = {P3+BW-P2}px  [I] extent past outer posts unknown")
-    print(f"rail bands: white rows {[100+i for i,c in enumerate(RAIL) if c=='w']}, "
-          f"black rows {[100+i for i,c in enumerate(RAIL) if c=='b']}")
+    print(f"rail bands: white rows {[POST_ROW+i for i,c in enumerate(RAIL) if c=='w']}, "
+          f"black rows {[POST_ROW+i for i,c in enumerate(RAIL) if c=='b']}")
 
     # preview
     outdir = os.path.join(REPO, '..', 'build', 'wall_ref'); os.makedirs(outdir, exist_ok=True)

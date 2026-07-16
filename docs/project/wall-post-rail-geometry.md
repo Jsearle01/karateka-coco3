@@ -1,5 +1,32 @@
 # Scene-6 wall post + rail — captured positions, geometry, flags (2026-07-15)
 
+> ## ⚑ REVISION 2 — Jay's 11×7, row 99, sub 1 (2026-07-16). The 9×7/row-100/sub-2 below is superseded.
+> **Art (Jay-confirmed):** 11 rows × 7 cols — `wwbbbbt ×3 / wwbbbbw / bbbbbbb ×3 / wwbbbbt ×3 / wwbbbbw`
+> (3 sky / white / 3 black / 3 sky / white). **RAIL = post col 6 = `t,t,t,w,b,b,b,t,t,t,w`** (asserted).
+> - **Decomposition re-asserted:** cols 0–5 no `t` → 6×11 opaque block; col 6 == rail. Still fills +
+>   RMW, no mask, no new primitive.
+> - **PLACEMENT ROW 99** (grows upward): upper white line stays **102**, black band stays **103–105**,
+>   lower white line moves **108→109** (the only reading matching Jay's "lower line down exactly one").
+> - **POSTS sub 2 → sub 1 → px 185 & 269** (bytes 46 & 67 unchanged; Jay's 1px-left off the side-by-side).
+> - **Rail bands:** white screen rows **102 & 109**, black **103/104/105**; else sky. Built as direct
+>   fills (middle bytes 48–67) + a Python-computed **table-driven RMW** for the sub-byte post/rail-connect
+>   edge bytes (46,47,67,68) across rows 99–109 — masks verified vs Jay's grid. `scene6_cliff_walltop.s`.
+> - **Framebuffer-diff:** 293 bytes, all rows 99–115, **zero leak outside**. RMW/rail retained from Rev 1;
+>   ledge (`$AA11`) + AB rails stay pulled; `$AA7D` stays; backdrop/fallback/prod unchanged.
+> - **⚑ Exposed Fuji (ledge-removal consequence, Jay's gate):** at r108 bytes 48–49 the Fuji edge now
+>   shows (it was under the pulled `$AA11` ledge) — PROVEN external (present with the wall-top draw
+>   fully disabled), NOT a wall-top bug. Maskable if Jay dislikes it.
+>
+> ## ⚑ REGISTRATION FINDING — REPORT ONLY (+19 vs +20), NOT applied
+> Jay read the post 1px left off the side-by-side. The mapping `CoCo3_px = Apple_px + 20`
+> (`place(): x = col*7 + sh + 20`, `gen_scene6_cliff.py:56`) puts the oracle post (Apple col 23 sh 5 =
+> Apple px 166) at **186**; Jay's eye says **185** ⇒ the centering offset may be **+19**.
+> **Blast radius = the whole port:** the same `+20` `place()` registers *every* converted cel —
+> `gen_scene6_cliff.py` (cliff/scenery), `gen_climb_anim.py` (crawl poses), and the deferred combatants
+> would inherit it. **NOT changed here** — this build hardcodes **sub 1 for the two posts only**. A global
+> +19 correction moves every gated element 1px and is its own separately-gated dispatch. **STOP-and-report.**
+
+
 > ## ⚠ SUPERSEDED BY JAY'S 9×7 REVISION (2026-07-16) — see below; the 4×8 / G=80 / W=8 are void
 > Jay re-authored the post to **9 rows × 7 cols** (`wwbbbbt`×2, `wwbbbbw`, `bbbbbbb`×3, `wwbbbbt`×2,
 > `wwbbbbw`). **RAIL = post col 6** (`t,t,w,b,b,b,t,t,w`). This **designs out** the masked-composite
