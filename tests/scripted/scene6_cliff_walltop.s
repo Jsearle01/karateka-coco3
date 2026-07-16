@@ -1,9 +1,32 @@
-* scene6_cliff_walltop.s — Jay's 11x7, 3 posts (first mirrored) + rail, in the BACK slot (before Fuji).
-* Posts px 98/183/268, rows 101..111; rail white 104&111 black 105-107 to px299. AA7D base only.
+* scene6_cliff_walltop.s — Jay's 11x7, 3 posts (first mirrored) + rail + BLACK WALL below, back slot.
+* Posts px 98/183/268 rows 101..111; rail white 104&111 black 105-107 to px299. Black wall directly
+* below the post/rail structure: bytes 24..74, rows 112..116 (fills the blue gap under the rail). AA7D base.
 * ---------------------------------------------------------------
 
 draw_climb_scenery_back:
         jsr     draw_walltop_posts
+        jsr     draw_walltop_backwall
+        rts
+
+* black wall directly below the post/rail structure: bytes 24..74, rows 112..116.
+draw_walltop_backwall:
+        ldb     #112
+bwl_row:
+        pshs    b
+        tfr     b,a
+        ldb     #80
+        mul
+        addd    #$8000+24
+        tfr     d,x
+        ldb     #51
+bwl_byte:
+        clr     ,x+
+        decb
+        bne     bwl_byte
+        puls    b
+        incb
+        cmpb    #117
+        blo     bwl_row
         rts
 
 draw_climb_scenery:

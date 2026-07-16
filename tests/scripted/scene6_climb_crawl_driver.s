@@ -93,27 +93,7 @@ cab_l:
 *     hand fills direct to buffer-A logical base $8000, drawn as part of the static
 *     substrate so the clean-restore behind the crawler carries them. ---
 draw_climb_striations:
-        * black back wall rows 112..116 (bytes 5..24) — extend the cliff face UP to the lower
-        * white rail (row 111) so it is not a gap; blue striations then run 113..179 [Jay 2026-07-16].
-        ldb     #112
-dcbw_cf:
-        pshs    b
-        tfr     b,a
-        ldb     #80
-        mul
-        addd    #$8005
-        tfr     d,x
-        ldd     #$0000                  ; black (back wall)
-        ldy     #10                     ; bytes 5..24
-dcbw_ff:
-        std     ,x++
-        leay    -1,y
-        bne     dcbw_ff
-        puls    b
-        incb
-        cmpb    #117
-        blo     dcbw_cf
-        ldb     #113                    ; BLUE odd rows 113..179, bytes 5..24 (cliff face)
+        ldb     #117                    ; BLUE odd rows 117..179, bytes 5..24 (cliff face)
 dcst_cf:
         pshs    b
         tfr     b,a
