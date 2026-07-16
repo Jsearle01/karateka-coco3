@@ -1,14 +1,15 @@
 * tests/scripted/scene6_cliff_walltop.s — WALL-TOP variant, Jay's 11x7, 3 posts (FIRST MIRRORED) + rail.
-* GENERATED. Posts px 98/183/268 (post1 mirrored), rows 101..111. Rail (col6) white rows 104 & 111,
-* black 105-107, spans post1 col6 (px104) to the LOGICAL screen edge px299 (content px20..299, +20 centered).
-* AA7D base stays; backdrop untouched. Table-driven RMW over bytes 24..74, rows 101..111.
+* GENERATED. Posts px 98/183/268 (post1 mirrored), rows 101..111. Rail white 104 & 111, black 105-107,
+* to logical edge px299. Wall-top in BACK slot (before Fuji). RESTORED cliff cels (Jay): AB7C (sprite
+* left of first post), AB94 + AB4A (back wall), AA7D base — drawn after the Fuji/striations.
 * ---------------------------------------------------------------
 
 draw_climb_scenery_back:
+        jsr     draw_walltop_posts
         rts
 
+* cliff cels: AB7C (left of post1) + AB94/AB4A (back wall) + AA7D base — drawn after Fuji + striations.
 draw_climb_scenery:
-        jsr     draw_walltop_posts
         ldy     #climb_scn_tbl
 dcs_loop:
         ldx     ,y++
@@ -83,11 +84,21 @@ draw_climb_startpose:
         jsr     HAL_gfx_blit_sprite
         rts
 
+* cliff cels: AB7C left of post1 (byte22 row104), AB94 back wall (byte22 row112), AB4A (byte5 row112), AA7D base.
 climb_scn_tbl:
+        fdb     scene6_cliff_AB4A
+        fcb     0,5,112
+        fdb     scene6_cliff_AB7C
+        fcb     0,22,104
+        fdb     scene6_cliff_AB94
+        fcb     0,22,112
         fdb     scene6_cliff_AA7D
         fcb     0,15,152
         fdb     0
 
+        include "../../content/scenery/scene6_cliff_AB4A/converted.s"
+        include "../../content/scenery/scene6_cliff_AB7C/converted.s"
+        include "../../content/scenery/scene6_cliff_AB94/converted.s"
         include "../../content/scenery/scene6_cliff_AA7D/converted.s"
         include "../../content/player/scene6_climb_A3C5/converted.s"
         include "../../content/player/scene6_climb_A3E9/converted.s"
