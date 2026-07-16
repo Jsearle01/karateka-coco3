@@ -1,5 +1,17 @@
 # Scene-6 wall post + rail — captured positions, geometry, flags (2026-07-15)
 
+> ## ⚑ REVISION 3 — placement correction (2026-07-16): posts sub 1→**sub 0** (px 185→**184**), row 99→**101**
+> Jay's live gate: "post 1px left + structure 2px down." **Premise-check (measured, not assumed):** the
+> Rev-2 build was ALREADY at **sub 1 / px 185** (source + framebuffer agreed) — the dispatch's "still at
+> sub 2 / px 186" was wrong; the sub-1 had landed. So "1px left" = **px 184 (sub 0)**, "2px down" = row
+> **99→101**. **Applied + VERIFIED from the framebuffer (HS-2):** left post px **184**, right post px
+> **268**; white lines rows **104 & 111**; black band **105–107**; structure rows 101–111. RMW table
+> recomputed for sub 0 (Python from Jay's grid). Art frozen (`e5fbcb66`/`e703565b`), RMW-fill + pulled
+> ledge/AB rails retained, `$AA7D` kept, backdrop untouched. Diff band rows 100–115 (row 100 = fallback's
+> OLD post top row, removed), zero leak beyond. prod `88eba89`, fallback `2a8188fc` unchanged.
+> **Idiom: measure the OBSERVED framebuffer value, never verdict placement on the intended value** — this
+> dispatch existed because 3c2f65f was verdicted without a framebuffer measurement.
+>
 > ## ⚑ REVISION 2 — Jay's 11×7, row 99, sub 1 (2026-07-16). The 9×7/row-100/sub-2 below is superseded.
 > **Art (Jay-confirmed):** 11 rows × 7 cols — `wwbbbbt ×3 / wwbbbbw / bbbbbbb ×3 / wwbbbbt ×3 / wwbbbbw`
 > (3 sky / white / 3 black / 3 sky / white). **RAIL = post col 6 = `t,t,t,w,b,b,b,t,t,t,w`** (asserted).

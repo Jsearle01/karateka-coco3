@@ -407,3 +407,15 @@ every N frames. Two things fall out at once:
   authored) ⇒ the render completes within budget. This is a cheaper one-VBL-budget check than
   cycle-counting the render path. *Established:* climb-crawl first-animation build 2026-07-13
   (`scene6_climb_crawl_driver`, `climb_controller.s`).
+
+### 11f. Verdict a placement on the OBSERVED framebuffer, never on the intended value
+A placement report claimed "posts sub 2 → sub 1 → px 185" and was verdicted CONFIRMED on the *claim* —
+the value that shipped was never measured. (It later turned out the sub-1 HAD landed, but that was luck,
+not evidence.) **Fix the class like the art-bytes check does — with evidence:** (1) quote the placement
+lines from the BUILT source (`grep`/`sed` of the real file post-edit, not a restatement of intent), and
+(2) DUMP the framebuffer and report the OBSERVED pixel columns / band rows (`fbdump_stage.lua` +
+per-pixel decode). If observed ≠ expected, STOP — do not reconcile in prose. Corollary: also measure the
+CURRENT state before applying a "correction" — the delta may already be there (here the post was already
+at px185, so "1px left" meant px184, not the dispatch's stated px185). *Candidate:*
+`verdict-placement-on-the-observed-framebuffer-not-the-intended-value`. *Established:* wall-top placement
+correction 2026-07-16 (`scene6_cliff_walltop.s`; posts measured at px184/268 post-edit).
