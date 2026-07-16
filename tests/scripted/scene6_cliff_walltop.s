@@ -1,20 +1,23 @@
-* tests/scripted/scene6_cliff_walltop.s — WALL-TOP variant (Jay's 9x7 post).
+* tests/scripted/scene6_cliff_walltop.s — WALL-TOP variant (Jay's 9x7 post), CLEAN direct-fill render.
 * Hand-authored so the fallback scene6_cliff.s stays byte-identical.
-* Replaces the old AA23/AA31 posts with: 5 RAIL ROW-FILLS + 2 OPAQUE 6x9 BLOCKS.
-*   - spurious col-11 post DROPPED (only bytes 46 & 67 remain)
-*   - opaque block (content/scenery/scene6_wall_post = cols 0-5 of Jay's 9x7) at byte 46 & 67,
-*     SUB 2 (px 186 & 270), row 100, via HAL_gfx_blit_sprite_opaque (sub-byte shift 2)
-*   - rail = direct row-fills (post col 6): white rows 102 & 108, black rows 103/104/105,
-*     bytes 48..67 (px 192..271); blocks stamp over the rail ends
+*
+* Old AA23/AA31 wall-top posts REMOVED. New wall-top = 2 posts + rail, drawn as DIRECT FILLS with
+* read-modify-write on the sub-byte edges — NO opaque-shift blit, so NO §9a black nub (the true
+* background is preserved at px 184-185 / px 268-269). Positions exact: posts at bytes 46 & 67
+* sub 2 (px 186 & 270), row 100; spurious col-11 post dropped.
+*
+* Post (Jay 9x7, cols 0-5 = the drawn block; col 6 = rail): white cols 0-1 (px base..+1), black
+* cols 2-5 (px base+2..+5); rows 100/101/102/106/107/108 have the white edge, rows 103/104/105 are
+* all black. => left byte low-nibble = $0F (white rows) or $00 (black rows); right byte = $00.
+* Rail (= post col 6, direct row-fills): white rows 102 & 108, black rows 103/104/105, bytes 48-67
+* (px 192-271); posts overpaint their columns after.
 * AB rails (AB4A/AB7C/AB94) + AA7D base + start-pose: BYTE-IDENTICAL to scene6_cliff.s.
-* NOTE (idiom 9a): opaque+shift stamps the leading 2px (px 184-185) of the left block as BLACK —
-*   a 2px nub left of the left post on white rows; flagged for Jay's gate.
 * ---------------------------------------------------------------
 
-draw_climb_scenery_back:                ; old AA31 back layer DROPPED (new wall-top is front-drawn)
+draw_climb_scenery_back:                ; old AA31 back layer DROPPED
         rts
 
-draw_climb_scenery:                     ; rail fills + 2 opaque blocks, then AB rails + AA7D base
+draw_climb_scenery:                     ; new wall-top (rail fills + post fills), then AB rails + AA7D
         jsr     draw_walltop_rail
         jsr     draw_walltop_posts
         ldy     #climb_scn_tbl          ; AB rails + AA7D base (opaque, byte-identical to fallback)
@@ -32,26 +35,9 @@ dcs_loop:
 dcs_done:
         rts
 
-* --- 2 opaque post blocks at byte 46 & 67, sub 2, row 100 (shift via _opaque, Phase-0 confirmed) ---
-draw_walltop_posts:
-        lda     #2
-        sta     <blit_subbyte
-        lda     #46
-        ldb     #100
-        ldx     #scene6_wall_post
-        jsr     HAL_gfx_blit_sprite_opaque
-        lda     #2
-        sta     <blit_subbyte
-        lda     #67
-        ldb     #100
-        ldx     #scene6_wall_post
-        jsr     HAL_gfx_blit_sprite_opaque
-        rts
-
-* --- rail row-fills: white rows 102 & 108, black rows 103/104/105; bytes 48..67 (20 bytes) ---
-*     direct to buffer-A logical base $8000 (setup-time; carried by clean-restore). ---
+* --- rail row-fills: white rows 102 & 108, black rows 103/104/105; bytes 48..67 (px 192..271) ---
 WT_L        equ 48                      ; left byte
-WT_N        equ 10                      ; 10 words = 20 bytes (bytes 48..67, px 192..271)
+WT_N        equ 10                      ; 10 words = 20 bytes (bytes 48..67)
 draw_walltop_rail:
         ldu     #$FFFF                  ; white rows 102 & 108
         ldb     #102
@@ -66,7 +52,7 @@ draw_walltop_rail:
         ldb     #105
         bsr     wt_fill
         rts
-* fill one row: B = row, U = colour word (U survives MUL; D/A/B are clobbered). clobbers A,B,D,X,Y.
+* fill one full-byte row run: B = row, U = colour word (U survives MUL). clobbers A,B,D,X,Y.
 wt_fill:
         tfr     b,a
         ldb     #80
@@ -79,6 +65,45 @@ wt_fl:
         std     ,x++
         leay    -1,y
         bne     wt_fl
+        rts
+
+* --- 2 posts (bytes 46 & 67) as RMW fills: left byte low-nibble per row, right byte $00 (rows 100-108).
+*     left-byte low nibble = $0F white rows / $00 black rows; upper 2px preserved (sky / rail). ---
+wt_post_nib:
+        fcb     $0F,$0F,$0F,$00,$00,$00,$0F,$0F,$0F   ; rows 100,101,102 | 103,104,105 | 106,107,108
+draw_walltop_posts:
+        ldu     #46                     ; post 2 left byte
+        bsr     wt_postall
+        ldu     #67                     ; post 3 left byte
+        bsr     wt_postall
+        rts
+wt_postall:                             ; U = left byte
+        ldx     #wt_post_nib
+        ldb     #100                    ; row
+wtp_l:
+        lda     ,x+                     ; nibble ($0F/$00)
+        pshs    u,x,b
+        bsr     wt_postrow              ; A=nibble, B=row, U=left byte
+        puls    u,x,b
+        incb
+        cmpb    #109
+        blo     wtp_l
+        rts
+* one post row: A=nibble, B=row, U=left byte. left = (left & $F0) | nibble; right = $00.
+wt_postrow:
+        pshs    a                       ; save nibble
+        tfr     b,a
+        ldb     #80
+        mul                             ; D = row*80
+        addd    #$8000
+        tfr     d,x
+        tfr     u,d                     ; D = left byte (B low)
+        abx                             ; X = &buffer + row*80 + left_byte
+        lda     ,x
+        anda    #$F0                    ; preserve upper 2px (sky / rail)
+        ora     ,s+                     ; | nibble (pop)
+        sta     ,x                      ; write left byte
+        clr     1,x                     ; right byte = $00 (black cols 2-5)
         rts
 
 * draw_climb_startpose — IDENTICAL to scene6_cliff.s.
@@ -97,7 +122,7 @@ draw_climb_startpose:
         jsr     HAL_gfx_blit_sprite
         rts
 
-* AB rails + AA7D base ONLY (old AA23/AA31 posts removed; new wall-top is the blocks+rail above).
+* AB rails + AA7D base ONLY (old AA23/AA31 posts removed; new wall-top is the fills above).
 climb_scn_tbl:
         fdb     scene6_cliff_AB4A
         fcb     0,5,112
@@ -109,8 +134,7 @@ climb_scn_tbl:
         fcb     0,15,152
         fdb     0                       ; end
 
-* --- cel data ---
-        include "../../content/scenery/scene6_wall_post/authored.s"
+* --- cel data (AB rails + AA7D + start-pose cels; the post/rail are direct fills, no sprite) ---
         include "../../content/scenery/scene6_cliff_AA7D/converted.s"
         include "../../content/scenery/scene6_cliff_AB4A/converted.s"
         include "../../content/scenery/scene6_cliff_AB7C/converted.s"

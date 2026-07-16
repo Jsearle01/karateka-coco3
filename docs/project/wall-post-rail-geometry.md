@@ -16,9 +16,14 @@
 >   102 & 108, black rows 103/104/105, bytes 48–67 (px 192–271); AB rails + AA7D + start-pose
 >   byte-identical. **Framebuffer-diff:** 164 bytes differ, ALL within rows 100–111, byte-cols 24–69;
 >   **zero leak outside the band** (HS-8 OK).
-> - **⚠ §9a EDGE FLAG (for Jay's gate):** opaque+shift stamps the left block's shifted-in leading 2px
->   (px 184–185) as **black** → a 2px nub left of the left post on the white rows. If Jay dislikes it,
->   the fix is a build-time pre-shift with sky-filled leading edge (byte-aligned opaque blit).
+> - **§9a NUB FIXED (2026-07-16, Jay: "render cleanly"):** replaced the opaque-shift blit with
+>   **direct RMW fills** — each post's left byte is `(byte & $F0) | nibble` (nibble = `$0F` white rows
+>   / `$00` black rows), preserving the upper 2px (px 184–185 = sky left of post-2; px 268–269 = rail
+>   left of post-3); right byte = `$00`. NO shifted-in black nub, exact sub-2 position, correct
+>   background at both partial edges (which a single pre-shifted sky-edge sprite could NOT do — post-2's
+>   left neighbour is sky, post-3's is the rail). Framebuffer-diff still clean (151 bytes, all rows
+>   100–111, zero leak). The post/rail are now pure fills — no sprite blit, no `scene6_wall_post`
+>   include in the driver.
 > - **RAIL EXTENT `[I]`:** span taken as between the placed posts (px 192–269); whether the rail
 >   continues past the outer posts is a single-sample assumption — verify when scroll reveals more.
 
