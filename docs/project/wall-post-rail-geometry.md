@@ -1,5 +1,14 @@
 # Scene-6 wall post + rail — captured positions, geometry, flags (2026-07-15)
 
+> ## ✅ BAKED INTO THE FALLBACK (2026-07-16, Jay gated)
+> Jay approved the wall-top and said "bake into the fallback." `scene6_climb_crawl_driver.s` (the
+> ratified climb-crawl sandbox) now includes `scene6_cliff_walltop.s` and drops the `draw_climb_ledge`
+> call — so the fallback renders the new wall-top: 3 posts px **98 / 183 / 268** (first MIRRORED) + rail
+> to the logical right edge **px 299**; old AA23/AA31 posts + AA11 ledge + AB rails pulled, AA7D kept.
+> The redundant variant driver `scene6_climb_crawl_driver_walltop.s` + its build.bat line removed.
+> **Prod `karateka.bin` `88eba89` unchanged** (built from `src/`, not the sandbox). `scene6_cliff.s`
+> left intact for `scene6_stage3_driver.s`. Render: `build/walltop_ref/fallback_baked_walltop.png`.
+>
 > ## ⚑ REVISION 4 — 3 posts + rail extended LEFT (2026-07-16)
 > Jay: "extend the rail to the left and place the first post using the correct geometry." Added the
 > **first post** one pitch (84px) left of post-2: byte **25 sub 0 = px 100** (posts now px **100 / 184 /

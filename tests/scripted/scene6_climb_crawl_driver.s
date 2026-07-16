@@ -5,10 +5,12 @@
 * substrate, on the EXISTING sprite engine leaf (HAL_gfx_blit_sprite). Boot-
 * excluded (built only by build.bat sandbox line, never on prod boot).
 *
-* Substrate (static, reused AS-IS): scene6_backdrop.s (sky + Fuji + full-width
-* $AA11 floor) + scene6_cliff.s ($AB/$AA cliff scenery) + scene6_hud.s player-
-* side $0B12 HUD. Drawn once into buffer A, mirrored to B; the crawl composites
-* over it via clean-restore. Composite order: backdrop -> cliff -> player -> HUD.
+* Substrate (static): scene6_backdrop.s (sky + Fuji) + scene6_cliff_walltop.s (the
+* JAY-GATED wall-top: 3 posts px 98/183/268 (first mirrored) + rail to the logical
+* right edge px299, drawn as table-driven RMW; old AA23/AA31 posts + AA11 ledge +
+* AB rails PULLED, AA7D base kept) + scene6_hud.s player-side $0B12 HUD. Drawn once
+* into buffer A, mirrored to B; the crawl composites over it via clean-restore.
+* [wall-top baked in from the gated variant 2026-07-16.]
 *
 * VBL-locked (real GIME VBL IRQ via andcc #$EF); dwell 21 / 7x5 / 60(loop).
 * GATE: 25.3-M = Jay watching this run the crawl LIVE vs scene6_climb_anim_*.
@@ -59,7 +61,7 @@ test_start:
         jsr     fill_walltop            ; wall-top sky band rows 104-116
         jsr     draw_climb_scenery_back ; posts BEHIND the Fuji
         jsr     draw_fuji_cels          ; Fuji cels
-        jsr     draw_climb_ledge        ; AA11 ledge
+*       jsr     draw_climb_ledge        ; AA11 ledge — PULLED (baked wall-top, Jay 2026-07-16)
         jsr     draw_climb_striations   ; blue cliff-face lines
         jsr     draw_climb_scenery      ; posts + rails + AA7D base
         jsr     draw_climb_ground_right ; ground lines right of the base
@@ -158,7 +160,7 @@ dcgr_of:
         include "../../src/hal/coco3-dsk/time.s"
 
         include "scene6_backdrop.s"
-        include "scene6_cliff.s"
+        include "scene6_cliff_walltop.s"
         include "scene6_hud.s"
 
 * --- additional crawl pose cels (A3C5/A3E9 come via scene6_cliff.s) ---
