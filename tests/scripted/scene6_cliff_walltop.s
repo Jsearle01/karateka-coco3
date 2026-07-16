@@ -122,22 +122,14 @@ draw_climb_startpose:
         jsr     HAL_gfx_blit_sprite
         rts
 
-* AB rails + AA7D base ONLY (old AA23/AA31 posts removed; new wall-top is the fills above).
+* AA7D base ONLY. Old AA23/AA31 posts + AB rails (AB4A/AB7C/AB94) + AA11 ledge all PULLED
+* (Jay 2026-07-16 — old wall-top). AA7D is the cliff base (row 152), NOT wall-top, so it stays.
 climb_scn_tbl:
-        fdb     scene6_cliff_AB4A
-        fcb     0,5,112
-        fdb     scene6_cliff_AB7C
-        fcb     0,22,104
-        fdb     scene6_cliff_AB94
-        fcb     0,22,112
         fdb     scene6_cliff_AA7D
         fcb     0,15,152
         fdb     0                       ; end
 
-* --- cel data (AB rails + AA7D + start-pose cels; the post/rail are direct fills, no sprite) ---
+* --- cel data (AA7D base + start-pose cels; the post/rail are direct fills, no sprite) ---
         include "../../content/scenery/scene6_cliff_AA7D/converted.s"
-        include "../../content/scenery/scene6_cliff_AB4A/converted.s"
-        include "../../content/scenery/scene6_cliff_AB7C/converted.s"
-        include "../../content/scenery/scene6_cliff_AB94/converted.s"
         include "../../content/player/scene6_climb_A3C5/converted.s"
         include "../../content/player/scene6_climb_A3E9/converted.s"

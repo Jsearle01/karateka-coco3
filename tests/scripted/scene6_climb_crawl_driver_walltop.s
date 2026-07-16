@@ -62,7 +62,7 @@ test_start:
         jsr     fill_walltop            ; wall-top sky band rows 104-116
         jsr     draw_climb_scenery_back ; posts BEHIND the Fuji
         jsr     draw_fuji_cels          ; Fuji cels
-        jsr     draw_climb_ledge        ; AA11 ledge
+*       jsr     draw_climb_ledge        ; AA11 ledge — PULLED (old wall-top, Jay 2026-07-16)
         jsr     draw_climb_striations   ; blue cliff-face lines
         jsr     draw_climb_scenery      ; posts + rails + AA7D base
         jsr     draw_climb_ground_right ; ground lines right of the base
