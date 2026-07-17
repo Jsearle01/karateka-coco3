@@ -1,4 +1,4 @@
-* scene6_cliff_walltop.s — Jay's 11x7, 3 posts (first mirrored) + rail + BLACK WALL below, back slot.
+* scene6_cliff_walltop.s ï¿½ Jay's 11x7, 3 posts (first mirrored) + rail + BLACK WALL below, back slot.
 * Posts px 98/183/268 rows 101..111; rail white 104&111 black 105-107 to px299. Black wall directly
 * below the post/rail structure: bytes 24..74, rows 112..116 (fills the blue gap under the rail). AA7D base.
 * ---------------------------------------------------------------
@@ -8,7 +8,9 @@ draw_climb_scenery_back:
         jsr     draw_walltop_backwall
         rts
 
-* black wall directly below the post/rail structure: bytes 24..74, rows 112..116.
+* black wall directly below the post/rail structure. Left edge = px99 (the post leg's left black
+* line): byte 24 keeps px96-98 (bits7-2), sets only px99 (bits1-0) black; bytes 25..74 full black.
+* Rows 112..116.
 draw_walltop_backwall:
         ldb     #112
 bwl_row:
@@ -16,9 +18,13 @@ bwl_row:
         tfr     b,a
         ldb     #80
         mul
-        addd    #$8000+24
-        tfr     d,x
-        ldb     #51
+        addd    #$8000
+        tfr     d,x                     ; X = row base (byte 0)
+        lda     24,x                    ; byte 24: black only px99 (bits1-0), preserve px96-98
+        anda    #$FC
+        sta     24,x
+        leax    25,x                    ; X -> byte 25
+        ldb     #50                     ; bytes 25..74 full black
 bwl_byte:
         clr     ,x+
         decb
