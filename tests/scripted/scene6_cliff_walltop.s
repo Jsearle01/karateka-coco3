@@ -111,10 +111,13 @@ draw_climb_startpose:
         rts
 
 climb_scn_tbl:
+        fdb     scene6_cliff_AB4A
+        fcb     0,5,112
         fdb     scene6_cliff_AA7D
         fcb     0,15,152
         fdb     0
 
+        include "../../content/scenery/scene6_cliff_AB4A/converted.s"
         include "../../content/scenery/scene6_cliff_AA7D/converted.s"
         include "../../content/player/scene6_climb_A3C5/converted.s"
         include "../../content/player/scene6_climb_A3E9/converted.s"
