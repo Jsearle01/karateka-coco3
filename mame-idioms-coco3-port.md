@@ -434,3 +434,31 @@ disk; (2) every subsequent *"file X unchanged"* byte-identity claim was **quietl
 claims made afterwards are unsound. *Candidate:*
 `a-dont-commit-until-X-hold-needs-an-explicit-release-trigger-and-scope`. *Established:* churn commit
 2026-07-18 (`891dc63`).
+
+### 11e. A transition/carryover artifact is ONLY visible in the LIVE sequence — per-item renders LIE
+A **carryover** artifact (previous-pose pixels surviving into the next frame because the restore bbox
+doesn't cover the previous pose's extent) exists **only in the running animation** — the state is
+`restore-previous → draw-current`. **Rendering each pose standing alone on a clean substrate CANNOT
+reproduce it** (there is no "previous" to leak), so every frame comes back innocent and the case is
+**falsely closed**. This is exactly how the prior orange diagnosis answered the wrong question (it
+tested the *substrate alone* at rows 152–168 — faithful, true — but the artifact is *carryover at the
+player's lower body*). **Rule:** to capture carryover, run the gated build live and dump the DISPLAYED
+framebuffer **once per pose, in sequence**, detected from the controller's frame index — never
+independent per-pose renders. *Candidate:*
+`carryover-artifact-only-in-live-sequence-per-item-renders-falsely-exonerate`. *Established:* per-pose
+climb capture 2026-07-18 (`climb_pose_capture.lua`).
+
+### 11f. Live per-pose capture: gate on the DWELL counter, not just the frame index (`cl_idx` reads 0 pre-init)
+Capturing pose 0 of the crawl by "first frame where `cl_idx`($0040)==0, a couple frames after PC=exec"
+grabbed a **half-drawn substrate**: the substrate blitting takes several frames after `PC=exec`, and
+`cl_idx` reads 0 the whole time (ZP is 0 before `cl_init` writes it), and `page_register`($0050) still
+read `$00` (uninitialized). The dump had only 123 rows of content vs 175–188 for real frames — an
+invalid "anim_00." **Fix:** gate the capture on `cl_dwctr`($0041) `!= 0` — it is 0 until `cl_init` runs
+`cl_load_dwell` (loads dwell 21) and is *never* left at 0 mid-crawl (`cl_tick` reloads it the same tick
+it hits 0). So `cl_dwctr != 0` is the objective "init complete, pose 0 rendered on the fully-drawn clean
+substrate" signal — the sanity anchor for HS-2 (anim_00 clean = clean **by construction**, first render
+with no predecessor). Also: the DISPLAYED buffer = **opposite** of `page_register` (it holds the *back*
+buffer; `cl_render` presents then toggles), so dump `(pr==$20)?$C000:$8000`. And per §11b, dump the
+framebuffer **memory** and decode square-pixel — `scr:snapshot()` stretches and cannot show a 1px line.
+*Candidate:* `gate-live-pose-capture-on-dwell-counter-not-frame-index-cl-idx-reads-0-preinit`.
+*Established:* per-pose climb capture 2026-07-18.
