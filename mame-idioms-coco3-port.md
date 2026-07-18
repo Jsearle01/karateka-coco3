@@ -499,3 +499,17 @@ outlier/agreement; (3) present the falsifier **neutrally** — a result that und
 is the method working, not a failure. *Candidate:*
 `when-operator-doubts-analysis-render-the-data-to-falsify-state-the-measurement-basis`.
 *Established:* climb-cel sprite sheet 2026-07-18 (`render_cel_sheet.py`).
+
+### 11i. Entangled causes (what an index LOOKS like vs WHICH index a pixel is) — test ONE per render
+The anim_02 orange had two live candidate causes: a **palette** change (alters what index 1 looks like)
+and a **blue↔orange swap** (alters which index a pixel is). Rendered together, a "fixed" frame can't
+attribute the fix — and a *wrong pair can cancel out and look right* (a swap that's wrong plus a palette
+that's wrong can land on a plausible frame). **Rule: one variable per comparison render.** Judge the
+palette at the current cel data (no swap); run the swap at the palette under which the mismatch was
+observed (here CURRENT `$1B`/`$26`). Only combine after each is settled independently. Corollary for the
+swap test specifically: **report the NEGATIVE band too** — a blanket index swap is all-or-nothing, so it
+must be checked against the rows that CURRENTLY match (here base rows 166/167), not only the mismatch
+rows; if it fixes the mismatch band but breaks the matching band, it is **not a clean swap** — and that
+is the finding, not a failure. *Candidate:*
+`test-one-variable-per-render-a-wrong-pair-can-cancel-and-look-right-check-the-negative-band`.
+*Established:* anim_02 palette/swap renders 2026-07-18.
