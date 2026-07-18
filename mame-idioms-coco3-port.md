@@ -584,3 +584,18 @@ for true-silicon fidelity, per 25.3-H). **Gotcha:** set the config **once, early
 frame catches a mid-transition geometry change and yields a truncated PNG. *Candidate:*
 `mame-coco3-monitor-type-is-a-screen_config-ioport-composite-default-rgb-set-via-lua-not-a-cli-flag`.
 *Established:* MAME mode-check + correction 2026-07-18 (`monitor_mode_snapshot.lua`).
+
+### 11m. Fix a per-cel systematic bug by DERIVING the parameter from ground truth, not a hand-override list; verify the RULE against a control
+The climb chroma-parity was set by a `pick_parity('orange')` heuristic + a hand-maintained `FLIP_OVERRIDE`
+list — which silently inverted `$A4A4` (it passed its hue gate while blue↔orange swapped). The right fix
+for a **systematic per-cel bug** is to **derive the parameter from ground truth** — here each cel's
+**traced render column** (`start_col = byte_col*7 + sub`), the same model the cliff cels already used — so
+parity is correct by construction, no heuristic and no exception list. **Verify the RULE, not every
+asset:** (1) it must **reproduce every existing hand-override automatically** (they become derivations —
+if any isn't reproduced, the rule is incomplete → STOP); (2) it must flip a **known control** (`$A4A4`
+MUST flip, Jay-ruled — if it doesn't, the rule is wrong → STOP). Prove both in a **scratch** re-convert +
+byte-diff before touching `content/`; adopt only the cel(s) whose DATA changed; **framebuffer-diff** the
+one render that moves and surface it — don't self-certify. **Parity fixes which index a pixel gets, not
+its look ⇒ no hue-gate re-run.** *Candidate:*
+`derive-the-systematic-parameter-from-ground-truth-not-an-override-list-verify-the-rule-against-a-control`.
+*Established:* column-parity fix 2026-07-18 (`stage3_convert_climb.py`; A4A4 the missed cel).
