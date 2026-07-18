@@ -630,3 +630,18 @@ independently confirmed defeats the exercise. If the other record is **inaccessi
 your side's discrepancy-candidates as inputs to the table rather than faking the diff. *Candidate:*
 `two-record-postmortem-independent-reconstruction-then-reconcile-never-read-the-other-first`.
 *Established:* post-mortem Vol II 2026-07-18.
+
+### 11p. Preview coco3 RGB-monitor palette candidates by the BITPACK decode (= MAME Monitor Type=RGB), not per-candidate snapshots
+To build an RGB palette-selection panel square-pixel, render the index frame with each candidate's **bitpack
+RGB** (6-bit value → R1G1B1R0G0B0, 2 bits/channel scaled 0/85/170/255) — this is **exactly what MAME renders
+under Monitor Type=RGB** (verified: `$19`→(0,170,255), `$26`→(255,85,0), `$34`→(255,170,0), `$2D`→(255,0,255),
+`$1B`→(0,255,255)). It avoids MAME's stretched 640-wide snapshots and lets one image sweep many candidates.
+**Verify the mode took** by measuring one candidate in real MAME RGB (`rgb_palette_snapshot.lua`: set the
+Monitor Type field + poke `$FFB1`/`$FFB2`) — the framebuffer must show the RGB triple, not the composite one.
+And **value-verify the composite anchor** before building the panel (poke nothing, Monitor=Composite → assert
+the recorded hybrid `$2D`→(54,179,247)/`$26`→(245,115,58); mismatch = drift, STOP). Finding worth surfacing:
+in RGB mode the digital bitpack can land **closer to the oracle** than the composite decode (C1 blue `$19`
+d36 / orange `$26` d36 vs composite `$2D` d46 / `$26` d60) — native-strong RGB may beat the composite look;
+the fused 1:1 read decides, not the metric. *Candidate:*
+`preview-rgb-palette-candidates-by-bitpack-decode-equals-mame-monitor-type-rgb-verify-the-anchor`.
+*Established:* RGB palette selection study 2026-07-18.
