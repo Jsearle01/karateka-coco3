@@ -40,6 +40,20 @@ ever embedded it. `.git/config` is not history-committed and this repo's current
 **CLEAN: no secrets found in full history across all refs.** (The only `@github.com` occurrences are
 `git@github.com` SSH-remote references in old status/notes docs — the SSH user is literally `git`, not a secret.)
 
+## Gap-closer — the 291-vs-292 boundary (addendum 2026-07-18)
+gitleaks `git` mode reported **291 commits scanned** vs **292 reachable from `--all`** at scan time.
+The one uncounted commit is the **root** `c4b06ec` ("P1.0 — karateka-coco3 repository setup") — gitleaks
+`git` mode diffs each commit against its parent, and the root has no parent, so it is not counted there.
+There are **no merge commits** (`git rev-list --all --min-parents=2` empty), so the root is the whole gap.
+
+The root is a **content commit** (18 files added — `.gitignore`, `README.md`, design/milestone/state docs,
+`.gitkeep` scaffolding), so it was scanned **directly**, not hand-waved:
+- `git archive c4b06ec | tar -x` → `gitleaks dir <tree> --redact` → **`no leaks found`** (80.97 KB, exit 0).
+- Redacted grep of `git show c4b06ec` for the same token / credential-in-URL / key patterns → **CLEAN**;
+  **no `@github.com` occurrence at all** in the root.
+
+**Net: all 292 commits verified clean** (291 via the `--all` git scan + the root via direct tree scan).
+
 ## HARD-STOPs
 None fired (clean result). Note: **a clean result does NOT authorize going public** — that flip, plus
 the licence decision and README, remain Jay's calls. This dispatch only surfaces the evidence.
