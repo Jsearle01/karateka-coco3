@@ -616,3 +616,17 @@ A/B label. Set it (like Monitor Type) via the `Artifacting` field `user_value` o
 (`gime_artifact_snapshot.lua`); there is no CLI flag. *Candidate:*
 `coco3-gime-artifacting-is-the-composite-artifact-model-a-no-op-for-palette-mode-content`.
 *Established:* GIME-artifacting recon 2026-07-18.
+
+### 11o. A two-record post-mortem is corroborated by INDEPENDENT reconstruction, then reconciliation
+When two parties each hold half of a history (here: the executor's trace/build/commit record and the
+Orchestrator's planning/verdict record), the value is the **cross-check**, and it only works if each half
+is reconstructed **independently first** — read the other record before drafting yours and you anchor to
+it, turning corroboration into transcription. Draft from your OWN artifacts (commit spine, reports, diffs,
+hashes), THEN diff against the other and build an agree/disagree/coverage-gap table; **flag discrepancies,
+don't smooth them; surface conflicts for the ground-truth owner, don't resolve them unilaterally.** And
+**no invented precision** — if a SHA/measurement isn't in your record, "not in my record" is a valid,
+useful entry (it shows which claims only one half supports); echoing the other record's number as if
+independently confirmed defeats the exercise. If the other record is **inaccessible**, say so and provide
+your side's discrepancy-candidates as inputs to the table rather than faking the diff. *Candidate:*
+`two-record-postmortem-independent-reconstruction-then-reconcile-never-read-the-other-first`.
+*Established:* post-mortem Vol II 2026-07-18.
