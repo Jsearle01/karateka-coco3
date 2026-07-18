@@ -191,11 +191,15 @@ compatible formatting (~1.55×, guaranteed-readable). No non-shipping branch.
 
 ## 8. Housekeeping / working-tree (Jay's to reconcile, non-blocking)
 
-- **`seeds/karateka/` does not exist** — the root cause of the candidate-push
-  failure. Every dispatch's §0.4 candidate-self-capture pointed at a non-existent
-  path, so candidates only ever lived as CANDIDATE text in Form B reports (Clyde's)
-  and transcript prose (Orchestrator's). FIX: create the directory + back-fill both
-  piles (the Part-3 Clyde dispatch, gated on 3b-3 clean).
+- **Candidate-push "no pool" was a LOST REPO REFERENCE, not a missing directory —
+  RESOLVED (2026-07-18).** The pool exists: it is the separate **`methodology-candidate-pool`**
+  repo (`/c/Projects/methodology-candidate-pool/`, `seeds/karateka/live/`), a **sibling** of
+  karateka-coco3. Recent dispatches searched `seeds/karateka/` *relative to karateka-coco3*
+  (the wrong repo), found nothing, and rerouted candidates to inline MAME idioms — drift papered
+  over by rerouting. FIX (done): reference re-established + documented in **CLAUDE.md §2C**
+  (path/remote/schema/rules); this session's misfiled candidates back-filled as live rows
+  (11n/11p/11q + the meta). *(Aside: the pool remote carries an embedded credential — Jay
+  authorized using it as-is; flagged for credential-helper migration + rotation.)*
 - **window-block-map.md stale line:** still carries "$FC00-$FFFF I/O 1KB";
   io-space-map (bb64b22) corrected it — $FE00-$FEFF is RAM vector page, only
   $FF00-$FFFF is I/O. CLOSED: window-block-map.md corrected to match (ff75e5e).

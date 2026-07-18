@@ -59,6 +59,19 @@ The MAME idioms files are *how* to get the reliable execution evidence §2 requi
 
 ---
 
+## 2C. Methodology candidate capture — WHERE candidates go (so the reference stops getting lost)
+
+The candidate-self-capture clause writes to a **separate repo, NOT this one.** It silently no-op'd for several dispatches because dispatches searched `seeds/karateka/` *relative to karateka-coco3* (the wrong repo) and, finding nothing, rerouted candidates to inline MAME idioms — that was **lost-reference drift papered over by rerouting**, not a missing directory. The reference, recorded so it stays found:
+
+- **The pool is the `methodology-candidate-pool` repo**, a **sibling of karateka-coco3**: local path **`C:/Projects/methodology-candidate-pool/`** (Git-Bash `/c/Projects/methodology-candidate-pool/`); remote **`https://github.com/Jsearle01/methodology-candidate-pool.git`**. Karateka candidates live in **`seeds/karateka/live/`**.
+- **Capture at the FIRST instance** as a NEW row: `seeds/karateka/live/<iso8601-date>-<slug>.md`. **New rows only — NEVER read or edit existing pool entries** (folding `seed/` + `live/` is the reconciler's read-time job).
+- **Row schema** (YAML frontmatter + a one-line `Source:` provenance): `principle` · `slug` · `project: karateka` · `source: live` · `status: open` · `scope_judgment: methodology` · `parked_at_version/settled_in/settled_note: absent` · `instance_count: 1` · `instance_history:` one element (`date`, `task`, `context`, `initiator` — set faithfully, e.g. `clyde`; never guessed) · `why_might_generalize` (link related rows with `[[slug]]`) · `proposed_disposition` · `provenance_complete: true`. Copy the shape from any existing `seeds/karateka/live/*.md`.
+- **Commit + push fire-and-forget** — non-blocking; a failed push NEVER gates a task. Report the captured slug(s) in the Form B "Candidate(s) captured" line.
+- **Credential (known tech-debt):** the pool remote currently carries an **embedded credential in the URL** — Jay is aware and has authorized using it as-is for now; it wants **credential-helper migration + token rotation**. **NEVER copy the token into CLAUDE.md, a row, or any tracked file.** `git push` uses the remote as configured; nothing more.
+- **Fallback:** if the repo can't be found or reached, **STOP and ask Jay** — do **NOT** create a `seeds/` directory inside karateka-coco3 (a shadow pool is worse than a lost reference). A repeated capture no-op is a **reset signal to re-establish the reference, not a reason to reroute to inline.**
+
+---
+
 ## 3. PNG Handling Rules
 
 PNG files are diagnostic artifacts for human review. The following rules are absolute:
