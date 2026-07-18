@@ -558,20 +558,29 @@ so filtering the output (e.g. "drop the chroma index") conflates categories that
 `one-pass-two-outputs-derive-geometry-once-or-a-second-pass-shifts-inside-the-same-box`.
 *Established:* pre-conversion-safety dispatch 2026-07-18.
 
-### 11l. MAME coco3 has NO composite/RGB toggle — it renders COMPOSITE; assert it, never infer from colour
-Recurring question (5th time): "are we judging through composite or RGB?" **Answer, asserted:** MAME
-`coco3` exposes **no monitor-mode switch** — `-listconfig` is not a MAME option; there is no coco3 monitor
-config/slot and no rgb/composite driver variant (only `coco3`/`coco3h`/`coco3p` = NTSC/6309/PAL);
-`-monitorprovider` is the HOST window backend, not the emulated monitor. So the run command carries **no
-mode flag because none exists**, and MAME renders **one fixed decode**. **Which one — pinned by decode
-math + a real snapshot (the BLUE register is the discriminator):** the RGB-monitor bitpack (bits
-R1 G1 B1 R0 G0 B0, 2b/channel) of `$1B` is **(0,255,255) cyan** and of `$2D` is **(255,0,255) magenta** —
-but MAME actually renders `$1B`→**(94,44,255) violet** and `$2D`→**(54,179,247) blue** (measured, and
-confirmed by a fallback snapshot). MAME ≠ RGB-bitpack ⇒ MAME's decode is **composite** (intensity/hue).
-**Rule:** assert the mode by (a) quoting the invocation + confirming no mode flag exists, and (b) a
-decode-math + snapshot check on a saturated register (blue) — **never infer "composite" from a label or a
-loosely-matching colour.** Consequence for the RGB clean-vs-fringed gate: MAME cannot show the real-CoCo3
-RGB-monitor look at all; an RGB gate needs either the computed RGB-bitpack decode (a tool, not MAME) or
-real hardware. *Candidate:*
-`mame-coco3-has-no-rgb-composite-toggle-renders-composite-pin-via-blue-decode-not-a-label`.
-*Established:* MAME mode-check 2026-07-18.
+### 11l. MAME coco3 HAS a Monitor Type config (Composite default / RGB) — set it via the screen_config ioport
+**CORRECTION (supersedes the earlier "no toggle" claim — that was wrong; Jay was right there is an RGB
+switch).** MAME `coco3` has a **"Monitor Type" machine configuration**: ioport tag **`:screen_config`**,
+mask 1, **`Composite`=0 (default)** / **`RGB`=1** (visible in `-listxml coco3`; there is also a separate
+`gime:artifacting` config). The earlier search failed because **`-listconfig` is not a MAME command** (it
+errors "unknown option") — the configs are enumerated by **`-listxml`**, not a `-listconfig` flag, and I
+stopped too early. **It is a MACHINE CONFIG, not a CLI flag** — there is no `-monitor`/`-rgb` command-line
+switch; set it either in the MAME UI (TAB → Machine Configuration → Monitor Type) which persists to
+`cfg/coco3.cfg`, or **headless from Lua**: find the field named `"Monitor Type"` on port `:screen_config`
+and set `field.user_value = 1` (RGB) / `0` (Composite) **before the palette registers are written**, then
+snapshot (`monitor_mode_snapshot.lua`). **Measured, same climb frame, same GIME regs $00/$26/$2D/$3F:**
+| reg | Composite (default) | RGB (Monitor Type=1) |
+|---|---|---|
+| `$26` orange | (245,115,58) | (255,85,0) |
+| `$2D` blue | (54,179,247) | **(255,0,255) magenta** |
+| `$1B` blue | (94,44,255) | (0,255,255) cyan |
+
+RGB mode = the digital bitpack (R1 G1 B1 R0 G0 B0, 2b/channel); Composite = the intensity/hue artifact
+decode. **The palette study + everything gated so far was judged through the DEFAULT = Composite.**
+Consequence for the RGB clean-vs-fringed gate: **MAME CAN show the RGB-monitor look** — set Monitor
+Type=RGB; no real hardware or external decode tool required for that gate (hardware is still needed only
+for true-silicon fidelity, per 25.3-H). **Gotcha:** set the config **once, early** (before the fallback's
+`HAL_gfx_init` palette write) and let the mode settle before snapshotting — re-asserting it on the grab
+frame catches a mid-transition geometry change and yields a truncated PNG. *Candidate:*
+`mame-coco3-monitor-type-is-a-screen_config-ioport-composite-default-rgb-set-via-lua-not-a-cli-flag`.
+*Established:* MAME mode-check + correction 2026-07-18 (`monitor_mode_snapshot.lua`).
