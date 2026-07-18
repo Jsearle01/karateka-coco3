@@ -1,5 +1,14 @@
 # Scene-6 wall post + rail — captured positions, geometry, flags (2026-07-15)
 
+> ## ⛔ FINAL / CORRECTION (2026-07-18) — read this first
+> **Shipped, Jay-gated wall-top = THREE posts at px 98 / 183 / 268, pitch 85** (later 1px nudges moved the
+> Rev-4 px 100/184/268 to the shipped values). The **oracle has three posts too** (Jay-confirmed) — the
+> two-post model was a **recon error**, now retracted; see the 4-error table + the **col-11-spurious
+> retraction** in `walltop-render-map.md`. **VOID / superseded (do not reuse):** the `4×8` art, `G=80`,
+> `W=8`, the **2-post / 84-px-pitch** model, and the **"sub 1 / px 185 & 269"** target — all below,
+> preserved only as record. The trace-derived geometry here is a hypothesis; **the gated render is
+> authority.** Do NOT re-derive placement from the superseded numbers without Jay's gate.
+
 > ## ✅ BAKED INTO THE FALLBACK (2026-07-16, Jay gated)
 > Jay approved the wall-top and said "bake into the fallback." `scene6_climb_crawl_driver.s` (the
 > ratified climb-crawl sandbox) now includes `scene6_cliff_walltop.s` and drops the `draw_climb_ledge`

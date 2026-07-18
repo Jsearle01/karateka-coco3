@@ -1,5 +1,39 @@
 # Wall-top render map — clean, execution-confirmed (2026-07-14)
 
+> ## ⛔ CORRECTION (2026-07-18) — THE WALL-TOP HAS **THREE** POSTS. This map's "TWO posts / col-11 spurious" is RETRACTED.
+> **The wall-top shipped and Jay gated it (`888fc27`); Jay confirms the ORACLE HAS THREE POSTS TOO.**
+> So the **recon was wrong, not the build** — this is not a by-eye divergence; the build matches the oracle.
+>
+> **Shipped, gated wall-top (authority):** THREE posts at CoCo3 px **98 / 183 / 268**, pitch **85**,
+> **leftmost post MIRRORED** (white edge inward), **rail** to the logical right edge **px 299**, drawn
+> **behind the Fuji** (back slot). Plus a **black back wall** (bytes 25–74, rows 112–116, left edge
+> **px 99**), **`$AB4A` restored** (byte 5 row 112), cliff-face extended (black line row 116). Built as
+> table-driven RMW fills in `tests/scripted/scene6_cliff_walltop.s` (baked into the fallback).
+>
+> **⛔ RETRACTED: "the col-11 post is SPURIOUS / drop it."** It was **CORRECT in the port** — there are
+> three posts. That claim (below, and in `climb-setup-inventory.md`) nearly deleted a correct element.
+> Everything below asserting **two posts / bytes 46 & 67 only / no col-11 / sub 2 / px 186 & 270** is the
+> wrong model — **superseded by the shipped values above.**
+>
+> **⚠ THE WALL-TOP TRACE IS UNRELIABLE IN THIS REGION — hypothesis only, superseded by the gated render.**
+> The masked-blit trace produced **FOUR** cel-identification errors here (table below). Past scene 4 the
+> disassembly is complete-but-not-understood; **Jay's visual memory overrides the trace, and it did every
+> time it disagreed.** The gated render is authority; the trace findings below are hypotheses, not fact.
+>
+> | # | recon claimed | truth | corrected |
+> |---|---|---|---|
+> | 1 | `$AA23`/`$AA31` = off-screen combatants; runner = `$AA27–$AA30` | they **are** the wall-top | `4b27dd8` |
+> | 2 | `$AA25–$AA30` = a 12-cel runner | **phantom** — the 12 data rows of cel `$AA23` | `4b27dd8` |
+> | 3 | `$96/$99` = wall-top | **floor** cels | `3cc877c` |
+> | 4 | **only two posts (Apple 23 & 35); col-11 SPURIOUS** | **THREE posts — oracle draws three; the port's third was correct** | **THIS BANNER** |
+>
+> **Inferred hypothesis (NOT verified — do NOT investigate; wall-top is CLOSED):** a trace scoped to the
+> masked path `$1BF4` would not see a **mirror blit `$190C`**; if the oracle draws the third (mirrored)
+> post via `$190C`, that could explain the blind spot. One line, unverified — may matter for the combatants.
+>
+> **Standing note:** the shipped wall-top is gated and matches the oracle (3 posts). **Do NOT "correct" it
+> toward any prior recon model (two-post / col-11-spurious / `G=80` / `W=8`) without Jay's gate.**
+
 **Type:** READ-ONLY identification. **Recipe:** CLEAN `-video none -keyboardprovider none`.
 **Prod ROM:** `88eba89b15cdf17c8d25e082d2d3e1f3cce57d38` untouched. Frames my-boot (provenance).
 **Method:** bp the oracle render routines during the clean climb (f6068–6120) + read the

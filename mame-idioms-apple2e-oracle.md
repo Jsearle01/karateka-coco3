@@ -593,3 +593,22 @@ and the cliff-face is the `$AB8E` cel-stack (std blit) vs the port's fill approx
 completeness pass (missing / wrong-technique / mis-positioned / spurious) beats N one-element
 fixes. *Established:* climb setup-inventory 2026-07-14. See `docs/project/climb-setup-inventory.md`.
 Candidate: `enumerate-the-whole-setup-window-and-cross-check-not-the-one-suspect-element`.
+
+---
+
+## A cel-ID trace can be CONFIDENTLY WRONG repeatedly in one region — past scene 4, the eye wins
+The scene-6 wall-top masked-blit trace produced **FOUR** cel-identification errors in one small region,
+each stated with execution-evidence confidence: (1) `$AA23`/`$AA31` "= off-screen combatants" (they ARE
+the wall-top); (2) `$AA25–$AA30` "= a 12-cel runner" (they're the **12 data rows of one cel `$AA23`** —
+reading a cel's row data as separate cels); (3) `$96/$99` "= wall-top" (they're floor cels); (4) "only
+**two** posts, the port's col-11 post is **spurious** — drop it" (there are **THREE** posts; the oracle
+draws three; the port's third was correct — the "drop it" nearly deleted a correct shipped element).
+**Jay's visual memory was right every time it disagreed with the trace.** The standing rule (past scene 4
+the disassembly is complete-but-not-understood; running-game execution + the operator's eye are the
+authority) earned its keep here: **when the eye and the trace disagree in this region, the eye wins, and
+the trace gets FLAGGED unreliable-in-region — you do not "correct" a gated render toward the trace model.**
+Mechanism hypothesis (INFERRED, not verified — do not investigate): a trace scoped to the masked path
+`$1BF4` cannot see a **mirror blit `$190C`**; if the mirrored (leftmost) post draws via `$190C`, that
+explains why the third post was invisible to the masked-only trace — and could matter for the combatants.
+*Candidate:* `a-cel-id-trace-can-be-confidently-wrong-repeatedly-in-one-region-past-scene-4-the-eye-wins`.
+*Established:* scene-6 wall-top recon corrections (`4b27dd8`, `3cc877c`, + the 3-post correction 2026-07-18).

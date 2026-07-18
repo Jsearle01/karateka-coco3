@@ -1,5 +1,15 @@
 # Climb-beat static setup inventory — clean, execution-confirmed (2026-07-14)
 
+> ## ⛔ CORRECTION (2026-07-18) — "REMOVE THE SPURIOUS `$AA23`/`$AA31` POSTS / drop col-11" is RETRACTED.
+> The wall-top **shipped and Jay gated it** (`888fc27`); **the oracle has THREE posts** (Jay-confirmed).
+> The port's third (col-11) post was **correct all along** — the "spurious / remove" verdict in the
+> cross-check table below (`draw_climb_scenery_back`, `draw_climb_scenery`, and the summary "remove the two
+> spurious combatant posts") is **WRONG and RETRACTED**. Removing them would delete a correct element.
+> **This is the 4th wall-top recon error** (see the table in `walltop-render-map.md`). The wall-top trace
+> for this region is **unreliable — hypothesis only; the gated render (`scene6_cliff_walltop.s`) is
+> authority.** Shipped truth: 3 posts px **98 / 183 / 268**, pitch 85, leftmost mirrored, rail to px 299,
+> behind the Fuji, + black back wall + `$AB4A`. Do NOT act on the "spurious post" rows below.
+
 > ## ⚠⚠ SUPERSEDED IN PART (2026-07-13) — see `walltop-render-map.md`
 > Two claims below are **INVERTED** by write-pointer + raw-dump evidence:
 > - **"MISSING wall-top runner `$AA25–$AA30` (12 cels)"** — PHANTOM. `$AA25–$AA30` are the 12
