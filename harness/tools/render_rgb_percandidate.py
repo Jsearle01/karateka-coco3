@@ -35,9 +35,9 @@ def main():
         cand=port([(0,0,0),bitpack(org),bitpack(bl),(255,255,255)]).resize((CW*SCALE,192*SCALE),Image.NEAREST)
         cand=lab(cand,f"{slot} RGB {cls}: blue ${bl:02X}{bitpack(bl)} orange ${org:02X}{bitpack(org)}")
         cells=[oc,an,cand]; gap=10
-        W=sum(c.width for c in cells)+gap*2; H=max(c.height for c in cells)
-        sheet=Image.new('RGB',(W,H),(18,18,18)); x=0
-        for c in cells: sheet.paste(c,(x,0)); x+=c.width+gap
+        W=max(c.width for c in cells); H=sum(c.height for c in cells)+gap*2
+        sheet=Image.new('RGB',(W,H),(18,18,18)); y=0
+        for c in cells: sheet.paste(c,(0,y)); y+=c.height+gap
         name=f"{slot}_{cls}_blue{bl:02X}_orange{org:02X}.png"; sheet.save(os.path.join(OUT,name)); print(" ",name)
     print(f"6 files, each ORACLE|COMPOSITE|CANDIDATE side by side, {SCALE}x NEAREST.")
 if __name__=='__main__': main()
