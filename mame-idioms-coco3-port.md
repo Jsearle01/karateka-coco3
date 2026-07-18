@@ -419,3 +419,18 @@ CURRENT state before applying a "correction" — the delta may already be there 
 at px185, so "1px left" meant px184, not the dispatch's stated px185). *Candidate:*
 `verdict-placement-on-the-observed-framebuffer-not-the-intended-value`. *Established:* wall-top placement
 correction 2026-07-16 (`scene6_cliff_walltop.s`; posts measured at px184/268 post-edit).
+
+### 11d. A "don't commit until X" hold needs an explicit RELEASE TRIGGER + SCOPE, or it strands work
+The 07-12 Stage-3 WIP was held under *"don't commit Stage-3 until the static image is correct."* The
+hold had **no release trigger and no scope**: when the static image *was* gated (the wall-top, months
+later), nobody re-derived the hold, so the WIP sat in the working tree — and it had become
+**load-bearing** (`scene6_backdrop.s`'s `draw_fuji_cels`/`fill_walltop` are called by the shipped
+fallback). Consequences: (1) **the gated render was not reproducible from HEAD** — it lived only on
+disk; (2) every subsequent *"file X unchanged"* byte-identity claim was **quietly ambiguous**
+(unchanged vs HEAD, or vs the churned disk?). Confirm load-bearing cheaply before assuming: `git stash
+<file>` → build → observe the failure (here: `Undefined symbol fill_walltop`/`draw_fuji_cels`) → pop.
+**Rule:** a commit-hold must name (a) the exact **release trigger** and (b) its **scope** (which files
+/ which change), or unrelated work accreting in the same working tree gets stranded and byte-identity
+claims made afterwards are unsound. *Candidate:*
+`a-dont-commit-until-X-hold-needs-an-explicit-release-trigger-and-scope`. *Established:* churn commit
+2026-07-18 (`891dc63`).
