@@ -27,6 +27,9 @@ def lab(im,t):
     o=Image.new('RGB',(im.width,im.height+16),(0,0,0)); o.paste(im,(0,16)); ImageDraw.Draw(o).text((3,3),t,fill=(235,235,235)); return o
 def cell(name):
     if name.lower()=="oracle": return lab(oracle().resize((CW*SCALE,192*SCALE),Image.NEAREST),"ORACLE  blue(25,144,255) orange(230,111,0)")
+    if name.upper().startswith("B") and len(name)==3:   # raw blue token B<hh> -> blue $hh, orange $26
+        bl=int(name[1:],16); pal=[(0,0,0),bitpack(0x26),bitpack(bl),(255,255,255)]
+        return lab(port(pal).resize((CW*SCALE,192*SCALE),Image.NEAREST),f"blue ${bl:02X}{bitpack(bl)} / orange $26{bitpack(0x26)} (RGB)")
     bl,org,cls=CAND[name.upper()]
     if bl is None: pal=[(0,0,0),(245,115,58),(54,179,247),(255,255,255)]; t="COMPOSITE anchor $2D(54,179,247)/$26(245,115,58)"
     else: pal=[(0,0,0),bitpack(org),bitpack(bl),(255,255,255)]; t=f"{name.upper()} {cls}: blue ${bl:02X}{bitpack(bl)} orange ${org:02X}{bitpack(org)}"
