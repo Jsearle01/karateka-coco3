@@ -81,6 +81,16 @@ The candidate-self-capture clause writes to a **separate repo, NOT this one.** I
 
 ---
 
+## 2E. The `wip` branch — in-flight sandbox work, visible to the Orchestrator
+
+A single long-lived **`wip`** branch holds all in-flight sandbox work (scene-6 drivers, trace scripts, cast content in progress). Pushed when a dispatch reports (the existing push-before-report convention). **Purpose: the Orchestrator reads the actual tree, not report descriptions** — the failure mode that bit this project repeatedly.
+
+- **One home per fact** — work lives in its **normal paths** on `wip`; NO `/inprogress` dir or duplicate copy of anything that also lives elsewhere. (A second home diverges — the decision-record split, twice.)
+- **`main` = coherent/deliverable; `wip` = in-flight.** The **prod byte-identical invariant is a `main` invariant.** `wip` may carry incoherent WIP and pre-integration experiments; prod byte-identity is NOT guaranteed there. Work merges `wip → main` when coherent (e.g. scene-6 content when it assembles as a unit).
+- **Explicit-path staging still applies** (never `git add -A`), on `wip` too. Over-inclusion on `wip` is fine (visibility > tidiness) but must still be by named path — a blanket add would sweep in unrelated churn.
+
+---
+
 ## 3. PNG Handling Rules
 
 PNG files are diagnostic artifacts for human review. The following rules are absolute:
