@@ -1,5 +1,12 @@
 # Karateka on the CoCo3 — Post-Mortem, Volume II (Scene 6: build, colour, and the sprite-set architecture)
 
+*Merged & reconciled edition (2026-07-18). This volume was assembled from two
+independently-built halves — the Orchestrator's planning/review record and Clyde's
+execution/trace record — cross-checked (R1–R10) and reconciled against Jay's ground truth;
+see Appendix F. Where they conflicted (R7, the parity mechanism), the code-citing record won.
+Execution-record precision (hashes, framebuffer measurements, the `$52` scroll) is folded in
+at Appendix E.*
+
 *A continuation of* Karateka on the Tandy CoCo3 — A Port Post-Mortem. *Volume I closed
 at the scene-6 recon (2026-07-06). This volume covers **2026-07-06 → 2026-07-18**: the
 scene-6 climb tableau built from recon to a Jay-gated static image, the colour-defect
@@ -84,14 +91,22 @@ A single frame of the climb showed stray orange lines near the player's lower bo
    read). `$A45A` (the pose's other cel) as an untouched control still matched; substrate
    untouched.
 
-The attribution is a **tracked converter bug, now first-confirmed**: the converter computes
-a cel's colour from a **fixed assumed origin column (~133, odd)**; a cel whose real render
-column has opposite parity comes out **blue↔orange swapped**. `$A4A4` sits at sub 2,
-`$A45A` at sub 0 — different parity, so the fixed-origin assumption was right for one and
-wrong for the other. The fix is a **converter change** (derive origin from actual render
-position), not a hand-edit — and it was validated in miniature the same session by the
-`$A3E9` adoption, a one-line `FLIP_OVERRIDE += 0xA3E9` matching three prior white-dominant
-cels (`A3C5`/`A4F2`/`A572`).
+The attribution is a **tracked converter bug, now first-confirmed** — and the precise
+mechanism was corrected by the execution/trace record during post-mortem reconciliation
+(R7; see Appendix F). The climb converter recipe (`stage3_convert_climb.py`, per
+`git show 007ba28~1`) used **`start_col=0`** plus a **`pick_parity('orange')` heuristic** and
+a hand-maintained `FLIP_OVERRIDE` list — *not* a fixed ~133 origin. `$A4A4` came out inverted
+because **`pick_parity` silently chose the wrong parity for it**. The fix derives
+`start_col = byte_col*7 + sub` from the **traced render byte-column** — so parity is correct
+per-cel, automatically, and the `FLIP_OVERRIDE` list becomes derivations rather than
+exceptions. *(An earlier planning-side draft mis-described this as a "fixed ~133 origin" with
+"`$A4A4` sub 2 vs `$A45A` sub 0" as the discriminator; that was wrong — both cels trace to
+**osub=0**, and the "sub 2" was `$A4A4`'s CoCo3 placement sub after the +20 centering, not the
+converter's Apple-column parity input. The record that quotes the converter code is
+authoritative over the record that reconstructed from placement fields.)* The fix is a
+**converter change** (derive origin from render position), not a hand-edit — validated in
+miniature the same session by the `$A3E9` adoption, a one-line `FLIP_OVERRIDE += 0xA3E9`
+matching three prior white-dominant cels (`A3C5`/`A4F2`/`A572`).
 
 **Transferable lessons, several:** *(a)* the substrate-alone render is the decisive test for
 "carryover vs baked-in" — but only if aimed at the region the operator actually means; *(b)*
@@ -240,8 +255,13 @@ engine change, one disk); *load-on-selection* (one set resident, needs a new run
 one disk); *flippy disk* (one set per side, owes nothing — no banking, no loader, no
 selector-for-look). **Disk capacity is a separate, unmeasured, possibly-binding limit** — the
 26,641 B measured is *demo content only*; the full game (princess, palace, guards, eagle,
-akuma, ending) is most of the unconverted cel bank, and a full-game cel-byte estimate from the
-oracle's catalog is the cheap de-risk that hasn't been done.
+akuma, ending) is most of the unconverted cel bank. **Correction (2026-07-18): the full-game
+total is NOT a cheap up-front de-risk.** The game streams content in **chunks (per disk load)**,
+so on-disk bytes past scene 6 cannot be segmented (asset vs code vs garbage) without tracing each
+load — the same present-but-unidentified wall the oracle hits past scene 4, on the raw disk. Only
+**demo-through-scene-6 is countable now** (those loads are traced); the full-game footprint
+**accrues per-scene** as each load is traced during its port, never as a standalone estimate. (Full
+correction: `project-state-open-items-disk-boot-arc.md` §4.1.)
 
 **The through-line:** every composite question is unanswerable without a CoCo3, and MAME's
 composite fidelity is itself unverified — so the pragmatic path is **target RGB (verifiable
@@ -362,12 +382,60 @@ invariant that is never released becomes a merge cliff.
 - **Pinned:** MAME default = Composite; **RGB available** (Monitor Type ioport).
 - **Awaiting Jay:** the scroll verification plan (before the walk build); clean|fringed
   go/no-go (not urgent — near-term converter work is parity-fix-only).
-- **Drafted, queued:** the GIME-artifacting-flag investigation (classify emulator-model vs
-  real-GIME-behaviour, exhaustive `-listxml`, STOP-and-surface if hardware).
+- **Completed** (per the execution record, `4be3acb`): the GIME-artifacting-flag investigation —
+  **classified A (emulator composite-render model), no-op for palette mode.** The non-disruptive
+  outcome: not a real-GIME hardware behaviour, so no architectural escalation; 25.3-H unchanged.
 - **Never run:** anything on a stock CoCo3. 25.3-H is now decision-relevant 5+ times and is the
   gate on the entire composite pile.
 
-## Appendix E — The commit spine (this volume, 07-06 → 07-18)
+## Appendix E — Execution-record precision (folded in from the reconciliation)
+
+The planning/review half summarises; the execution/trace half holds the exact figures. Merged here:
+
+- **Hashes:** prod `88eba89…` byte-identical across **all 152 commits** in the window; fallback
+  `7c9c57f7…` → `1e4b608e…` at `25b431f` (hybrid palette); hybrid scope-proof pose_2 index frame
+  `DEAD5A64…`.
+- **Framebuffer measurements:** parity-fix pose_2 diff = **31 bytes** (rows 143–164 / cols 22–25);
+  MAME per Monitor Type — `$2D` composite (54,179,247) vs RGB (255,0,255); the swept 64-value palette
+  distances (blue `$1B` d=121 → `$2D` d=46; orange `$26` d=60 / `$25` d=30 / `$16` d=76).
+- **The `$52` scroll register `[K]`** (recovered): `X = $52 ± xadj[i]`, 18-entry table `$ADF7–$AE3E`;
+  **never observed changing** (climb pins it at `$30`). The "no pre-guard midground scroll" conclusion
+  is **retracted** — that trace predated `$52`'s identification. This is the open scroll thread the
+  verification plan targets, and it belongs before the walk build.
+- **The gime-artifacting classification** (`4be3acb`): **A (emulator composite-render model), no-op**
+  — with the raw `-listxml` Monitor Type / config evidence in the execution record.
+
+## Appendix F — The two-record reconciliation (how this volume was verified)
+
+This volume is the **merge** of two independently-built halves — the Orchestrator's planning/review
+record and Clyde's execution/trace record — reconciled against Jay's ground truth, exactly as the
+original post-mortem was assembled. The execution half was drafted **before** reading the planning
+half (independence preserved), then diffed against it. Ten discrepancy-candidates (R1–R10) were
+resolved:
+
+- **R1–R6, R8, R10 — AGREE.** The CONFIRMED-that-never-built wall-top placement (R1, both records
+  treat it as a mis-verdict), three posts (R2), the `$AA23`-data phantom (R3), the three wrong orange
+  answers (R4–R6, with the exact 126-vs-42–92 counts matching), the "no RGB toggle" correction (R8),
+  the palette-in-fallback deviation (R10). Two independent reconstructions landing this close is real
+  corroboration.
+- **R7 — CONFLICT, resolved for the execution record (Jay's tiebreak).** Both halves agreed the
+  *conclusion* (column-parity converter bug, fixed by deriving origin from render position) but
+  conflicted on the *mechanism*. The planning draft's "fixed ~133 origin / sub-2-vs-sub-0" was **wrong**
+  — the climb recipe used `start_col=0` + `pick_parity`, both cels trace to osub=0, and the "sub 2" was
+  a CoCo3 placement sub after +20 centering, not the converter's parity input. **The code-citing record
+  won over the field-reconstructing record.** II.9 and III.5 above carry the corrected mechanism. *(This
+  is itself the volume's thesis in miniature: the artifact-under-test beats the inference about it —
+  even when the inference is the reviewer's own.)*
+- **R9 — COVERAGE GAP, now merged.** The execution record's completed gime-artifacting classification
+  (A / no-op) folded into Appendix D.
+
+**Coverage folded both ways:** the planning half contributed the colour-architecture depth
+(storage-vs-addressability, the three both-looks paths), the decision record, and the methodology doc;
+the execution half contributed the hashes, framebuffer measurements, the `$52` scroll identification,
+and the completed gime result (Appendix E). Where a claim sat in only one record it's marked; no
+planning-side number was upgraded to fact without an execution-side confirmation.
+
+## Appendix G — The commit spine (this volume, 07-06 → 07-18)
 
 **Wall-top:** identify → premise-falsified correction → decompose → authoring → render-fix →
 11×7 grid → bake → recon-correction (retraction banners, three posts, trace flagged).
