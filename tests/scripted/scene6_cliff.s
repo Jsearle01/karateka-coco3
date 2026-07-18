@@ -4,8 +4,26 @@
 * Positions = traced climb draw cols/rows -> CoCo3 (+20px centered, +leading-trim).
 * ---------------------------------------------------------------
 
-* draw_climb_scenery — cliff face ($AB8E striations) + structure + base + mountain
-*   band, table-driven. Transparent blit (index-0 keys to the backdrop behind).
+* draw_climb_scenery_back — wall-top posts drawn BEFORE the Fuji, so the
+*   mountain occludes their upper rows (oracle order: AA31 -> Fuji -> ...).
+draw_climb_scenery_back:
+        ldy     #climb_scn_back_tbl
+dcsb_loop:
+        ldx     ,y++
+        beq     dcsb_done
+        lda     ,y+
+        sta     <blit_subbyte
+        lda     ,y+
+        ldb     ,y+
+        pshs    y
+        jsr     HAL_gfx_blit_sprite_opaque
+        puls    y
+        bra     dcsb_loop
+dcsb_done:
+        rts
+
+* draw_climb_scenery — wall-top FRONT layer (AA23 posts + AB rails) + AA7D base,
+*   drawn AFTER the Fuji. OPAQUE blit (black is solid). [Jay gate 2026-07-12]
 draw_climb_scenery:
         ldy     #climb_scn_tbl
 dcs_loop:
@@ -16,7 +34,7 @@ dcs_loop:
         lda     ,y+                     ; A = byte col
         ldb     ,y+                     ; B = row
         pshs    y
-        jsr     HAL_gfx_blit_sprite
+        jsr     HAL_gfx_blit_sprite_opaque
         puls    y
         bra     dcs_loop
 dcs_done:
@@ -39,63 +57,30 @@ draw_climb_startpose:
         jsr     HAL_gfx_blit_sprite
         rts
 
+climb_scn_back_tbl:
+        fdb     scene6_cliff_AA31
+        fcb     0,24,100
+        fdb     scene6_cliff_AA31
+        fcb     0,45,100
+        fdb     scene6_cliff_AA31
+        fcb     0,66,100
+        fdb     0                       ; end
+
 climb_scn_tbl:
-        fdb     scene6_cliff_AB8E
-        fcb     2,22,117
-        fdb     scene6_cliff_AB8E
-        fcb     2,22,119
-        fdb     scene6_cliff_AB8E
-        fcb     2,22,121
-        fdb     scene6_cliff_AB8E
-        fcb     2,22,123
-        fdb     scene6_cliff_AB8E
-        fcb     2,22,125
-        fdb     scene6_cliff_AB8E
-        fcb     2,22,127
-        fdb     scene6_cliff_AB8E
-        fcb     2,22,129
-        fdb     scene6_cliff_AB8E
-        fcb     2,22,131
-        fdb     scene6_cliff_AB8E
-        fcb     2,22,133
-        fdb     scene6_cliff_AB8E
-        fcb     2,22,135
-        fdb     scene6_cliff_AB8E
-        fcb     2,22,137
-        fdb     scene6_cliff_AB8E
-        fcb     2,22,139
-        fdb     scene6_cliff_AB8E
-        fcb     2,22,141
-        fdb     scene6_cliff_AB8E
-        fcb     2,22,143
-        fdb     scene6_cliff_AB8E
-        fcb     2,22,145
-        fdb     scene6_cliff_AB8E
-        fcb     2,22,147
-        fdb     scene6_cliff_AB8E
-        fcb     2,22,149
-        fdb     scene6_cliff_AB8E
-        fcb     2,22,151
-        fdb     scene6_cliff_AB94
-        fcb     2,22,112
-        fdb     scene6_cliff_AB7C
-        fcb     2,22,104
+        fdb     scene6_cliff_AA23
+        fcb     0,25,100
+        fdb     scene6_cliff_AA23
+        fcb     0,46,100
+        fdb     scene6_cliff_AA23
+        fcb     0,67,100
         fdb     scene6_cliff_AB4A
         fcb     0,5,112
+        fdb     scene6_cliff_AB7C
+        fcb     0,22,104
+        fdb     scene6_cliff_AB94
+        fcb     0,22,112
         fdb     scene6_cliff_AA7D
-        fcb     2,15,152
-        fdb     scene6_cliff_AA23
-        fcb     3,25,100
-        fdb     scene6_cliff_AA23
-        fcb     3,46,100
-        fdb     scene6_cliff_AA23
-        fcb     3,67,100
-        fdb     scene6_cliff_AA31
-        fcb     3,24,100
-        fdb     scene6_cliff_AA31
-        fcb     3,45,100
-        fdb     scene6_cliff_AA31
-        fcb     3,66,100
+        fcb     0,15,152
         fdb     0                       ; end
 
 * --- cel data (single source) ---
@@ -104,7 +89,6 @@ climb_scn_tbl:
         include "../../content/scenery/scene6_cliff_AA7D/converted.s"
         include "../../content/scenery/scene6_cliff_AB4A/converted.s"
         include "../../content/scenery/scene6_cliff_AB7C/converted.s"
-        include "../../content/scenery/scene6_cliff_AB8E/converted.s"
         include "../../content/scenery/scene6_cliff_AB94/converted.s"
         include "../../content/player/scene6_climb_A3C5/converted.s"
         include "../../content/player/scene6_climb_A3E9/converted.s"

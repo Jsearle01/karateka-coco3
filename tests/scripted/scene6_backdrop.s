@@ -23,8 +23,18 @@
 *   PADDING is $AA (blue), not black. Floor stays transparent.
 * ---------------------------------------------------------------
 draw_fuji_backdrop:
-        * sky fill FIRST: rows 0-103, content region bytes 5-74 (X20-299) = blue
+        * Stage 1/2 (fight): sky + Fuji cels + full-width floor. Render UNCHANGED (the
+        * cels are just extracted into draw_fuji_cels so the climb can reuse them without
+        * the fight floor).
         jsr     fill_sky
+        bsr     draw_fuji_cels
+        * floor line: tile $AA11 (4 bytes wide) across at Y104
+        jsr     draw_floor_line
+        rts
+
+* draw_fuji_cels — the 4 Fuji opaque blits (base->peak), no sky/floor. Shared by the
+*   fight backdrop and the climb (which draws its own sky band + no full-width floor).
+draw_fuji_cels:
         * base $A9E2  X104 (Apple84+20)  Y108  byte 26 sub 0
         clr     <blit_subbyte
         lda     #26
@@ -52,8 +62,26 @@ draw_fuji_backdrop:
         ldb     #81
         ldx     #scene6_bg_A948
         jsr     HAL_gfx_blit_sprite_opaque
-        * floor line: tile $AA11 (4 bytes wide) across at Y104
-        jsr     draw_floor_line
+        rts
+
+* fill_walltop — extend the sky BLUE over the wall-top rows 104-116 (bytes 5-74). The
+*   climb has NO full-width fight floor there; the wall-top posts/ledges + Fuji draw on
+*   top of this blue. (rows 104..116 = 13 rows.)
+fill_walltop:
+        ldy     #13                     ; rows 104..116
+        ldx     #$8000+104*80+5         ; row 104, byte 5
+fwt_row:
+        pshs    x,y
+        ldd     #$AAAA
+        ldy     #35                     ; 70 content bytes
+fwt_byte:
+        std     ,x++
+        leay    -1,y
+        bne     fwt_byte
+        puls    x,y
+        leax    80,x
+        leay    -1,y
+        bne     fwt_row
         rts
 
 * fill_sky — fill the CONTENT region (bytes 5-74 = X20-299, the centered 280px)
@@ -93,6 +121,23 @@ fl_tile:
         addb    #4                      ; next tile (AA11 width = 4)
         cmpb    #73                     ; stop before the right border (byte 75)
         blo     fl_tile
+        rts
+
+* draw_climb_ledge — CLIMB wall-top ledge: tile $AA11 from ABOVE THE PLAYER'S HEAD
+*   (byte 22 = pose $A3C5 column) rightward, NOT full-width [Jay 2026-07-12]. Rows 104-111.
+draw_climb_ledge:
+        ldb     #22                     ; start above the player's head (not byte 5)
+cl_tile:
+        pshs    b
+        clr     <blit_subbyte
+        tfr     b,a
+        ldb     #104
+        ldx     #scene6_bg_AA11
+        jsr     HAL_gfx_blit_sprite
+        puls    b
+        addb    #4
+        cmpb    #73
+        blo     cl_tile
         rts
 
 * --- backdrop cel data (single source) ---
