@@ -532,3 +532,28 @@ prove palette-only with an **identical index-frame diff** (the RGB framebuffer d
 nothing). *Candidate:*
 `scope-swap-to-the-cel-via-validated-blit-replay-and-gate-on-the-fused-read-not-per-pixel`.
 *Established:* anim_02 hybrid-apply + $A4A4 swap 2026-07-18.
+
+### 11k. Asset-pipeline safety: catalog before converting; one pass / two outputs; derive geometry once
+Two pipeline idioms (asset-side, recorded here per the pre-conversion-safety dispatch).
+**(1) Before any bulk re-conversion, prove which assets are pure converter output — re-convert + diff.**
+Hand-edited/authored work is **not reproducible from the oracle**; a bulk re-run **silently destroys** it.
+The behavioural test beats a git-history read (it catches *converted-then-edited* that rode in on a bulk
+commit): re-convert each cel fresh from the oracle to a **scratch dir** (never over `content/`) and byte-diff
+the CEL DATA (H,W header + H*W bitmap; ignore comment/ORIGIN lines). Identical ⇒ pure ⇒ safe; ANY diff ⇒
+protected. **Report the diff SHAPE, don't adjudicate:** LOCALISED (few bytes, an edge) = hand-edit;
+SYSTEMATIC across the *whole* set = converter drift — opposite treatments. A localised edit that *recurs
+across a themed subset but not the whole tree* (the Mt-Fuji edge-fill-to-`$AA`: 4 of 188) is an authored
+edit, not drift. Over-inclusion is free; a wrong "safe" is not. Protection must be **structural** (a
+checked-in protected manifest + a converter hard-stop that refuses to overwrite), never "remember not to run
+it on those". Determinism is a precondition — verify same-input→same-output before trusting any diff.
+**(2) When one artefact must be DERIVABLE from another, produce BOTH in ONE pass from a single
+classification.** A second pass recomputes extents/trims independently and **shifts the result inside an
+identically-sized box** — the converter already does this (`sprite_convert.py` trims leading/trailing
+all-zero columns per-cel; a separate "clean" pass would trim a different count than "fringed" and mis-register
+the sprite). Derive geometry once in the superset frame; the subset **inherits** the trim, never computes its
+own. And the discriminating classification often lives in the decode's **branch structure**, not its output —
+so filtering the output (e.g. "drop the chroma index") conflates categories that need opposite treatment
+(edge fringe vs a solid coloured body). *Candidates:*
+`catalog-by-reconvert-diff-before-bulk-convert-report-shape-protect-structurally`,
+`one-pass-two-outputs-derive-geometry-once-or-a-second-pass-shifts-inside-the-same-box`.
+*Established:* pre-conversion-safety dispatch 2026-07-18.
