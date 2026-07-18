@@ -72,6 +72,15 @@ The candidate-self-capture clause writes to a **separate repo, NOT this one.** I
 
 ---
 
+## 2D. Authored authoritative docs — the Orchestrator owns the CONTENT; Clyde owns the COMMIT
+
+**Clyde does NOT edit the body of the authored authoritative docs directly** — the **decision record** (`docs/project/decision-record_colour-output-sprite-sets.md`) and the **post-mortems** (`docs/project/port-postmortem*.md`). Findings surface in Clyde's Form B reports; the **Orchestrator** folds them into the authoritative text; **Clyde commits** the Orchestrator-provided result. **Rationale:** the rich reasoning behind these docs lives in the Orchestrator's context, not Clyde's environment, so parallel edits diverge — this split happened **twice** with the decision record (the coupling finding was the last direct Clyde edit; it has been reconciled in). This fits the standing split: **Jay authors / the Orchestrator drafts / Clyde renders.**
+
+- **Before overwriting one of these with an Orchestrator-provided file, run the SUPERSET DIFF-CHECK** (hard gate): confirm every substantive line of the in-repo copy is present in the provided file (verbatim or explicitly superseded). **If the in-repo copy has content the provided file lost, STOP and surface the delta** — do not overwrite a non-superset (that silently loses content).
+- Recording a finding **in a Clyde report** is always fine; editing these doc bodies is the Orchestrator's job.
+
+---
+
 ## 3. PNG Handling Rules
 
 PNG files are diagnostic artifacts for human review. The following rules are absolute:
