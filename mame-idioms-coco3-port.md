@@ -481,3 +481,21 @@ double-buffer half is a free one) to separate cel content from carryover. This i
 arc a plausible orange mechanism answered the wrong question (cf. the substrate-rows-152-168 finding).
 *Candidate:* `carryover-claim-must-explain-the-exclusivity-compute-extent-from-cel-dims-not-assume`.
 *Established:* anim_02 orange diagnosis 2026-07-18 (`anim02-orange-finding.md`).
+
+### 11h. When the operator doubts an analysis, render the underlying DATA — and let it falsify the claim
+The anim_02 "orange is in the cel data (72 px vs 18–39)" finding was argued from **framebuffer pixel
+counts**. Jay doubted it (his eye has overruled analysis every time in this arc). The right response is
+not more counts defending the finding — it is to **render the underlying data and let it falsify the
+claim.** Decoding all 7 climb poses' cels straight from `converted.s` (per-pixel, mask/index-0 handled,
+real palette, square-pixel) gave raw index-1 counts of **anim_02=126, but anim_04=88 / anim_05=92 /
+anim_03=86** — i.e. **every pose's cels carry substantial orange; anim_02 is highest but ~1.4×, NOT the
+3–4× outlier the earlier framebuffer numbers implied.** The two measurements differ because the prior
+"introduced-vs-substrate within the bbox" count suppresses cel orange that lands on already-orange
+substrate — a *different basis*, so the raw sheet **does not reproduce** the 72/18–39 ratio. **Rules:**
+(1) an analysis-vs-eye dispute is settled by rendering the **data under test**, not by recounting;
+(2) **state the measurement basis** — "orange introduced in the composited frame within the bbox" and
+"raw index-1 px in the cel" are different numbers and conflating them manufactures a false
+outlier/agreement; (3) present the falsifier **neutrally** — a result that undercuts your prior finding
+is the method working, not a failure. *Candidate:*
+`when-operator-doubts-analysis-render-the-data-to-falsify-state-the-measurement-basis`.
+*Established:* climb-cel sprite sheet 2026-07-18 (`render_cel_sheet.py`).
