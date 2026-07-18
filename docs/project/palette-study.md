@@ -80,3 +80,22 @@ Jay gated the in-scene panels: **HYBRID = blue `$2D` (54,179,247) d46 + orange `
 `karateka.bin` stays byte-identical even on rebuild. Structured for a 2nd (composite/RGB) set + a future
 startup RGB/composite selector (deliberate oracle divergence) — neither built. Tuned for MAME composite.
 Global re-look of every gated scene is Jay's, later. See `anim02-a4a4-swap-notes.md`.
+
+## RGB SET SELECTED 2026-07-18 (Jay's fused read) — C1, to be LANDED by a separate dispatch
+From the RGB palette selection study (oracle | composite | RGB candidates, fused 1:1 + per-candidate
+strips), **Jay selected C1**: **blue `$19` → (0,170,255)** + **orange `$26` → (255,85,0)**, rendered under
+**MAME Monitor Type = RGB** (the digital bitpack decode `R1 G1 B1 R0 G0 B0`, verified = MAME RGB). C1 is
+the nearest-to-oracle pair on distance too (blue d36 / orange d36) and reads best by eye.
+
+**Load-bearing caveat for the landing dispatch:** these values render as chosen **only under Monitor
+Type=RGB**. In **composite** mode (the current build default) `$19`/`$26` decode *differently* (composite
+intensity/hue, not the bitpack) — so C1 is the **RGB-monitor set**, to pair with the future RGB/composite
+startup selector (the two-set `palette_sets` structure), NOT a drop-in replacement for the composite
+default. The composite set stays the current hybrid (`$2D` blue / `$26` orange). Note the orange value is
+the same `$26` in both sets (it renders (255,85,0) on RGB, (245,115,58) on composite); only the blue
+differs (`$19` RGB vs `$2D` composite).
+
+**Not landed here** (this study was report-only). Landing = its own gated dispatch: add the RGB set to the
+`palette_sets` table + wire the Monitor Type / RGB-composite selector, then Jay gates the RGB variant build
+live. Tooling to reproduce: `harness/tools/render_rgb_study.py` / `render_rgb_percandidate.py` /
+`render_rgb_strip.py` / `rgb_palette_snapshot.lua`.
