@@ -612,3 +612,28 @@ Mechanism hypothesis (INFERRED, not verified — do not investigate): a trace sc
 explains why the third post was invisible to the masked-only trace — and could matter for the combatants.
 *Candidate:* `a-cel-id-trace-can-be-confidently-wrong-repeatedly-in-one-region-past-scene-4-the-eye-wins`.
 *Established:* scene-6 wall-top recon corrections (`4b27dd8`, `3cc877c`, + the 3-post correction 2026-07-18).
+
+---
+
+## 12. Capturing a specific oracle ANIMATION FRAME: content-anchor via the blit trampoline + the display-page status
+When an operator says "the oracle doesn't draw X there," **capture that oracle frame per-pixel before
+theorising a fix** — the eye is authority that it's wrong, but only the capture specifies what right is
+(three anim_02-orange explanations died for lack of the target frame). Working recipe (validated on the
+climb anim_02, `oracle_anim02_capture.lua`):
+- **Content-anchor on the cel, not a frame number.** Read-tap the draw trampolines
+  `$1903/$1906/$1909/$190C` (these DO fire — §7b), read `src=$04:$03`, `col=$05`, `row=$06`, and detect
+  the pose's defining draw (anim_02 = legs `$A4A4` @ col `$0A` row `$8F`, the LAST part → pose complete).
+  Install the taps **after boot settles** and keep them referenced (§2). The deterministic climb intro
+  (§3) reliably reaches the pose (~f6084 my-boot; the run is ~170 emulated s at ≥2000% headless).
+- **Dump the DISPLAYED HGR page, not a guessed one.** Karateka double-buffers HGR ($2000 page1 / $4000
+  page2). Read **`$C01C` (RDPAGE2) — a NON-toggling status read**, bit7=1 ⇒ page2 displayed. Wait a few
+  frames after the anchor for the page flip, then dump the displayed page (or dump both + record C01C).
+- **For artifact COLOUR, take a `scr:snapshot()` with video ON** (drop `-video none` for this pass; RAM
+  dumps alone can't give the NTSC artifact colour — HGR colour is an artifact of adjacent bits). The
+  snapshot is 560×192 → halve to 280 native (`render_square --apple2e`), then reconcile onto the port
+  with **CoCo3_px = Apple_px + 20** (state it) before any side-by-side. Held poses (7-VBL dwell) are
+  stable, so the §6 "-nothrottle snapshots lie for motion" caveat doesn't bite a settled frame.
+- **Read-only:** run against the oracle disk with the Lua living in the coco3 harness (absolute path);
+  write outputs to a scratch dir (`-snapshot_directory`), never into the oracle repo.
+*Candidate:* `capture-the-oracle-animation-frame-content-anchored-blit-trampoline-plus-rdpage2-before-theorising`.
+*Established:* anim_02 oracle-vs-port capture 2026-07-18.
