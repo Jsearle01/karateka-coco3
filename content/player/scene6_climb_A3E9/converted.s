@@ -11,11 +11,11 @@
 
 scene6_climb_A3E9:
         fcb     8,6  ; height=8 rows, coco3_width=6 bytes/row (4px/byte)
-        fcb     $3C,$00,$00,$0F,$FE,$A8  ; row 0
-        fcb     $3F,$F0,$00,$03,$FC,$15  ; row 1
-        fcb     $FF,$FF,$C0,$00,$F0,$A8  ; row 2
-        fcb     $FF,$FF,$C0,$00,$0A,$81  ; row 3
-        fcb     $FF,$FF,$C0,$0A,$AA,$A8  ; row 4
-        fcb     $FF,$FF,$C0,$15,$55,$55  ; row 5
-        fcb     $FF,$FF,$EA,$AA,$AA,$A8  ; row 6
-        fcb     $FF,$55,$55,$55,$55,$55  ; row 7
+        fcb     $3C,$00,$00,$0F,$FD,$54  ; row 0
+        fcb     $3F,$F0,$00,$03,$FC,$2A  ; row 1
+        fcb     $FF,$FF,$C0,$00,$F0,$54  ; row 2
+        fcb     $FF,$FF,$C0,$00,$05,$42  ; row 3
+        fcb     $FF,$FF,$C0,$05,$55,$54  ; row 4
+        fcb     $FF,$FF,$C0,$2A,$AA,$AA  ; row 5
+        fcb     $FF,$FF,$D5,$55,$55,$54  ; row 6
+        fcb     $FF,$AA,$AA,$AA,$AA,$AA  ; row 7

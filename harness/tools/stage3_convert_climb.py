@@ -49,7 +49,7 @@ CLIFF = [(0xAB8E, 0x0A, 0), (0xAB94, 0x0A, 0), (0xAB7C, 0x0A, 0), (0xAB4A, 0x00,
 # TRANSPOSED — the pick_parity(orange) heuristic chose the wrong parity for them
 # (white-dominant figures; the orange/blue lead is within sparse edge chroma, so the
 # max-orange pick landed on the swapped parity). Invert the chosen parity_flip.
-FLIP_OVERRIDE = {0xA3C5, 0xA4F2, 0xA572}
+FLIP_OVERRIDE = {0xA3C5, 0xA4F2, 0xA572, 0xA3E9}
 
 
 def emit(catdir, label, h, cw, packed, addr, start_col, dry):
