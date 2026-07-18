@@ -557,3 +557,21 @@ so filtering the output (e.g. "drop the chroma index") conflates categories that
 `catalog-by-reconvert-diff-before-bulk-convert-report-shape-protect-structurally`,
 `one-pass-two-outputs-derive-geometry-once-or-a-second-pass-shifts-inside-the-same-box`.
 *Established:* pre-conversion-safety dispatch 2026-07-18.
+
+### 11l. MAME coco3 has NO composite/RGB toggle — it renders COMPOSITE; assert it, never infer from colour
+Recurring question (5th time): "are we judging through composite or RGB?" **Answer, asserted:** MAME
+`coco3` exposes **no monitor-mode switch** — `-listconfig` is not a MAME option; there is no coco3 monitor
+config/slot and no rgb/composite driver variant (only `coco3`/`coco3h`/`coco3p` = NTSC/6309/PAL);
+`-monitorprovider` is the HOST window backend, not the emulated monitor. So the run command carries **no
+mode flag because none exists**, and MAME renders **one fixed decode**. **Which one — pinned by decode
+math + a real snapshot (the BLUE register is the discriminator):** the RGB-monitor bitpack (bits
+R1 G1 B1 R0 G0 B0, 2b/channel) of `$1B` is **(0,255,255) cyan** and of `$2D` is **(255,0,255) magenta** —
+but MAME actually renders `$1B`→**(94,44,255) violet** and `$2D`→**(54,179,247) blue** (measured, and
+confirmed by a fallback snapshot). MAME ≠ RGB-bitpack ⇒ MAME's decode is **composite** (intensity/hue).
+**Rule:** assert the mode by (a) quoting the invocation + confirming no mode flag exists, and (b) a
+decode-math + snapshot check on a saturated register (blue) — **never infer "composite" from a label or a
+loosely-matching colour.** Consequence for the RGB clean-vs-fringed gate: MAME cannot show the real-CoCo3
+RGB-monitor look at all; an RGB gate needs either the computed RGB-bitpack decode (a tool, not MAME) or
+real hardware. *Candidate:*
+`mame-coco3-has-no-rgb-composite-toggle-renders-composite-pin-via-blue-decode-not-a-label`.
+*Established:* MAME mode-check 2026-07-18.
