@@ -72,3 +72,11 @@ under the new palette. **Applying the palette is its own gated change — NOT do
 `harness/tools/coco3_snap.lua` (single coco3 render snapshot), `pal_sweep.lua` (sweep a `$FFBx`
 register 0..63, snapshot each — reads MAME's composite→RGB), `pal_render.lua` (render the fallback
 under a candidate `$FFB1`/`$FFB2`).
+
+## APPLIED 2026-07-18 (Jay-ruled) — HYBRID
+Jay gated the in-scene panels: **HYBRID = blue `$2D` (54,179,247) d46 + orange `$26` (245,115,58) d60**
+(Jay's eye chose `$26` over the nearer `$25`). Landed as a named index-selected table
+(`apply_palette_hybrid` + `palette_sets`) in the **fallback** driver (NOT `gfx.s`) so prod
+`karateka.bin` stays byte-identical even on rebuild. Structured for a 2nd (composite/RGB) set + a future
+startup RGB/composite selector (deliberate oracle divergence) — neither built. Tuned for MAME composite.
+Global re-look of every gated scene is Jay's, later. See `anim02-a4a4-swap-notes.md`.

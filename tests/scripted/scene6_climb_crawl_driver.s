@@ -51,6 +51,7 @@ test_start:
         jsr     HAL_time_init
         lda     #$00
         jsr     HAL_gfx_init
+        jsr     apply_palette_hybrid    ; Jay-gated HYBRID palette (blue $2D) — global for this build
 
         lda     #PAGE_A_TOKEN
         sta     <page_register
@@ -77,6 +78,34 @@ crawl_loop:
         jsr     HAL_time_vbl_wait
         jsr     cl_tick
         bra     crawl_loop
+
+* ===============================================================
+* apply_palette_hybrid — Jay-gated (2026-07-18) HYBRID palette, written AFTER
+*   HAL_gfx_init so it OVERRIDES the shared prod default without touching gfx.s
+*   (prod's source) — keeps prod byte-identical. Named INDEX-SELECTED table so a
+*   second (composite/RGB) set + a startup RGB/composite selector drop in later.
+*   HYBRID = blue $2D (54,179,247) d46 + orange $26 (245,115,58) d60 — Jay's eye
+*   chose $26 over the nearer $25. Applied globally: this one write re-colours
+*   EVERY scene this build renders (wall-top, crawl, HUD, backdrop).
+*   TUNED-FOR: MAME composite decode. The future RGB/composite startup selector
+*   is a DELIBERATE oracle divergence (Apple II boots straight to attract) — do
+*   NOT remove it later as infidelity. (composite set + selector NOT built here.)
+* ===============================================================
+PAL_SET_HYBRID equ 0                    ; row index into palette_sets (4 bytes/row)
+apply_palette_hybrid:
+        ldx     #palette_sets+PAL_SET_HYBRID*4
+        ldy     #$FFB0                  ; $FFB0..$FFB3 are 4 consecutive palette regs
+        ldb     #4
+aph_loop:
+        lda     ,x+
+        sta     ,y+
+        decb
+        bne     aph_loop
+        rts
+palette_sets:
+        fcb     $00,$26,$2D,$3F ; set 0 = HYBRID  blk / orange $26 / blue $2D / white (composite, MAME)
+*       fcb     $00,$26,$1B,$3F ; (reference) prod default — blue $1B renders violet
+*       fcb     $00,<orng>,<blue>,$3F ; set 1 = composite/RGB set (FUTURE — do NOT author here)
 
 * copy buffer A ($8000-$BBFF) -> buffer B ($C000-...) so both hold the substrate.
 copy_a_to_b:
