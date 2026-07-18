@@ -3,11 +3,12 @@
 CANDIDATE side by side (so Jay views one candidate at a time with the references beside it, and flips
 between the 6). Same anim_02 frame, square-pixel integer NEAREST, labeled. REPORT ONLY — no palette
 committed. Files -> build/rgb_study/per_candidate/."""
-import os
+import os, sys
 from PIL import Image, ImageDraw
+ORACLE_ONLY = "--oracle-only" in sys.argv   # drop the composite panel: oracle + rgb only
 SC="C:/Users/jayse/AppData/Local/Temp/claude/c--Projects-karateka-coco3/9c840854-3b22-46e9-bd4c-86d1cdf76afe/scratchpad"
 ORACLE=SC+"/oracle_anim02/apple2e/0000.png"; FRAME=SC+"/climb_poses/pose_2.bin"
-OUT="C:/Projects/karateka_coco3/build/rgb_study/per_candidate"; XOFF,CW=20,320; SCALE=3
+OUT="C:/Projects/karateka_coco3/build/rgb_study/"+("oracle_vs_rgb" if ORACLE_ONLY else "per_candidate"); XOFF,CW=20,320; SCALE=3
 COMP_ANCHOR=[(0,0,0),(245,115,58),(54,179,247),(255,255,255)]
 def bitpack(v):
     r=(((v>>5)&1)<<1)|((v>>2)&1); g=(((v>>4)&1)<<1)|((v>>1)&1); b=(((v>>3)&1)<<1)|(v&1)
@@ -34,7 +35,7 @@ def main():
     for slot,bl,org,cls in CANDS:
         cand=port([(0,0,0),bitpack(org),bitpack(bl),(255,255,255)]).resize((CW*SCALE,192*SCALE),Image.NEAREST)
         cand=lab(cand,f"{slot} RGB {cls}: blue ${bl:02X}{bitpack(bl)} orange ${org:02X}{bitpack(org)}")
-        cells=[oc,an,cand]; gap=10
+        cells=[oc,cand] if ORACLE_ONLY else [oc,an,cand]; gap=10
         W=max(c.width for c in cells); H=sum(c.height for c in cells)+gap*2
         sheet=Image.new('RGB',(W,H),(18,18,18)); y=0
         for c in cells: sheet.paste(c,(0,y)); y+=c.height+gap
