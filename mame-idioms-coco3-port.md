@@ -599,3 +599,20 @@ one render that moves and surface it — don't self-certify. **Parity fixes whic
 its look ⇒ no hue-gate re-run.** *Candidate:*
 `derive-the-systematic-parameter-from-ground-truth-not-an-override-list-verify-the-rule-against-a-control`.
 *Established:* column-parity fix 2026-07-18 (`stage3_convert_climb.py`; A4A4 the missed cel).
+
+### 11n. coco3 `gime:artifacting` = the composite NTSC artifact-colour model (Off/Standard/Reverse) — a NO-OP for palette-mode content
+`-listxml coco3` config `Artifacting` (tag `gime:artifacting`, Off=0/Standard=1/Reverse=2) on the coco3
+GIME (`gime_ntsc`) device — distinct from the CoCo1/2 VDG `:artifacting`. **It is classification A (an
+emulator composite-render model), not a monitor-independent GIME register:** "artifacting" with a
+Standard/Reverse *phase* is the composite NTSC artifact-colour model (the GIME has no such register; the
+phenomenon lives only on the composite signal), and measured behaviour is **RGB-invariant** to it.
+**Load-bearing:** it is a **NO-OP for Karateka** — measured, the same frame renders **pixel-identical**
+across Off/Standard/Reverse under BOTH Monitor Types — because Karateka uses the GIME **4-colour palette
+mode**; artifacting only applies to the **1-bit/2-colour high-res modes** where alternating pixels artifact
+into colour. **Rule:** classify an emulator "artifacting" option by what it DRIVES (composite artifact
+phase ⇒ A) not its name, enumerate exhaustively (§2A.4) before concluding scope, and **exercise it on
+representative content** — a knob that does nothing on palette-mode frames is irrelevant regardless of its
+A/B label. Set it (like Monitor Type) via the `Artifacting` field `user_value` on port `:gime:artifacting`
+(`gime_artifact_snapshot.lua`); there is no CLI flag. *Candidate:*
+`coco3-gime-artifacting-is-the-composite-artifact-model-a-no-op-for-palette-mode-content`.
+*Established:* GIME-artifacting recon 2026-07-18.

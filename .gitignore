@@ -58,3 +58,4 @@ snap/
 
 # One-off session-note scratch (this note only; other session-notes/ are tracked)
 session-notes/2026-05-16-p2-3a-2-harness-tap-fix.md
+build/mame_xml/
