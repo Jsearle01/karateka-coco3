@@ -52,6 +52,12 @@ The MAME idioms files are *how* to get the reliable execution evidence §2 requi
 
 ---
 
+## 2B. Asset Protection Catalog (check before ANY conversion)
+
+**`docs/project/protection-catalog.md` is a mandatory read point before converting, re-converting, or overwriting any asset.** Before running the converter (or any bulk convert) over a path, **check the catalog to confirm the target is not flagged ALTERED or PROTECTED.** Re-running the converter over a hand-edited/authored asset silently destroys work that cannot be reproduced from the oracle. If a target is flagged (or is not listed and has no verifiable oracle source), **stop and get Jay's ruling before overwriting it** — never convert over a flagged/protected path on assumption. When the catalog changes (a new altered cel found, a protected item resolved), update `docs/project/protection-catalog.md` and surface it in the Form B report.
+
+---
+
 ## 3. PNG Handling Rules
 
 PNG files are diagnostic artifacts for human review. The following rules are absolute:

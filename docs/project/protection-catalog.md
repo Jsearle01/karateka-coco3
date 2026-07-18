@@ -40,14 +40,14 @@ The only diffs are the **entire Mt-Fuji stack** (`$A948`, `$A976`, `$A9B8`, `$A9
   drift (which would touch every cel, not just Fuji). **⇒ the Fuji set is PROTECTED.** *(Adjudication is
   Jay's; this reports the shape per HS-A2.)*
 
-## Working-tree nuance — `scene6_climb_A3E9` (flag, not adjudicate)
-This is one of the pre-existing working-tree modifications (from before this dispatch; commit `c95c0de`
-region + uncommitted edits to `content/player/scene6_climb_A3E9/converted.s` and
-`harness/tools/stage3_convert_climb.py`). **On disk it is IDENTICAL to fresh convert (pure).** But the
-**committed HEAD** version differs **systematically** (~21 bytes, a blue↔orange parity swap `$AA`↔`$55`,
-`$54`↔`$A8`, `$2A`↔`$15`) — i.e. HEAD was converted with a parity flip; the uncommitted edit re-baked it to
-pure. Against HEAD it scores DIFF (SYSTEMATIC = converter-param drift, not a localised hand-edit). Flagged
-for Jay; not resolved here.
+## `scene6_climb_A3E9` — RESOLVED: gated version adopted (now PURE)
+Was a working-tree ambiguity (HEAD had a blue/parity-flipped `$A3E9`; the working tree had re-baked it to
+orange = pure convert). **Jay ruled 2026-07-18: use the current visually-gated (orange) version.** Committed
+`ffcc016` — the orange `converted.s` + the one-line generator fix (`0xA3E9` added to
+`stage3_convert_climb.py`'s `FLIP_OVERRIDE`, the same white-dominant-figure parity fix as `A3C5/A4F2/A572`).
+**HEAD now == a fresh convert ⇒ `$A3E9` is PURE / safe** (a future re-convert is non-destructive). It is
+scene-6-climb art (anim_00 legs + start pose, in the fallback/cliff drivers), NOT in prod. So the ALTERED
+set is back to just the 4 Mt-Fuji cels above.
 
 ## No-recipe / no-source (auto-protected, UNVERIFIABLE) — 92 cels — HS-A4
 The test **cannot run** (no recipe among the scene-6 scripts covers them; they came from earlier scene-5 /
