@@ -96,8 +96,8 @@ crawl_loop:
 *   (Apple II boots straight to attract) — do NOT remove it later as infidelity.
 * ===============================================================
         ifndef  PAL_SEL_DEFAULT
-PAL_SEL_DEFAULT equ 0                   ; boot default: 0=composite set, 1=RGB set.
-        endc                            ;   RGB variant built with: lwasm -DPAL_SEL_DEFAULT=1
+PAL_SEL_DEFAULT equ 1                   ; boot default: 1=RGB set (dominant delivery target), 0=composite.
+        endc                            ;   composite variant built with: lwasm -DPAL_SEL_DEFAULT=0
 apply_palette:
         lda     pal_select              ; boot-time selection (menu-writable runtime byte)
         ldb     #4                      ; 4 bytes per palette_sets row
