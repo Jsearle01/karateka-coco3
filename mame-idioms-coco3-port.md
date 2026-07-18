@@ -645,3 +645,18 @@ d36 / orange `$26` d36 vs composite `$2D` d46 / `$26` d60) — native-strong RGB
 the fused 1:1 read decides, not the metric. *Candidate:*
 `preview-rgb-palette-candidates-by-bitpack-decode-equals-mame-monitor-type-rgb-verify-the-anchor`.
 *Established:* RGB palette selection study 2026-07-18.
+
+### 11q. Two palettes for one build = a two-row table + a boot-time selection byte (NEVER monitor-detect)
+The CoCo3 GIME emits composite AND RGB simultaneously and the **6809 cannot read which monitor is
+attached** — so "which palette" is a **boot-time CHOICE per monitor, not an auto-detect**. Land it as a
+named `palette_sets` table (4 bytes/row = `$FFB0..$FFB3`) with one row per look, and a `pal_select` byte
+(a runtime byte a future boot menu can write) read at boot; `apply_palette` does `pal_select*4` (MUL) →
+`leax d,#palette_sets` → copy 4. Keep the two sets a **one-entry difference** where possible (here composite
+`$00,$26,$2D,$3F` vs RGB `$00,$26,$19,$3F` — only index 2/blue differs) so the two looks are provably the
+same art under a different decode. Build the variant with `lwasm -DPAL_SEL_DEFAULT=1` (guard the default
+with `ifndef`), not an edit/revert. Verify BOTH variants against their monitor: composite+Composite →
+(54,179,247)/(245,115,58) unchanged (regression), RGB+RGB → (0,170,255)/(255,85,0). Identical pixel COUNTS
+across variants prove the index frame is untouched (palette is a pure index→RGB remap; the parity fix and
+the palette compose orthogonally). *Candidate:*
+`two-palette-sets-one-build-selection-byte-at-boot-never-monitor-detect-one-entry-diff`.
+*Established:* RGB palette landing 2026-07-18 (`scene6_climb_crawl_driver.s`).

@@ -51,7 +51,9 @@ test_start:
         jsr     HAL_time_init
         lda     #$00
         jsr     HAL_gfx_init
-        jsr     apply_palette_hybrid    ; Jay-gated HYBRID palette (blue $2D) — global for this build
+        lda     #PAL_SEL_DEFAULT        ; boot-time palette selection (0=composite set, 1=RGB set)
+        sta     pal_select
+        jsr     apply_palette           ; load the selected palette set into $FFB0..$FFB3
 
         lda     #PAGE_A_TOKEN
         sta     <page_register
@@ -80,20 +82,28 @@ crawl_loop:
         bra     crawl_loop
 
 * ===============================================================
-* apply_palette_hybrid — Jay-gated (2026-07-18) HYBRID palette, written AFTER
+* apply_palette — Jay-gated (2026-07-18) INDEX-SELECTED palette. Written AFTER
 *   HAL_gfx_init so it OVERRIDES the shared prod default without touching gfx.s
-*   (prod's source) — keeps prod byte-identical. Named INDEX-SELECTED table so a
-*   second (composite/RGB) set + a startup RGB/composite selector drop in later.
-*   HYBRID = blue $2D (54,179,247) d46 + orange $26 (245,115,58) d60 — Jay's eye
-*   chose $26 over the nearer $25. Applied globally: this one write re-colours
-*   EVERY scene this build renders (wall-top, crawl, HUD, backdrop).
-*   TUNED-FOR: MAME composite decode. The future RGB/composite startup selector
-*   is a DELIBERATE oracle divergence (Apple II boots straight to attract) — do
-*   NOT remove it later as infidelity. (composite set + selector NOT built here.)
+*   (prod's source) — keeps prod byte-identical. Two sets, one-entry difference:
+*     set 0 = COMPOSITE (blue $2D->54,179,247 / orange $26->245,115,58) — MAME composite decode
+*     set 1 = RGB       (blue $19->0,170,255  / orange $26->255,85,0)   — MAME Monitor Type=RGB (bitpack)
+*   Only index 2 (blue) differs ($2D vs $19); index 0/1/3 identical ($00/$26/$3F).
+*   pal_select (boot-time selection variable, a runtime byte a future boot menu can
+*   write) picks the active set. The CoCo3's GIME emits composite AND RGB at once and
+*   the 6809 cannot read the monitor, so the set is a BOOT-TIME CHOICE per monitor, NOT
+*   auto-detected. Applied globally: this one write re-colours EVERY scene this build
+*   renders. The startup RGB/composite selector is a DELIBERATE oracle divergence
+*   (Apple II boots straight to attract) — do NOT remove it later as infidelity.
 * ===============================================================
-PAL_SET_HYBRID equ 0                    ; row index into palette_sets (4 bytes/row)
-apply_palette_hybrid:
-        ldx     #palette_sets+PAL_SET_HYBRID*4
+        ifndef  PAL_SEL_DEFAULT
+PAL_SEL_DEFAULT equ 0                   ; boot default: 0=composite set, 1=RGB set.
+        endc                            ;   RGB variant built with: lwasm -DPAL_SEL_DEFAULT=1
+apply_palette:
+        lda     pal_select              ; boot-time selection (menu-writable runtime byte)
+        ldb     #4                      ; 4 bytes per palette_sets row
+        mul                             ; D = pal_select * 4 = row byte offset
+        ldx     #palette_sets
+        leax    d,x                     ; X -> selected row
         ldy     #$FFB0                  ; $FFB0..$FFB3 are 4 consecutive palette regs
         ldb     #4
 aph_loop:
@@ -102,10 +112,11 @@ aph_loop:
         decb
         bne     aph_loop
         rts
+pal_select:
+        fcb     PAL_SEL_DEFAULT         ; active-set index; set at boot from PAL_SEL_DEFAULT
 palette_sets:
-        fcb     $00,$26,$2D,$3F ; set 0 = HYBRID  blk / orange $26 / blue $2D / white (composite, MAME)
-*       fcb     $00,$26,$1B,$3F ; (reference) prod default — blue $1B renders violet
-*       fcb     $00,<orng>,<blue>,$3F ; set 1 = composite/RGB set (FUTURE — do NOT author here)
+        fcb     $00,$26,$2D,$3F ; set 0 = COMPOSITE  blk / orange $26 / blue $2D / white
+        fcb     $00,$26,$19,$3F ; set 1 = RGB        blk / orange $26 / blue $19 / white
 
 * copy buffer A ($8000-$BBFF) -> buffer B ($C000-...) so both hold the substrate.
 copy_a_to_b:
