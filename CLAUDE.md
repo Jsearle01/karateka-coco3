@@ -97,6 +97,7 @@ PNG files are diagnostic artifacts for human review. The following rules are abs
 - §6 25.3 remains open as **"pending Jay"** until Jay confirms the visual gate has been observed
 - Clyde screenshot analysis is never authoritative for 25.3
 - Marking 25.3 satisfied from Clyde's own screenshot analysis will be rejected
+- **Standing gate monitor mode = RGB (2026-07-18).** Future visual gates render on **Monitor Type = RGB** (`screen_config`=1, set from Lua) with the RGB palette set — RGB is the dominant delivery target. **Composite** (Monitor Type=0) remains a valid gate when composite-specific verification is wanted (the composite pile / a hardware smoke test) — state which mode a given gate used. This changes only the default monitor mode; the exhaustive-enumeration rule (§2A.4) and "the fused 1:1 read is the colour gate" stay intact.
 
 ---
 
