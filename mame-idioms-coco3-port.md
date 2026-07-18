@@ -513,3 +513,22 @@ rows; if it fixes the mismatch band but breaks the matching band, it is **not a 
 is the finding, not a failure. *Candidate:*
 `test-one-variable-per-render-a-wrong-pair-can-cancel-and-look-right-check-the-negative-band`.
 *Established:* anim_02 palette/swap renders 2026-07-18.
+
+### 11j. Scope a colour/swap test to the ARTEFACT under test — and read the FUSED view, not just per-pixel
+Two follow-ons from the anim_02 arc. (1) **A global re-colour conflates sprite and substrate and voids
+the result.** The first blue↔orange swap flipped *every* index-1 pixel and "broke base rows 166/167" —
+but those are substrate, never part of the hypothesis; the test never tested the sprite-scoped claim.
+To scope a swap to one cel, **replay its blit** (placement byte-col/sub/row + cel data, in draw order)
+to build a per-pixel source mask, and **validate the replay against the real captured frame** (here the
+sim matched pose_2 1404/1404 px) before trusting the mask. Mind draw order: the over-cel overdraws the
+back-cel in the overlap, so the swapped region can be far smaller than the cel's extent — state the
+visible rows so a scoping success isn't misread as partial failure. (2) **On striped/alternating content
+the FUSED (1:1) read is the gate, not the per-pixel map.** Apple HGR artifact colour physically blends on
+a composite display; discrete GIME indices don't — so a frame can be per-pixel correct yet read wrong, or
+per-pixel wrong yet read right. Ship 1:1 (fused) AND the ×8 countable crop; the operator rules from the
+fused view. And when a palette must change for the sandbox but prod builds from the same `src/`, apply it
+in the **sandbox/fallback** (override after `HAL_gfx_init`), not shared `gfx.s`, or prod moves on rebuild;
+prove palette-only with an **identical index-frame diff** (the RGB framebuffer diff is global and proves
+nothing). *Candidate:*
+`scope-swap-to-the-cel-via-validated-blit-replay-and-gate-on-the-fused-read-not-per-pixel`.
+*Established:* anim_02 hybrid-apply + $A4A4 swap 2026-07-18.
