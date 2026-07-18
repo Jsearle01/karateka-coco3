@@ -83,21 +83,22 @@ Global re-look of every gated scene is Jay's, later. See `anim02-a4a4-swap-notes
 
 ## RGB SET SELECTED 2026-07-18 (Jay's fused read) — to be LANDED by a separate dispatch
 From the RGB palette selection study (oracle | composite | RGB candidates, fused 1:1 + per-candidate + blue-
-sweep strips), **Jay's final RGB pick: blue `$1D` → (85,170,255)** + **orange `$26` → (255,85,0)**, rendered
-under **MAME Monitor Type = RGB** (the digital bitpack decode `R1 G1 B1 R0 G0 B0`, verified = MAME RGB).
-*(This is candidate C3's blue.)* **Eye over metric:** Jay compared `$1D` against the metric-nearer `$19`
-(0,170,255) — `$19` is closer on distance (blue d36 vs `$1D` d65) but Jay's fused read chose `$1D` (the
-red-lifted, slightly lighter/less-saturated blue); the fused read is authority. Orange `$26` (255,85,0) d36
-was the nearest and read best. *(The 4-level RGB channels can't hit the oracle's exact (25,144,255) — no
-G=144, no R=25 — so `$1D`/`$19` are the practical ceiling; Jay picked the one that reads best.)*
+sweep strips), **Jay's final RGB pick: blue `$19` → (0,170,255)** + **orange `$26` → (255,85,0)** (= candidate
+C1), rendered under **MAME Monitor Type = RGB** (the digital bitpack decode `R1 G1 B1 R0 G0 B0`, verified =
+MAME RGB). Jay compared `$19` closely against the red-lifted `$1D` (85,170,255) on a stacked oracle/`$1D`/`$19`
+strip and chose **`$19`** — *"it looks better in the combined blue and orange areas"* (the fused in-context
+read, not blue-in-isolation). `$19` is also the metric-nearer blue (d36 vs `$1D` d65) and orange `$26`
+(255,85,0) d36 is the nearest — so the pick is the clear winner both by eye and by distance. *(The 4-level
+RGB channels can't hit the oracle's exact (25,144,255) — no G=144, no R=25 — so `$19` is the practical
+ceiling.)*
 
 **Load-bearing caveat for the landing dispatch:** these values render as chosen **only under Monitor
-Type=RGB**. In **composite** mode (the current build default) `$1D`/`$26` decode *differently* (composite
+Type=RGB**. In **composite** mode (the current build default) `$19`/`$26` decode *differently* (composite
 intensity/hue, not the bitpack) — so this is the **RGB-monitor set**, to pair with the future RGB/composite
 startup selector (the two-set `palette_sets` structure), NOT a drop-in replacement for the composite
 default. The composite set stays the current hybrid (`$2D` blue / `$26` orange). Note the orange value is
 the same `$26` in both sets (it renders (255,85,0) on RGB, (245,115,58) on composite); only the blue
-differs (`$1D` RGB vs `$2D` composite).
+differs (`$19` RGB vs `$2D` composite).
 
 **Not landed here** (this study was report-only). Landing = its own gated dispatch: add the RGB set to the
 `palette_sets` table + wire the Monitor Type / RGB-composite selector, then Jay gates the RGB variant build
