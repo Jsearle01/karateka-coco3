@@ -462,3 +462,22 @@ buffer; `cl_render` presents then toggles), so dump `(pr==$20)?$C000:$8000`. And
 framebuffer **memory** and decode square-pixel — `scr:snapshot()` stretches and cannot show a 1px line.
 *Candidate:* `gate-live-pose-capture-on-dwell-counter-not-frame-index-cl-idx-reads-0-preinit`.
 *Established:* per-pose climb capture 2026-07-18.
+
+### 11g. A mechanism that explains the artifact but NOT its exclusivity is incomplete — the negatives are the test
+The anim_02 orange was diagnosed as double-buffer carryover: `cl_render` draws into the *back* buffer,
+so a pose's carryover source is **two poses back** ⇒ anim_02 inherits anim_00 (the Y158 outlier, "must
+draw below the box"). The story fit anim_02 perfectly — **and was wrong.** Computing every pose's drawn
+extent from the pose table (`fcb col,sub,row` + cel `fcb height,width`) showed **all 7 poses are fully
+contained in the restore bbox** (cols 20–32, rows 112–167); anim_00's bottom row is 165, *inside* 167.
+So `cl_restore` repaints every pose's whole footprint — **zero carryover for ANY pose.** Empirical diff
+of each captured displayed frame vs the clean substrate (buffer B at pose0): **orange outside a pose's
+own body extent = 0, all 7 poses.** The real cause: anim_02's *own* cels introduce ~3–4× the orange of
+the other poses (72 vs 18–39 introduced px) — pose-specific **cel content**, not a restore leak.
+**Rules:** (1) a carryover claim must explain the **negative cases** (why NOT the other buffer-A poses)
+— if it can't, it's incomplete → STOP, don't fix on a one-frame-fit story; (2) **compute the drawn
+extent from cel dims before invoking an out-of-bbox mechanism** — "the low pose must overflow" is an
+assumption, the `fcb height` is the fact; (3) diff against a **clean-substrate reference** (an untouched
+double-buffer half is a free one) to separate cel content from carryover. This is the second time this
+arc a plausible orange mechanism answered the wrong question (cf. the substrate-rows-152-168 finding).
+*Candidate:* `carryover-claim-must-explain-the-exclusivity-compute-extent-from-cel-dims-not-assume`.
+*Established:* anim_02 orange diagnosis 2026-07-18 (`anim02-orange-finding.md`).
