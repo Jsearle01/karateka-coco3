@@ -8,8 +8,8 @@ draw_climb_scenery_back:
         jsr     draw_walltop_backwall
         rts
 
-* black wall directly below the post/rail structure. Left edge = px100 (byte 25, byte-aligned);
-* bytes 25..74 full black. Rows 112..116.
+* black wall directly below the post/rail structure. Left edge = px99 (byte 24 keeps px96-98,
+* blacks only px99 = bits1-0); bytes 25..74 full black. Rows 112..116.
 draw_walltop_backwall:
         ldb     #112
 bwl_row:
@@ -17,8 +17,12 @@ bwl_row:
         tfr     b,a
         ldb     #80
         mul
-        addd    #$8000+25
-        tfr     d,x                     ; X = row base + byte 25 (px100)
+        addd    #$8000
+        tfr     d,x                     ; X = row base (byte 0)
+        lda     24,x                    ; byte 24: black only px99 (bits1-0), preserve px96-98
+        anda    #$FC
+        sta     24,x
+        leax    25,x                    ; X -> byte 25 (px100)
         ldb     #50                     ; bytes 25..74 full black
 bwl_byte:
         clr     ,x+

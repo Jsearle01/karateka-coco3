@@ -107,6 +107,8 @@ dcst_cff:
         std     ,x++
         leay    -1,y
         bne     dcst_cff
+        lda     #$A8                    ; byte24: px96-98 blue, px99 BLACK — align the black-wall
+        sta     -1,x                    ;   left edge to px99 for the back area below the wall
         puls    b
         addb    #2
         cmpb    #180

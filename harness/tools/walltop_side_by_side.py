@@ -20,7 +20,7 @@ from PIL import Image, ImageDraw
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, '..'))
 PALI = [(0, 0, 0), (230, 111, 0), (25, 144, 255), (255, 255, 255)]   # coco3 4-index
-BAND = (94, 116)                    # crop rows for the comparison
+BAND = (94, 136)                    # crop rows for the comparison (wall-top + 20 rows below)
 
 
 def port_preview():
