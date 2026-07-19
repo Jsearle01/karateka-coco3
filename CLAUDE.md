@@ -91,6 +91,29 @@ A single long-lived **`wip`** branch holds all in-flight sandbox work (scene-6 d
 
 ---
 
+## §2F — Single-home placement (scene 6 and all forward work)
+
+Sprite PIXELS live only in the cel's `converted.s`; sprite PLACEMENT (x/y
+registration) lives only in the scene placement table the build reads. There is
+exactly ONE home for each.
+
+- **The build reads placement ONLY from the table.** No inline/hardcoded
+  placement in a driver, no pixel data outside a cel `.s`. The build must have no
+  second path to placement — that single input path is what makes the game a
+  faithful rendering of the table + `.s`.
+- **New cels (built or pulled from source/trace) get:** a registry row (sprite_id
+  → file + w/h) and placement row(s) (character → sprite_id + x/y) as they are
+  identified. The table grows forward; it is the living scene-6 registry.
+- **Registration corrections go to the TABLE**, then rebuild — not to any derived
+  view. (Pre-scene-6 assets are gated/correct and out of scope.)
+- **No persisted manifest / no duplicated placement.** Any tool derives a
+  character live from the table + `.s`; nothing is hand-kept in a second copy.
+- **Enforcement:** every scene-6 build dispatch carries this as a hard-stop; the
+  verdict verifies it against the tree (no inline placement; changed pixels are
+  `.s` edits). Bypass = failed verdict.
+
+---
+
 ## 3. PNG Handling Rules
 
 PNG files are diagnostic artifacts for human review. The following rules are absolute:
