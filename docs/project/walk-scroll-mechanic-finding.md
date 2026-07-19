@@ -72,3 +72,16 @@ offset (`col = $52 − offset`)** — the same register the guard/fight build us
 only — STOPPED. Jay reconciles this with his eye before any build.**
 
 *Logs: `scratchpad/scroll/zp_panel.txt`, `midground.txt`, `pinmg/midground.txt` (reproducible, seed-fixed).*
+
+## RESOLUTION (Jay's eye, 2026-07-19) — CONFIRMED, scroll recon CLOSED
+Jay confirms the visible walk-scroll IS the **`$52` sweep** (the large forward-move translation), not an
+earlier `$52`=`$30` motion. The open question closes in `$52`'s favour:
+- **`$52` is the global scene scroll** — mid-ground (`col = $52 − offset`) + scene-sprite/guard cels
+  (`col = $52 + xadj`); Fuji (`$A9`) hardcoded/independent. **No separate walk-scroll register.**
+- **Scroll-before-guard holds:** the `$52` sweep starts f6455; the guard draws f6487 (~32 frames later) —
+  the scroll begins before the guard is visible, as Jay sees.
+- **The earlier `$52`=guard-phase reclassification (Orchestrator) is REVERTED** — `$52` was always the
+  global scroll; that reclassification over-read the sweep-onset timing.
+- **Walk-build scroll spec:** reproduce `$52`-relative scene rendering (mid-ground at `$52 − offset`) —
+  the same register the guard/fight build uses; no second mechanism to find.
+Closes the scroll recon (fight-order step 2). Verdict: `verdict_walk-scroll-mechanic.md`.
