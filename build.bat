@@ -30,6 +30,11 @@ if errorlevel 1 goto :error
 call :size build/karateka.bin
 
 echo --- Test drivers ---
+rem --- §2F: regenerate the single-home scene-6 placement table (plc_ + climb cl_frames) from its
+rem     text-source BEFORE any driver that includes it (crawl drivers + scrollA). No drift. ---
+python harness\tools\gen_scene6_placement.py
+if errorlevel 1 goto :error
+
 lwasm --decb -o tests/scripted/sys_init_driver.bin tests/scripted/sys_init_driver.s
 if errorlevel 1 goto :error
 call :size tests/scripted/sys_init_driver.bin
@@ -65,10 +70,6 @@ call :size tests/scripted/scene6_stage2_driver.bin
 lwasm --decb -o tests/scripted/scene6_stage3_driver.bin tests/scripted/scene6_stage3_driver.s
 if errorlevel 1 goto :error
 call :size tests/scripted/scene6_stage3_driver.bin
-
-rem --- §2F: regenerate the single-home scene-6 placement table from its text-source (no drift) ---
-python harness\tools\gen_scene6_placement.py
-if errorlevel 1 goto :error
 
 lwasm --decb -o tests/scripted/scene6_walk_scrollA_driver.bin tests/scripted/scene6_walk_scrollA_driver.s
 if errorlevel 1 goto :error

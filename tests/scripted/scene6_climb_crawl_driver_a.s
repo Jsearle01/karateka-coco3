@@ -164,6 +164,7 @@ dcgr_of:
         include "scene6_backdrop.s"
         include "scene6_cliff_variant_a.s"
         include "scene6_hud.s"
+        include "scene6_climb_anim_gen.s"  ; §2F single-home: climb crawl animation table (cl_frames)
 
 * --- additional crawl pose cels (A3C5/A3E9 come via scene6_cliff.s) ---
         include "../../content/player/scene6_climb_A40B/converted.s"

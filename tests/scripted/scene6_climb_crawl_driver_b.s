@@ -159,6 +159,7 @@ dcgr_of:
         include "scene6_backdrop.s"
         include "scene6_cliff_variant_a.s"
         include "scene6_hud.s"
+        include "scene6_climb_anim_gen.s"  ; §2F single-home: climb crawl animation table (cl_frames)
 
 * --- variant (b) cliff-face cel: $AB8E (not included by scene6_cliff_variant_a.s) ---
         include "../../content/scenery/scene6_cliff_AB8E/converted.s"

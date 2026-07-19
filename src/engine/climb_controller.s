@@ -166,46 +166,11 @@ cls_byte:
 * ===============================================================
 * Animation data — 7 frames. cl_frames[idx] -> frame block {dwell, pcnt, parts};
 * part = fdb cel_ptr ; fcb byte_col, sub, row.
+* §2F SINGLE HOME: cl_frames/cl_f0..cl_f6 are NO LONGER defined here — they are codegen'd
+*   from content/scene6/scene6_placement.txt [climb_anim] into tests/scripted/scene6_placement_gen.s
+*   (the build regenerates it; the driver includes it). Edit the text-source, re-run the codegen.
+*   The upcoming graphics tool reads/edits the climb placement THERE, not in this controller.
 * ===============================================================
-cl_frames:
-        fdb     cl_f0,cl_f1,cl_f2,cl_f3,cl_f4,cl_f5,cl_f6
-cl_f0:  fcb     21,2
-        fdb     scene6_climb_A3E9
-        fcb     21,3,158
-        fdb     scene6_climb_A3C5
-        fcb     22,2,141
-cl_f1:  fcb     7,2
-        fdb     scene6_climb_A425
-        fcb     22,2,148
-        fdb     scene6_climb_A40B
-        fcb     24,1,140
-cl_f2:  fcb     7,2
-        fdb     scene6_climb_A4A4
-        fcb     22,2,143
-        fdb     scene6_climb_A45A
-        fcb     26,0,139
-cl_f3:  fcb     7,2
-        fdb     scene6_climb_A4F2
-        fcb     22,2,143
-        fdb     scene6_climb_A4D2
-        fcb     24,1,137
-cl_f4:  fcb     7,2
-        fdb     scene6_climb_A572
-        fcb     22,2,141
-        fdb     scene6_climb_A548
-        fcb     24,1,131
-cl_f5:  fcb     7,2
-        fdb     scene6_climb_A5DC
-        fcb     24,1,127
-        fdb     scene6_climb_A5CC
-        fcb     26,0,120
-cl_f6:  fcb     60,3
-        fdb     scene6_player_899C
-        fcb     25,2,138
-        fdb     scene6_player_8ACB
-        fcb     25,2,124
-        fdb     scene6_player_8E9B
-        fcb     26,0,116
 
 cl_clean:
         rmb     CL_BW*CL_BH             ; 13*56 = 728 bytes: clean substrate bbox

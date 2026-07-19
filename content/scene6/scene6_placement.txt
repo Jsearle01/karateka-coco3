@@ -22,6 +22,19 @@ A976   content/background/scene6_bg_A976
 A948   content/background/scene6_bg_A948
 A3C5   content/player/scene6_climb_A3C5
 A3E9   content/player/scene6_climb_A3E9
+A425   content/player/scene6_climb_A425
+A40B   content/player/scene6_climb_A40B
+A4A4   content/player/scene6_climb_A4A4
+A45A   content/player/scene6_climb_A45A
+A4F2   content/player/scene6_climb_A4F2
+A4D2   content/player/scene6_climb_A4D2
+A572   content/player/scene6_climb_A572
+A548   content/player/scene6_climb_A548
+A5DC   content/player/scene6_climb_A5DC
+A5CC   content/player/scene6_climb_A5CC
+899C   content/player/scene6_player_899C
+8ACB   content/player/scene6_player_8ACB
+8E9B   content/player/scene6_player_8E9B
 
 [placement]  # placement_id   sprite_id   x   y   (resolved placed col,row; verbatim from the gated drivers)
 # --- STAGE A (walk scroll) cels — READ by scene6_walk_scrollA_driver.s (this dispatch, Step 2a) ---
@@ -40,6 +53,19 @@ AA31_2   AA31    66   100
 AA23_0   AA23    25   100
 AA23_1   AA23    46   100
 AA23_2   AA23    67   100
-# --- CRAWL start pose (player) — for the crawl follow-on dispatch ---
-A3E9     A3E9    21   158
-A3C5     A3C5    22   141
+# (climb-pose positions live in [climb_anim] below — the animated placement's single home —
+#  NOT here; a flat plc_ x/y can't carry per-frame or the sub-byte, and duplicating cl_f0 here
+#  would be a SECOND home for A3E9/A3C5. So the crawl start pose is [climb_anim] f0.)
+
+[climb_anim]  # the 7-frame climb crawl (src/engine/climb_controller.s cl_frames). SINGLE HOME for
+#   the animated climb placement + timing, so the upcoming graphics tool reads/edits it here.
+#   Row:  frame  dwell  cel:col,sub,row  cel:col,sub,row ...   (one cel token per drawn part, in
+#   draw order; part-count is derived from the token count; sub = sub-byte pixel shift 0..3).
+#   Codegen emits cl_frames/cl_f0..cl_f6 (fdb table + {fcb dwell,pcnt; {fdb cel; fcb col,sub,row}..}).
+f0   21   A3E9:21,3,158   A3C5:22,2,141
+f1    7   A425:22,2,148   A40B:24,1,140
+f2    7   A4A4:22,2,143   A45A:26,0,139
+f3    7   A4F2:22,2,143   A4D2:24,1,137
+f4    7   A572:22,2,141   A548:24,1,131
+f5    7   A5DC:24,1,127   A5CC:26,0,120
+f6   60   899C:25,2,138   8ACB:25,2,124   8E9B:26,0,116
