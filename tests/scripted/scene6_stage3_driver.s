@@ -176,5 +176,6 @@ dcgr_of:
         include "scene6_backdrop.s"
         include "scene6_cliff.s"
         include "scene6_hud.s"
+        include "scene6_placement_gen.s"  ; §2F single-home plc_ + plc_start_ (scene6_cliff.s reads these)
 
         end     test_start

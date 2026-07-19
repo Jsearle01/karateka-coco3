@@ -302,10 +302,10 @@ cab_l:
 *   the scroll: write each cel byte only where the back buffer is SKY ($AA), so the posts/rail/
 *   wall already in the band (from the strip) OCCLUDE it. It does not scroll.
 draw_a9e2_behind:
-        lda     plc_A9E2+2              ; row (§2F table col,sub,row; A9E2 sub=0, direct byte-write)
+        lda     fuji_A9E2+2              ; row (§2F table col,sub,row; A9E2 sub=0, direct byte-write)
         ldb     #80
         mul                             ; D = row*80
-        addb    plc_A9E2                ; + col into low byte
+        addb    fuji_A9E2                ; + col into low byte
         adca    #0                      ;   carry into high byte
         pshs    d                       ; save the byte-offset row*80+col
         lda     <page_register
@@ -347,22 +347,22 @@ dab_keep:
 *   LOWEST cel $A9E2 is intentionally omitted so the scroll overwrites it. (Positions mirror
 *   scene6_backdrop.s draw_fuji_cels minus $A9E2.)
 draw_fuji_upper:
-        lda     plc_A9B8+1              ; sub (§2F table col,sub,row)
+        lda     fuji_A9B8+1              ; sub (§2F table col,sub,row)
         sta     <blit_subbyte
-        lda     plc_A9B8                ; col
-        ldb     plc_A9B8+2              ; row
+        lda     fuji_A9B8                ; col
+        ldb     fuji_A9B8+2              ; row
         ldx     #scene6_bg_A9B8
         jsr     HAL_gfx_blit_sprite_opaque
-        lda     plc_A976+1              ; sub
+        lda     fuji_A976+1              ; sub
         sta     <blit_subbyte
-        lda     plc_A976                ; col
-        ldb     plc_A976+2              ; row
+        lda     fuji_A976                ; col
+        ldb     fuji_A976+2              ; row
         ldx     #scene6_bg_A976
         jsr     HAL_gfx_blit_sprite_opaque
-        lda     plc_A948+1              ; sub
+        lda     fuji_A948+1              ; sub
         sta     <blit_subbyte
-        lda     plc_A948                ; col
-        ldb     plc_A948+2              ; row
+        lda     fuji_A948                ; col
+        ldb     fuji_A948+2              ; row
         ldx     #scene6_bg_A948
         jsr     HAL_gfx_blit_sprite_opaque
         rts

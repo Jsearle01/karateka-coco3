@@ -29,10 +29,6 @@ reg_8ACB:  fcb 3,14,0   ; w, h, start_col
 reg_8E9B:  fcb 2,8,0   ; w, h, start_col
 * --- placement: plc_<id> = fcb col, sub, row (byte-col, sub-byte shift 0..3, row) ---
 plc_AB4A:  fcb 5,0,112   ; AB4A: col, sub, row
-plc_A9E2:  fcb 26,0,108   ; A9E2: col, sub, row
-plc_A9B8:  fcb 31,0,100   ; A9B8: col, sub, row
-plc_A976:  fcb 33,0,92   ; A976: col, sub, row
-plc_A948:  fcb 36,0,81   ; A948: col, sub, row
 plc_AA7D:  fcb 15,0,152   ; AA7D: col, sub, row
 plc_AB7C:  fcb 22,0,104   ; AB7C: col, sub, row
 plc_AB94:  fcb 22,0,112   ; AB94: col, sub, row
@@ -42,3 +38,6 @@ plc_AA31_2:  fcb 66,0,100   ; AA31: col, sub, row
 plc_AA23_0:  fcb 25,0,100   ; AA23: col, sub, row
 plc_AA23_1:  fcb 46,0,100   ; AA23: col, sub, row
 plc_AA23_2:  fcb 67,0,100   ; AA23: col, sub, row
+* --- startpose: plc_start_<cel> = fcb col,sub,row (DERIVED from [animation] climb_crawl f0) ---
+plc_start_A3E9:  fcb 21,3,158   ; crawl-start (= climb_crawl f0)
+plc_start_A3C5:  fcb 22,2,141   ; crawl-start (= climb_crawl f0)

@@ -34,32 +34,32 @@ draw_fuji_backdrop:
 
 * draw_fuji_cels — the 4 Fuji opaque blits (base->peak), no sky/floor. Shared by the
 *   fight backdrop and the climb (which draws its own sky band + no full-width floor).
+* Fuji placement (col,sub,row) is single-homed in [fuji] -> scene6_fuji_gen.s (below); the shared
+*   draw_fuji_cels AND Stage-A both read fuji_<id>. Sub-byte carried (all sub=0 = byte-aligned here;
+*   an opaque sub-byte shift writes the shifted-in edge zeros as BLACK bars, so these stay aligned).
 draw_fuji_cels:
-        * base $A9E2  X104 (Apple84+20)  Y108  byte 26 sub 0
-        clr     <blit_subbyte
-        lda     #26
-        ldb     #108
+        lda     fuji_A9E2+1             ; base $A9E2 sub
+        sta     <blit_subbyte
+        lda     fuji_A9E2               ; col
+        ldb     fuji_A9E2+2             ; row
         ldx     #scene6_bg_A9E2
         jsr     HAL_gfx_blit_sprite_opaque
-        * $A9B8  byte 31 (X124)  Y100  — BYTE-ALIGNED (sub 0): opaque blit + a
-        * sub-byte shift writes the shifted-in edge zeros as BLACK bars, so the
-        * backdrop sprites are byte-aligned (<=2px shift, negligible). [Jay gate]
-        clr     <blit_subbyte
-        lda     #31
-        ldb     #100
+        lda     fuji_A9B8+1             ; $A9B8 sub
+        sta     <blit_subbyte
+        lda     fuji_A9B8               ; col
+        ldb     fuji_A9B8+2             ; row
         ldx     #scene6_bg_A9B8
         jsr     HAL_gfx_blit_sprite_opaque
-        * $A976  X132 (Apple112+20)  Y92  byte 33 sub 0
-        clr     <blit_subbyte
-        lda     #33
-        ldb     #92
+        lda     fuji_A976+1             ; $A976 sub
+        sta     <blit_subbyte
+        lda     fuji_A976               ; col
+        ldb     fuji_A976+2             ; row
         ldx     #scene6_bg_A976
         jsr     HAL_gfx_blit_sprite_opaque
-        * peak $A948  byte 36 (X144)  Y81  — BYTE-ALIGNED (sub 0, see A9B8 note);
-        * drawn last = on top (§3)
-        clr     <blit_subbyte
-        lda     #36
-        ldb     #81
+        lda     fuji_A948+1             ; peak $A948 sub (drawn last = on top)
+        sta     <blit_subbyte
+        lda     fuji_A948               ; col
+        ldb     fuji_A948+2             ; row
         ldx     #scene6_bg_A948
         jsr     HAL_gfx_blit_sprite_opaque
         rts
@@ -141,6 +141,7 @@ cl_tile:
         rts
 
 * --- backdrop cel data (single source) ---
+        include "scene6_fuji_gen.s"     ; §2F single-home Fuji placement (fuji_<id>); shared by all backdrop-users
         include "../../content/background/scene6_bg_A948/converted.s"
         include "../../content/background/scene6_bg_A976/converted.s"
         include "../../content/background/scene6_bg_A9B8/converted.s"

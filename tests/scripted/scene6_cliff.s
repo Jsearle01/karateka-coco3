@@ -6,15 +6,17 @@
 
 * draw_climb_scenery_back — wall-top posts drawn BEFORE the Fuji, so the
 *   mountain occludes their upper rows (oracle order: AA31 -> Fuji -> ...).
+* table entry = fdb cel ; fdb plc_ptr (§2F: placement value lives ONCE in plc_<id>).
 draw_climb_scenery_back:
         ldy     #climb_scn_back_tbl
 dcsb_loop:
-        ldx     ,y++
+        ldx     ,y++                    ; X = cel ptr (0 = end)
         beq     dcsb_done
-        lda     ,y+
+        ldu     ,y++                    ; U -> plc_ row (col,sub,row) — §2F single home
+        lda     1,u                     ; sub
         sta     <blit_subbyte
-        lda     ,y+
-        ldb     ,y+
+        lda     ,u                      ; col
+        ldb     2,u                     ; row
         pshs    y
         jsr     HAL_gfx_blit_sprite_opaque
         puls    y
@@ -29,10 +31,11 @@ draw_climb_scenery:
 dcs_loop:
         ldx     ,y++                    ; X = cel ptr (0 = end)
         beq     dcs_done
-        lda     ,y+                     ; sub-byte
+        ldu     ,y++                    ; U -> plc_ row (col,sub,row) — §2F single home
+        lda     1,u                     ; sub-byte
         sta     <blit_subbyte
-        lda     ,y+                     ; A = byte col
-        ldb     ,y+                     ; B = row
+        lda     ,u                      ; A = byte col
+        ldb     2,u                     ; B = row
         pshs    y
         jsr     HAL_gfx_blit_sprite_opaque
         puls    y
@@ -42,45 +45,36 @@ dcs_done:
 
 * draw_climb_startpose — the 2-part crawl-start pose: legs $A3E9 (Y158) then
 *   torso $A3C5 over it. Drawn AFTER scenery so the player is on top of the cliff.
+*   placement single-homed in plc_start_<cel> (derived from [animation] climb_crawl f0).
 draw_climb_startpose:
-        lda     #3
+        lda     plc_start_A3E9+1         ; sub
         sta     <blit_subbyte
-        lda     #21                     ; byte col
-        ldb     #158                    ; row (Y=158)
+        lda     plc_start_A3E9           ; col
+        ldb     plc_start_A3E9+2         ; row
         ldx     #scene6_climb_A3E9
         jsr     HAL_gfx_blit_sprite
-        lda     #2
+        lda     plc_start_A3C5+1         ; sub
         sta     <blit_subbyte
-        lda     #22                     ; byte col
-        ldb     #141                    ; row (Y=141)
+        lda     plc_start_A3C5           ; col
+        ldb     plc_start_A3C5+2         ; row
         ldx     #scene6_climb_A3C5
         jsr     HAL_gfx_blit_sprite
         rts
 
-climb_scn_back_tbl:
-        fdb     scene6_cliff_AA31
-        fcb     0,24,100
-        fdb     scene6_cliff_AA31
-        fcb     0,45,100
-        fdb     scene6_cliff_AA31
-        fcb     0,66,100
+climb_scn_back_tbl:                     ; fdb cel, plc_ptr
+        fdb     scene6_cliff_AA31,plc_AA31_0
+        fdb     scene6_cliff_AA31,plc_AA31_1
+        fdb     scene6_cliff_AA31,plc_AA31_2
         fdb     0                       ; end
 
-climb_scn_tbl:
-        fdb     scene6_cliff_AA23
-        fcb     0,25,100
-        fdb     scene6_cliff_AA23
-        fcb     0,46,100
-        fdb     scene6_cliff_AA23
-        fcb     0,67,100
-        fdb     scene6_cliff_AB4A
-        fcb     0,5,112
-        fdb     scene6_cliff_AB7C
-        fcb     0,22,104
-        fdb     scene6_cliff_AB94
-        fcb     0,22,112
-        fdb     scene6_cliff_AA7D
-        fcb     0,15,152
+climb_scn_tbl:                          ; fdb cel, plc_ptr
+        fdb     scene6_cliff_AA23,plc_AA23_0
+        fdb     scene6_cliff_AA23,plc_AA23_1
+        fdb     scene6_cliff_AA23,plc_AA23_2
+        fdb     scene6_cliff_AB4A,plc_AB4A
+        fdb     scene6_cliff_AB7C,plc_AB7C
+        fdb     scene6_cliff_AB94,plc_AB94
+        fdb     scene6_cliff_AA7D,plc_AA7D
         fdb     0                       ; end
 
 * --- cel data (single source) ---
