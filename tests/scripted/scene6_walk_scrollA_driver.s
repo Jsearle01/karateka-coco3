@@ -405,10 +405,6 @@ dac_byte:
         bne     dac_row
 dac_done:
         rts
-cliff_tbl:
-        fdb     scene6_cliff_AA7D       ; the climbable cliff sprite (AB4A is a FIXED Fuji sprite)
-        fcb     0,15,152
-        fdb     0                       ; end
 
 * draw_ground_seam — redraw the ground's ONE leftmost column (byte 25-shift, the cliff cel's
 *   byte 10 position) over the cliff's right edge, rows 152-180, with the ground pattern
