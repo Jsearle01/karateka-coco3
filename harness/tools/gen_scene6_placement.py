@@ -36,30 +36,35 @@ def parse_cel(cel_dir):
 def main():
     registry = {}   # sprite_id -> cel_file
     placement = []  # (placement_id, sprite_id, x, y)
-    anim = []       # (frame_id, dwell, [(cel_id, col, sub, row), ...])   climb crawl frames
+    anim = []       # frames of the climb_crawl block: (frame_id, dwell, [(cel,col,sub,row)...])
     section = None
+    cur_block = None    # current [animation] named block
     with open(SRC, encoding="utf-8") as fh:
         for line in fh:
             s = line.split("#", 1)[0].strip()
             if not s:
                 continue
-            if s == "[registry]":   section = "reg";  continue
-            if s == "[placement]":  section = "plc";  continue
-            if s == "[climb_anim]": section = "anim"; continue
+            if s == "[registry]":  section = "reg";  continue
+            if s == "[placement]": section = "plc";  continue
+            if s == "[animation]": section = "anim"; cur_block = None; continue
             parts = s.split()
             if section == "reg":
                 registry[parts[0]] = parts[1]
             elif section == "plc":
                 placement.append((parts[0], parts[1], int(parts[2]), int(parts[3])))
             elif section == "anim":
-                # frame_id  dwell  cel:col,sub,row  cel:col,sub,row ...
+                if len(parts) == 1 and s.endswith(":"):   # "<name>:" starts a named block
+                    cur_block = s[:-1]
+                    continue
+                # frame_id  dwell  cel:col,sub,row  cel:col,sub,row ...  (belongs to cur_block)
                 fid, dwell, tokens = parts[0], int(parts[1]), parts[2:]
                 pparts = []
                 for tok in tokens:
                     cel, csr = tok.split(":")
                     col, sub, row = (int(v) for v in csr.split(","))
                     pparts.append((cel, col, sub, row))
-                anim.append((fid, dwell, pparts))
+                if cur_block == "climb_crawl":
+                    anim.append((fid, dwell, pparts))
 
     # derive registry dims/start_col from the cels
     reg = {sid: parse_cel(path) for sid, path in registry.items()}
