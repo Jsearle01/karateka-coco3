@@ -51,7 +51,8 @@ def main():
             if section == "reg":
                 registry[parts[0]] = parts[1]
             elif section == "plc":
-                placement.append((parts[0], parts[1], int(parts[2]), int(parts[3])))
+                # placement_id  sprite_id  col  sub  row  (sub carried always — climb lesson)
+                placement.append((parts[0], parts[1], int(parts[2]), int(parts[3]), int(parts[4])))
             elif section == "anim":
                 if len(parts) == 1 and s.endswith(":"):   # "<name>:" starts a named block
                     cur_block = s[:-1]
@@ -77,9 +78,9 @@ def main():
     for sid in registry:
         w, h, sc = reg[sid]
         out.append(f"reg_{sid}:  fcb {w},{h},{sc}   ; w, h, start_col")
-    out.append("* --- placement: plc_<id> = fcb x, y (resolved placed col,row) ---")
-    for pid, sid, x, y in placement:
-        out.append(f"plc_{pid}:  fcb {x},{y}   ; {sid}: col, row")
+    out.append("* --- placement: plc_<id> = fcb col, sub, row (byte-col, sub-byte shift 0..3, row) ---")
+    for pid, sid, col, sub, row in placement:
+        out.append(f"plc_{pid}:  fcb {col},{sub},{row}   ; {sid}: col, sub, row")
     out.append("")
     with open(OUT, "w", encoding="utf-8") as fh:
         fh.write("\n".join(out))

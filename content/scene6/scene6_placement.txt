@@ -36,23 +36,24 @@ A5CC   content/player/scene6_climb_A5CC
 8ACB   content/player/scene6_player_8ACB
 8E9B   content/player/scene6_player_8E9B
 
-[placement]  # placement_id   sprite_id   x   y   (resolved placed col,row; verbatim from the gated drivers)
-# --- STAGE A (walk scroll) cels — READ by scene6_walk_scrollA_driver.s (this dispatch, Step 2a) ---
-AB4A     AB4A    5    112
-A9E2     A9E2    26   108
-A9B8     A9B8    31   100
-A976     A976    33   92
-A948     A948    36   81
-AA7D     AA7D    15   152
-# --- STAGE-3 static extras (AB structure + AA23/AA31 posts) — for the stage-3 follow-on dispatch ---
-AB7C     AB7C    22   104
-AB94     AB94    22   112
-AA31_0   AA31    24   100
-AA31_1   AA31    45   100
-AA31_2   AA31    66   100
-AA23_0   AA23    25   100
-AA23_1   AA23    46   100
-AA23_2   AA23    67   100
+[placement]  # placement_id  sprite_id  col  sub  row   (resolved placed byte-col, sub-byte pixel
+#   shift 0..3, row; verbatim from the gated drivers. sub carried ALWAYS — never dropped (climb lesson).)
+# --- STAGE A (walk scroll) + shared cliff cels — READ by scene6_walk_scrollA_driver.s + scene6_cliff.s ---
+AB4A     AB4A    5    0   112
+A9E2     A9E2    26   0   108
+A9B8     A9B8    31   0   100
+A976     A976    33   0   92
+A948     A948    36   0   81
+AA7D     AA7D    15   0   152
+# --- STAGE-3 static scenery (AB structure + AA23/AA31 posts) — READ by scene6_cliff.s ---
+AB7C     AB7C    22   0   104
+AB94     AB94    22   0   112
+AA31_0   AA31    24   0   100
+AA31_1   AA31    45   0   100
+AA31_2   AA31    66   0   100
+AA23_0   AA23    25   0   100
+AA23_1   AA23    46   0   100
+AA23_2   AA23    67   0   100
 # (climb-pose positions live in [animation] climb_crawl below — the animated placement's single
 #  home — NOT here; a flat plc_ x/y can't carry per-frame or the sub-byte, and duplicating cl_f0
 #  here would be a SECOND home for A3E9/A3C5. So the crawl start pose is [animation] f0.)

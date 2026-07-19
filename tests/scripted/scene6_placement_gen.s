@@ -27,18 +27,18 @@ reg_A5CC:  fcb 3,7,0   ; w, h, start_col
 reg_899C:  fcb 3,24,0   ; w, h, start_col
 reg_8ACB:  fcb 3,14,0   ; w, h, start_col
 reg_8E9B:  fcb 2,8,0   ; w, h, start_col
-* --- placement: plc_<id> = fcb x, y (resolved placed col,row) ---
-plc_AB4A:  fcb 5,112   ; AB4A: col, row
-plc_A9E2:  fcb 26,108   ; A9E2: col, row
-plc_A9B8:  fcb 31,100   ; A9B8: col, row
-plc_A976:  fcb 33,92   ; A976: col, row
-plc_A948:  fcb 36,81   ; A948: col, row
-plc_AA7D:  fcb 15,152   ; AA7D: col, row
-plc_AB7C:  fcb 22,104   ; AB7C: col, row
-plc_AB94:  fcb 22,112   ; AB94: col, row
-plc_AA31_0:  fcb 24,100   ; AA31: col, row
-plc_AA31_1:  fcb 45,100   ; AA31: col, row
-plc_AA31_2:  fcb 66,100   ; AA31: col, row
-plc_AA23_0:  fcb 25,100   ; AA23: col, row
-plc_AA23_1:  fcb 46,100   ; AA23: col, row
-plc_AA23_2:  fcb 67,100   ; AA23: col, row
+* --- placement: plc_<id> = fcb col, sub, row (byte-col, sub-byte shift 0..3, row) ---
+plc_AB4A:  fcb 5,0,112   ; AB4A: col, sub, row
+plc_A9E2:  fcb 26,0,108   ; A9E2: col, sub, row
+plc_A9B8:  fcb 31,0,100   ; A9B8: col, sub, row
+plc_A976:  fcb 33,0,92   ; A976: col, sub, row
+plc_A948:  fcb 36,0,81   ; A948: col, sub, row
+plc_AA7D:  fcb 15,0,152   ; AA7D: col, sub, row
+plc_AB7C:  fcb 22,0,104   ; AB7C: col, sub, row
+plc_AB94:  fcb 22,0,112   ; AB94: col, sub, row
+plc_AA31_0:  fcb 24,0,100   ; AA31: col, sub, row
+plc_AA31_1:  fcb 45,0,100   ; AA31: col, sub, row
+plc_AA31_2:  fcb 66,0,100   ; AA31: col, sub, row
+plc_AA23_0:  fcb 25,0,100   ; AA23: col, sub, row
+plc_AA23_1:  fcb 46,0,100   ; AA23: col, sub, row
+plc_AA23_2:  fcb 67,0,100   ; AA23: col, sub, row
