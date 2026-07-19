@@ -66,6 +66,10 @@ lwasm --decb -o tests/scripted/scene6_stage3_driver.bin tests/scripted/scene6_st
 if errorlevel 1 goto :error
 call :size tests/scripted/scene6_stage3_driver.bin
 
+rem --- §2F: regenerate the single-home scene-6 placement table from its text-source (no drift) ---
+python harness\tools\gen_scene6_placement.py
+if errorlevel 1 goto :error
+
 lwasm --decb -o tests/scripted/scene6_walk_scrollA_driver.bin tests/scripted/scene6_walk_scrollA_driver.s
 if errorlevel 1 goto :error
 call :size tests/scripted/scene6_walk_scrollA_driver.bin

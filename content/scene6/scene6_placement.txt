@@ -1,0 +1,45 @@
+# scene-6 placement table — SINGLE-HOME (CLAUDE.md §2F). Human-readable, Jay-correctable.
+# This is the ONE home for scene-6 sprite PLACEMENT. Pixels live only in the cel converted.s;
+# placement (x/y) lives only here. Codegen -> tests/scripted/scene6_placement_gen.s (the build reads that).
+#   Tool: harness/tools/gen_scene6_placement.py
+# w/h/start_col are DERIVED from each cel's converted.s by the codegen (start_col PROMOTED from the
+#   cel comment to a structured registry field — the build/tool must not depend on a comment).
+# Fills (striations, ground, black wall, wall-top RMW) are SUBSTRATE, NOT placement — they stay inline.
+# AA23/AA31 are cels used by the STAGE-3 STATIC tableau only (never the gated wall-top, which is RMW fills).
+# Relocation only: values are VERBATIM from the gated drivers. A wrong-looking placement is a separate
+#   Jay-gated fix, NOT edited here without his gate.
+
+[registry]   # sprite_id   cel_file   (w/h/start_col derived from the file by the codegen)
+AA7D   content/scenery/scene6_cliff_AA7D
+AB4A   content/scenery/scene6_cliff_AB4A
+AB7C   content/scenery/scene6_cliff_AB7C
+AB94   content/scenery/scene6_cliff_AB94
+AA23   content/scenery/scene6_cliff_AA23
+AA31   content/scenery/scene6_cliff_AA31
+A9E2   content/background/scene6_bg_A9E2
+A9B8   content/background/scene6_bg_A9B8
+A976   content/background/scene6_bg_A976
+A948   content/background/scene6_bg_A948
+A3C5   content/player/scene6_climb_A3C5
+A3E9   content/player/scene6_climb_A3E9
+
+[placement]  # placement_id   sprite_id   x   y   (resolved placed col,row; verbatim from the gated drivers)
+# --- STAGE A (walk scroll) cels — READ by scene6_walk_scrollA_driver.s (this dispatch, Step 2a) ---
+AB4A     AB4A    5    112
+A9E2     A9E2    26   108
+A9B8     A9B8    31   100
+A976     A976    33   92
+A948     A948    36   81
+AA7D     AA7D    15   152
+# --- STAGE-3 static extras (AB structure + AA23/AA31 posts) — for the stage-3 follow-on dispatch ---
+AB7C     AB7C    22   104
+AB94     AB94    22   112
+AA31_0   AA31    24   100
+AA31_1   AA31    45   100
+AA31_2   AA31    66   100
+AA23_0   AA23    25   100
+AA23_1   AA23    46   100
+AA23_2   AA23    67   100
+# --- CRAWL start pose (player) — for the crawl follow-on dispatch ---
+A3E9     A3E9    21   158
+A3C5     A3C5    22   141

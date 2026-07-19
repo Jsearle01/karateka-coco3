@@ -93,9 +93,9 @@ test_start:
         jsr     draw_climb_scenery_back ; gated wall-top posts (RMW) + black backwall
         jsr     draw_climb_striations   ; cliff-face STRIATION LINES (fixed backdrop)
         clr     <blit_subbyte           ; AB4A = the lowest Fuji sprite: FIXED backdrop (in the
-        lda     #5                      ;   band, so the strip holds it fixed on the left + slides
-        ldb     #112                    ;   the wall block over it -> stationary + overwritten).
-        ldx     #scene6_cliff_AB4A
+        lda     plc_AB4A                ;   band, so the strip holds it fixed on the left + slides
+        ldb     plc_AB4A+1              ;   the wall block over it -> stationary + overwritten).
+        ldx     #scene6_cliff_AB4A      ;   col,row from the §2F placement table (was #5,#112)
         jsr     HAL_gfx_blit_sprite_opaque
         jsr     draw_climb_ground_right ; ground segments
         jsr     draw_hud_player
@@ -301,14 +301,22 @@ cab_l:
 *   the scroll: write each cel byte only where the back buffer is SKY ($AA), so the posts/rail/
 *   wall already in the band (from the strip) OCCLUDE it. It does not scroll.
 draw_a9e2_behind:
+        lda     plc_A9E2+1              ; row (was 108) from the §2F placement table
+        ldb     #80
+        mul                             ; D = row*80
+        addb    plc_A9E2                ; + col (was 26) into low byte
+        adca    #0                      ;   carry into high byte
+        pshs    d                       ; save the byte-offset row*80+col
         lda     <page_register
         cmpa    #PAGE_A_TOKEN
         bne     dab_useb
-        ldu     #$8000+108*80+26
+        ldd     #$8000
         bra     dab_go
 dab_useb:
-        ldu     #$C000+108*80+26
+        ldd     #$C000
 dab_go:
+        addd    ,s++                    ; base + offset -> dest ($8000/$C000 + 108*80 + 26)
+        tfr     d,u
         ldx     #scene6_bg_A9E2
         lda     ,x+                     ; height
         sta     a9e2_h
@@ -339,18 +347,18 @@ dab_keep:
 *   scene6_backdrop.s draw_fuji_cels minus $A9E2.)
 draw_fuji_upper:
         clr     <blit_subbyte
-        lda     #31
-        ldb     #100
+        lda     plc_A9B8                ; col,row from §2F table (was #31,#100)
+        ldb     plc_A9B8+1
         ldx     #scene6_bg_A9B8
         jsr     HAL_gfx_blit_sprite_opaque
         clr     <blit_subbyte
-        lda     #33
-        ldb     #92
+        lda     plc_A976                ; (was #33,#92)
+        ldb     plc_A976+1
         ldx     #scene6_bg_A976
         jsr     HAL_gfx_blit_sprite_opaque
         clr     <blit_subbyte
-        lda     #36
-        ldb     #81
+        lda     plc_A948                ; (was #36,#81)
+        ldb     plc_A948+1
         ldx     #scene6_bg_A948
         jsr     HAL_gfx_blit_sprite_opaque
         rts
@@ -360,10 +368,10 @@ draw_fuji_upper:
 *   striation backdrop. Skips a cel once its col goes off the left edge.
 draw_cliff_cels:
         clr     <blit_subbyte
-        lda     #15                     ; AA7D base col
-        suba    scroll_shift            ; col = 15 - shift
+        lda     plc_AA7D                ; AA7D base col (was #15) from §2F table
+        suba    scroll_shift            ; col = base - shift
         bcs     draw_a7d_clipped        ; col < 0 -> partially off-left: left-clip it
-        ldb     #152
+        ldb     plc_AA7D+1              ; row (was #152)
         ldx     #scene6_cliff_AA7D
         jmp     HAL_gfx_blit_sprite_opaque   ; col >= 0 (clip_left_border trims bytes 0-4 after)
 
@@ -372,20 +380,26 @@ draw_cliff_cels:
 *   trims bytes 0-4 so it slides off smoothly to the virtual left edge (px20).
 draw_a7d_clipped:
         lda     scroll_shift
-        suba    #15
+        suba    plc_AA7D                ; K = shift - base col (was #15)
         sta     clip_k                  ; K = columns off the left
         lda     #11
         suba    clip_k
         ble     dac_done                ; fully off-left
         sta     clip_w                  ; visible width = 11 - K
+        lda     plc_AA7D+1              ; row (was 152) from §2F table
+        ldb     #80
+        mul                             ; D = row*80
+        pshs    d
         lda     <page_register
         cmpa    #PAGE_A_TOKEN
         bne     dac_useb
-        ldu     #$8000+152*80
+        ldd     #$8000
         bra     dac_go
 dac_useb:
-        ldu     #$C000+152*80
+        ldd     #$C000
 dac_go:
+        addd    ,s++                    ; base + row*80 -> byte-0 dest ($8000/$C000 + 152*80)
+        tfr     d,u
         ldx     #scene6_cliff_AA7D+2    ; cel data (skip h/w header)
         lda     clip_k
         leax    a,x                     ; X = row 0 data + K (skip clipped-off columns)
@@ -480,6 +494,7 @@ scroll_save     rmb     SA_BAND_LEN     ; clean gated-band snapshot (6480 bytes)
         include "scene6_cliff_walltop.s"
         include "scene6_cliff_face.s"
         include "scene6_hud.s"
+        include "scene6_placement_gen.s"  ; §2F single-home PLACEMENT table (codegen'd)
 
 * palette (Jay-gated index-selected; overrides prod default WITHOUT touching gfx.s prod) ---
         ifndef  PAL_SEL_DEFAULT
