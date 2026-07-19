@@ -637,3 +637,42 @@ climb anim_02, `oracle_anim02_capture.lua`):
   write outputs to a scratch dir (`-snapshot_directory`), never into the oracle repo.
 *Candidate:* `capture-the-oracle-animation-frame-content-anchored-blit-trampoline-plus-rdpage2-before-theorising`.
 *Established:* anim_02 oracle-vs-port capture 2026-07-18.
+
+---
+
+## 13. Loop a scene SEGMENT via SAVE-STATE (live visual-comparison view)
+To loop the oracle over ONE segment (e.g. climb→fight) instead of the whole natural attract loop (which
+replays the full ~2-min intro each cycle): **save-state at the segment start, load-state at the segment end**
+from a frame-notifier. `apple2e` **supports** save-states (`mame -listxml apple2e | grep savestate` →
+`savestate="supported"` — many drivers are `unsupported`, so verify). The Lua API in **0.281**:
+`manager.machine:save(name)` / `:load(name)` are real functions (`schedule_save`/`schedule_load` are **nil** —
+use `:save`/`:load`); probe by printing `tostring(m.save)` in a 2-second `-seconds_to_run` script before relying on it.
+
+**The loop** (frame-notifier state machine; tool `harness/tools/oracle_climb_fight_loop.lua`, canonical — copy
+to the oracle repo `tools/` to run, §11):
+```lua
+local m = manager.machine; m.video.throttled = false            -- fast-forward the intro
+local state, base = "ff", 0
+_G._loop = emu.add_machine_frame_notifier(function()
+  local fn = scr:frame_number()
+  if state=="ff" then if fn>=FF then m:save("cf"); m.video.throttled=true; base=fn; state="play" end
+  elseif state=="play" then if fn-base>=SEG then m:load("cf"); state="reanchor" end
+  elseif state=="reanchor" then base=fn; state="play" end        -- re-anchor: frame_number RESETS to the
+end)                                                             --   saved value after a load -> use a DELTA
+```
+`FF` = save/climb-start frame (~f5900–6018); `SEG` = frames start→reload (climb→fight ≈ 3500, before the natural
+loop-back ~f9443). **Use the delta `fn-base`, NOT an absolute reload frame** — `frame_number` resets to the saved
+value after `:load`.
+
+**Windowed for viewing:** `mame apple2e -rompath <roms> -flop1 dumps/karateka.dsk -keyboardprovider none -window
+-nomaximize -prescale 2 -resolution 1120x768 -script tools/oracle_climb_fight_loop.lua`. **`-keyboardprovider none`
+is mandatory** (a focused windowed apple2e run leaks host keys → the disk loads the ACTUAL game, §10a). Launch in
+the background; it never exits (close the window to quit).
+
+**Property:** `:load` restores the exact machine state incl. the RNG seed → the loop replays the **identical**
+segment each cycle (deterministic — good for a stable side-by-side reference). For VARIED fights, don't reload
+(let the attract free-run) or perturb `$59` on reload. *Candidate:*
+`loop-a-scene-segment-via-savestate-save-at-start-load-at-end-reanchor-on-delta`. *Established:* oracle
+climb→fight comparison loop 2026-07-19 (Jay-requested visual-comparison view). *(Cross-target: the save/load
+Lua API is MAME-general; coco3 supports save-states too — the port equivalent for a boot-excluded `.bin` is the
+load-`.bin`+set-PC flow in `climb_live.lua`, a different mechanism.)*

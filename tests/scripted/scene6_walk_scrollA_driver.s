@@ -1,37 +1,31 @@
 * tests/scripted/scene6_walk_scrollA_driver.s
 *
-* WALK BUILD — STAGE A: the $52-driven mid-ground scroll (FIRST build of the fight arc).
-* Sandbox, boot-excluded. Technique (b) SOFTWARE PARTIAL RE-BLIT of the mid-ground band —
-* NOT scene4_scroll's VOFFSET (that is vertical/whole-screen; a layered horizontal scroll
-* with Fuji FIXED needs the band re-blit). Single engine (HAL_gfx_blit_sprite_opaque); no
-* scene-local blit. Prod ROM ($88eba89...) untouched (src production paths unchanged).
+* WALK BUILD — STAGE A (cut 3): the $52-driven mid-ground scroll (FIRST build of the fight arc).
+* Sandbox, boot-excluded. Technique (b) SOFTWARE STRIP-SCROLL: draw the EXACT Jay-gated static
+* climb tableau (gated wall-top + cliff-face + ground + base + Fuji), then scroll the whole
+* mid-ground band as a horizontal strip (shifted copy from a snapshot), so EVERYTHING in the
+* band — the RMW wall-top, the hand-fill floor, the base — translates together, group-locked.
+* Fuji is redrawn FIXED on top each step (it overlaps the band). NOT scene4_scroll's VOFFSET,
+* NOT the raster split (a). Single engine; no scene-local blit. Prod ROM ($88eba89...) untouched.
 *
-* MECHANIC (scroll recon, settled): $52 is the GLOBAL scene scroll; the mid-ground translates
-*   at col = $52 - offset. Here $52 is driven by a SCRIPTED sweep 30->1B (NO player yet =
-*   Stage B). Port shift = ($30 - $52) columns LEFT (0..21); each mid-ground cel is re-blitted
-*   at (base_col - shift), GROUP-LOCKED. Fuji ($A9) is in the FIXED substrate and is NOT
-*   re-blitted -> stays put (layered for free). $52+xadj fight scenery = Stage C (blocked).
+* MECHANIC (scroll recon, settled): $52 = GLOBAL scene scroll; mid-ground translates at
+*   col = $52 - offset. $52 is a SCRIPTED sweep 30->1B (NO player = Stage B). Port shift =
+*   ($30 - $52) cols LEFT (0..21); the strip-copy reads snapshot[c+shift] -> content moves LEFT
+*   (player walks right => scenery scrolls left). Right edge edge-extends the snapshot col 79.
 *
-* PER-STEP (b): restore the mid-ground band (rows 100-111) from a clean snapshot (which
-*   INCLUDES Fuji's pixels, so Fuji is preserved), re-blit the mid-ground posts at the shifted
-*   col, present, flip. Slow cadence (HOLD frames/step) -> the costly composite fires once per
-*   HOLD frames; hold frames are a bare VBL wait (no redraw/flip).
-*   MEASURED (coco3 @1.78MHz, scrollA_measure.lua): 11.29 ms/step worst-case -> FITS one 16.68 ms
-*   VBL (~5.4 ms margin). The 24-row band (posts + AB structure) measured 21.9 ms => EXCEEDED
-*   VBL, so cut 1 scopes the band to the 12 post rows; extending it needs the amortized/bbox
-*   restore (spread the composite across the HOLD frames, or restore only the thin post bboxes).
+* WHY AMORTIZED: the full band (rows 100-180) shifted in one frame ~= 30 ms, over the 16.68 ms
+*   VBL. The scroll steps once per SA_HOLD (16) frames and HOLDS between, so the strip-copy is
+*   spread: 12 frames each strip ~7 rows into the BACK buffer (invisible), 1 frame redraws Fuji
+*   fixed, 1 frame flips, 2 idle. Every frame < one VBL; the visible update is one flip per step.
 *
-* SCOPE (cut 1, documented): scrolls the 6 wall-top posts (AA31 back x3 + AA23 front x3),
-*   GROUP-LOCKED, over a FIXED sky+Fuji substrate. The AB structure (AB4A/AB7C/AB94), the
-*   cliff-FACE hand-fill striations, and the AA7D base are DEFERRED (budget: they extend the
-*   band past the 12-row VBL-fit; add them with the amortized/bbox restore). The back posts
-*   (AA31) draw on top of Fuji (minor overlap) rather than behind it (correct layering needs a
-*   Fuji redraw between the post layers — deferred with the budget refinement).
+* SUBSTRATE = the gated crawl tableau (Jay-gated 2026-07-12/16), single-source modules:
+*   scene6_backdrop.s (sky/Fuji) + scene6_cliff_walltop.s (gated 3-post wall-top RMW + backwall
+*   + AB4A/AA7D) + scene6_cliff_face.s (striations + ground) + scene6_hud.s.
 *
 * Build: lwasm --decb -o tests/scripted/scene6_walk_scrollA_driver.bin \
 *              tests/scripted/scene6_walk_scrollA_driver.s
-* Gate: Jay live MAME (25.3-M) — the mid-ground translates per col=$52-offset, group-locked,
-*   Fuji fixed, across the 30->1B sweep, matching the oracle's sweep.
+* Gate: Jay live MAME (25.3-M) — the gated mid-ground (wall-top + floor + base) translates
+*   group-locked, LEFT, Fuji fixed, across the 30->1B sweep, matching the oracle.
 * ---------------------------------------------------------------
 
         org     $0100
@@ -60,14 +54,20 @@
 
 * --- Stage-A constants ---
 SA_BAND_ROW     equ     100             ; mid-ground band top row
-SA_BAND_ROWS    equ     12              ; rows 100..111 (wall-top posts) — budget-scoped (see report)
-SA_BAND_LEN     equ     SA_BAND_ROWS*80 ; 960 bytes (12 rows) per band
+SA_BAND_ROWS    equ     81              ; rows 100..180 (wall-top + cliff-face + ground + base)
+SA_BAND_LEN     equ     SA_BAND_ROWS*80 ; 6480 bytes per band
 SA_A_BAND       equ     $8000+SA_BAND_ROW*80    ; buffer A band base ($9F40)
 SA_B_BAND       equ     $C000+SA_BAND_ROW*80    ; buffer B band base ($DF40)
+SA_NCHUNK       equ     12              ; strip chunks (frames) per step
+SA_RPC          equ     7               ; rows per chunk (7*12=84 >= 81)
+WALL_L          equ     25              ; the wall/ground block's LEFT byte at shift 0. The cliff-face
+                                        ;   striations (bytes <WALL_L, incl. byte 24 = the px99 black
+                                        ;   wall-edge pixel) are a FIXED backdrop; the block slides
+                                        ;   left over them and overwrites them (boundary = WALL_L-shift).
+SA_HOLD         equ     16              ; frames/step (12 strip + 1 Fuji + 1 flip + 2 idle)
 SA_S52_HI       equ     $30             ; sweep start (climb hold value)
 SA_S52_LO       equ     $1B             ; sweep end
-SA_HOLD         equ     16              ; VBL frames per $52 step (~oracle 1 col / 16 frames)
-PAGE_TOGGLE     equ     PAGE_A_TOKEN!PAGE_B_TOKEN   ; $20 xor $40 = $60 (toggles A<->B)
+PAGE_TOGGLE     equ     PAGE_A_TOKEN!PAGE_B_TOKEN
 
 test_start:
         orcc    #$50
@@ -78,54 +78,203 @@ test_start:
         jsr     HAL_sys_init
         jsr     HAL_time_init
         lda     #$00
-        jsr     HAL_gfx_init            ; GIME 320x192x4
+        jsr     HAL_gfx_init
         lda     #PAL_SEL_DEFAULT
         sta     pal_select
         jsr     apply_palette
 
         lda     #PAGE_A_TOKEN
         sta     <page_register
-        andcc   #$EF                    ; enable IRQ (VBL frame sync)
+        andcc   #$EF
 
-        * --- FIXED substrate -> buffer A: sky + wall-top band + Fuji (NO mid-ground) ---
+        * --- the EXACT Jay-gated climb tableau -> buffer A (mirrors scene6_climb_crawl_driver) ---
         jsr     fill_sky
         jsr     fill_walltop
-        jsr     draw_fuji_cels
+        jsr     draw_climb_scenery_back ; gated wall-top posts (RMW) + black backwall
+        jsr     draw_climb_striations   ; cliff-face STRIATION LINES (fixed backdrop)
+        clr     <blit_subbyte           ; AB4A = the lowest Fuji sprite: FIXED backdrop (in the
+        lda     #5                      ;   band, so the strip holds it fixed on the left + slides
+        ldb     #112                    ;   the wall block over it -> stationary + overwritten).
+        ldx     #scene6_cliff_AB4A
+        jsr     HAL_gfx_blit_sprite_opaque
+        jsr     draw_climb_ground_right ; ground segments
         jsr     draw_hud_player
-        jsr     copy_a_to_b             ; both buffers carry the clean substrate
 
-        * --- snapshot the CLEAN band (from A; includes Fuji pixels) ---
-        jsr     snapshot_band
+        * snapshot the strip band BEFORE the cliff cels AND Fuji. The strip scrolls what IS in it
+        * (sky + striation lines + wall-top + ground) with the striations held fixed; the CLIFF
+        * SPRITE (AB4A/AA7D) and Fuji are NOT in the band — they are re-drawn on top each step
+        * (the cliff cels at the scrolled column, Fuji fixed).
+        jsr     snapshot_band           ; band WITHOUT the cliff cels, WITHOUT Fuji
 
-sweep_restart:
+        clr     scroll_shift
+        jsr     draw_cliff_cels         ; AB4A + AA7D (the climbable cliff sprite) at shift 0 -> A
+        jsr     draw_fuji_cels          ; Fuji -> A (fixed)
+        jsr     copy_a_to_b
+
+        * --- show A (the shift-0 tableau); loop builds B, C, ... ---
+        jsr     HAL_gfx_present
+        lda     <page_register
+        eora    #PAGE_TOGGLE
+        sta     <page_register
         lda     #SA_S52_HI
         sta     cur52
-sweep_loop:
-        lda     #SA_S52_HI
-        suba    cur52
-        sta     scroll_shift            ; shift = $30 - $52 (0..21, cols LEFT)
+        clr     mg_phase
 
-        jsr     restore_band            ; back-buffer band <- clean snapshot (Fuji preserved)
-        jsr     draw_mg_shifted         ; re-blit mid-ground at (col - shift), group-locked
-        jsr     HAL_gfx_present         ; reveal the back buffer
-        lda     <page_register          ; toggle draw target for the next step
+* ---------------------------------------------------------------
+* main_loop — per-frame state machine (amortized strip-scroll across SA_HOLD frames).
+* ---------------------------------------------------------------
+main_loop:
+        jsr     HAL_time_vbl_wait
+        lda     mg_phase
+        cmpa    #SA_NCHUNK
+        blo     ml_strip                ; phases 0..11: strip a chunk of rows
+        beq     ml_fujiu                ; phase 12: redraw the UPPER Fuji cels on top (fixed)
+        cmpa    #SA_NCHUNK+1
+        beq     ml_cliff                ; phase 13: re-blit the cliff sprite at the scrolled col
+        cmpa    #SA_NCHUNK+2
+        beq     ml_flip                 ; phase 14: present + flip
+        bra     ml_next                 ; phase 15: idle
+
+* The LOWEST Fuji cel ($A9E2) is NOT redrawn -> the strip (scrolling area, drawn "after" Fuji)
+*   overwrites it while it stays stationary. The UPPER Fuji cels ARE redrawn on top so they
+*   stay visible (the strip band overlaps their lower rows).
+
+ml_strip:
+        tsta
+        bne     ml_sc
+        jsr     step_init               ; phase 0: advance $52, shift, back_band, strip_row=0
+ml_sc:
+        jsr     strip_chunk
+        bra     ml_next
+
+ml_fujiu:
+        jsr     draw_a9e2_behind        ; lowest Fuji cel $A9E2 — stationary, behind the scroll (occluded)
+        jsr     draw_fuji_upper         ; upper Fuji cels — fixed, on top
+        bra     ml_next
+
+ml_cliff:
+        jsr     draw_cliff_cels         ; the cliff sprite (AA7D) at (base_col - shift) — SCROLLS
+        jsr     draw_ground_seam        ; ground column over the cliff's right edge (no black seam)
+        jsr     clip_left_border        ; clip a scrolled cliff cel at the virtual left edge (px20)
+        bra     ml_next
+
+ml_flip:
+        jsr     HAL_gfx_present
+        lda     <page_register
         eora    #PAGE_TOGGLE
         sta     <page_register
 
-        ldx     #SA_HOLD                ; hold this $52 for SA_HOLD VBL frames (no redraw/flip)
-sa_hold:
-        jsr     HAL_time_vbl_wait
-        leax    -1,x
-        bne     sa_hold
+ml_next:
+        inc     mg_phase
+        lda     mg_phase
+        cmpa    #SA_HOLD
+        blo     main_loop
+        clr     mg_phase
+        bra     main_loop
 
+* ---------------------------------------------------------------
+* step_init — phase 0: advance $52 (dec, wrap $1B->$30), set shift, back_band, strip_row.
+* ---------------------------------------------------------------
+step_init:
         dec     cur52
         lda     cur52
         cmpa    #SA_S52_LO
-        bhs     sweep_loop              ; while $52 >= $1B
-        bra     sweep_restart           ; loop the sweep (continuous viewing)
+        bhs     si_shift
+        lda     #SA_S52_HI
+        sta     cur52
+si_shift:
+        lda     #SA_S52_HI
+        suba    cur52
+        sta     scroll_shift            ; shift = $30 - $52 (0..21)
+        clr     strip_row
+        lda     <page_register
+        cmpa    #PAGE_A_TOKEN
+        bne     si_useb
+        ldd     #SA_A_BAND
+        bra     si_dst
+si_useb:
+        ldd     #SA_B_BAND
+si_dst:
+        std     back_band
+        rts
 
 * ---------------------------------------------------------------
-* snapshot_band — copy the clean band (buffer A, rows 100-111) into scroll_save.
+* strip_chunk — strip up to SA_RPC rows (from strip_row), each shifted LEFT by scroll_shift.
+* ---------------------------------------------------------------
+strip_chunk:
+        lda     #SA_RPC
+        sta     chunk_ct
+sc_l:
+        lda     strip_row
+        cmpa    #SA_BAND_ROWS
+        bhs     sc_done
+        ldb     #80
+        mul                             ; D = strip_row*80  (A=strip_row, B=80)
+        addd    #scroll_save
+        std     cur_src                 ; snapshot row
+        lda     strip_row
+        ldb     #80
+        mul
+        addd    back_band
+        std     cur_dst                 ; back-buffer band row
+        jsr     strip_one_row
+        inc     strip_row
+        dec     chunk_ct
+        bne     sc_l
+sc_done:
+        rts
+
+* strip_one_row — the striations (bytes < WALL_L) are a FIXED backdrop; the wall/ground block
+*   (snapshot bytes WALL_L..79) slides LEFT over them and overwrites them. Boundary B = WALL_L-shift.
+*   dest[0..B-1]  = snapshot[0..B-1]   (fixed striations, aligned)
+*   dest[B..79-shift] = snapshot[WALL_L..79]  (the block, its left edge slid to B)
+*   dest[80-shift..79] = snapshot[79]  (edge-extend the vacated right)
+strip_one_row:
+        * (1) fixed striations: aligned copy of B = WALL_L - shift bytes
+        ldx     cur_src
+        ldy     cur_dst
+        lda     #WALL_L
+        suba    scroll_shift            ; A = B (0..24)
+        beq     sor_block               ; B=0 -> no fixed part
+sor_fix:
+        ldb     ,x+
+        stb     ,y+
+        deca
+        bne     sor_fix
+sor_block:
+        * (2) the wall/ground block: 56 bytes from snapshot[WALL_L], placed at dest[B] (Y is there)
+        ldx     cur_src
+        leax    WALL_L,x                ; X = snapshot col WALL_L
+        lda     79-WALL_L,x             ; A = edge byte (snapshot col 79)
+        sta     edge_byte
+        lda     #80-WALL_L              ; 56 bytes (WALL_L..79)
+        sta     copy_ct
+sor_c:
+        ldb     ,x+
+        stb     ,y+
+        dec     copy_ct
+        bne     sor_c
+        * (3) edge-extend the vacated right: shift bytes of snapshot[79]
+        lda     scroll_shift
+        beq     sor_d
+        ldb     edge_byte
+sor_f:
+        stb     ,y+
+        deca
+        bne     sor_f
+sor_d:
+        * clip to the VIRTUAL screen: bytes 0..4 (px0..19) are the left border -> force black so the
+        *   scroll never bleeds past the logical left edge (px20 = byte 5) to the true screen edge.
+        ldu     cur_dst
+        clr     ,u
+        clr     1,u
+        clr     2,u
+        clr     3,u
+        clr     4,u
+        rts
+
+* ---------------------------------------------------------------
+* snapshot_band — copy the clean gated band (buffer A, rows 100-180) into scroll_save.
 * ---------------------------------------------------------------
 snapshot_band:
         ldx     #SA_A_BAND
@@ -135,47 +284,6 @@ snb_l:
         std     ,y++
         cmpx    #SA_A_BAND+SA_BAND_LEN
         blo     snb_l
-        rts
-
-* ---------------------------------------------------------------
-* restore_band — copy scroll_save into the BACK buffer's band (page_register selects A/B).
-* ---------------------------------------------------------------
-restore_band:
-        ldx     #scroll_save
-        lda     <page_register
-        cmpa    #PAGE_A_TOKEN
-        bne     rb_useb
-        ldu     #SA_A_BAND
-        bra     rb_l
-rb_useb:
-        ldu     #SA_B_BAND
-rb_l:
-        ldd     ,x++
-        std     ,u++
-        cmpx    #scroll_save+SA_BAND_LEN
-        blo     rb_l
-        rts
-
-* ---------------------------------------------------------------
-* draw_mg_shifted — re-blit each mid-ground cel at (base_col - scroll_shift).
-*   Skips a cel whose col goes off the left edge (col < shift). Opaque blit (black solid).
-* ---------------------------------------------------------------
-draw_mg_shifted:
-        ldy     #mg_tbl
-dmg_l:
-        ldx     ,y++                    ; X = cel ptr (0 = end)
-        beq     dmg_done
-        lda     ,y+                     ; sub-byte
-        sta     <blit_subbyte
-        lda     ,y+                     ; base byte col
-        ldb     ,y+                     ; row (B for blit)
-        suba    scroll_shift            ; A = col - shift
-        bcs     dmg_l                   ; borrow -> off left edge, skip
-        pshs    y
-        jsr     HAL_gfx_blit_sprite_opaque
-        puls    y
-        bra     dmg_l
-dmg_done:
         rts
 
 * copy buffer A ($8000-$BBFF) -> buffer B ($C000-...) so both carry the substrate.
@@ -189,38 +297,192 @@ cab_l:
         blo     cab_l
         rts
 
-* mid-ground cel table (scrolls as a group): back posts (AA31) + front posts (AA23) + AB
-*   structure. Format per row: fdb cel ; fcb subbyte, base_col, row. (0 = end.)
-mg_tbl:
-        fdb     scene6_cliff_AA31
-        fcb     0,24,100
-        fdb     scene6_cliff_AA31
-        fcb     0,45,100
-        fdb     scene6_cliff_AA31
-        fcb     0,66,100
-        fdb     scene6_cliff_AA23
-        fcb     0,25,100
-        fdb     scene6_cliff_AA23
-        fcb     0,46,100
-        fdb     scene6_cliff_AA23
-        fcb     0,67,100
+* draw_a9e2_behind — redraw the lowest Fuji cel $A9E2 (byte 26, row 108) STATIONARY but BEHIND
+*   the scroll: write each cel byte only where the back buffer is SKY ($AA), so the posts/rail/
+*   wall already in the band (from the strip) OCCLUDE it. It does not scroll.
+draw_a9e2_behind:
+        lda     <page_register
+        cmpa    #PAGE_A_TOKEN
+        bne     dab_useb
+        ldu     #$8000+108*80+26
+        bra     dab_go
+dab_useb:
+        ldu     #$C000+108*80+26
+dab_go:
+        ldx     #scene6_bg_A9E2
+        lda     ,x+                     ; height
+        sta     a9e2_h
+        lda     ,x+                     ; width
+        sta     a9e2_w
+dab_row:
+        pshs    u
+        ldb     a9e2_w
+dab_byte:
+        lda     ,u                      ; dest byte in the back buffer
+        cmpa    #$AA                    ; sky? (else it's wall/post -> keep = occlusion)
+        bne     dab_keep
+        lda     ,x                      ; cel byte -> draw behind
+        sta     ,u
+dab_keep:
+        leax    1,x                     ; advance src even when skipped (stay aligned)
+        leau    1,u
+        decb
+        bne     dab_byte
+        puls    u
+        leau    80,u
+        dec     a9e2_h
+        bne     dab_row
+        rts
+
+* draw_fuji_upper — the UPPER 3 Fuji cels (peak $A948, $A976, $A9B8) drawn fixed on top; the
+*   LOWEST cel $A9E2 is intentionally omitted so the scroll overwrites it. (Positions mirror
+*   scene6_backdrop.s draw_fuji_cels minus $A9E2.)
+draw_fuji_upper:
+        clr     <blit_subbyte
+        lda     #31
+        ldb     #100
+        ldx     #scene6_bg_A9B8
+        jsr     HAL_gfx_blit_sprite_opaque
+        clr     <blit_subbyte
+        lda     #33
+        ldb     #92
+        ldx     #scene6_bg_A976
+        jsr     HAL_gfx_blit_sprite_opaque
+        clr     <blit_subbyte
+        lda     #36
+        ldb     #81
+        ldx     #scene6_bg_A948
+        jsr     HAL_gfx_blit_sprite_opaque
+        rts
+
+* draw_cliff_cels — re-blit the cliff sprite cels (AB4A + AA7D, the climbable cliff) at
+*   (base_col - scroll_shift) into the back buffer, so the cliff SCROLLS over the fixed
+*   striation backdrop. Skips a cel once its col goes off the left edge.
+draw_cliff_cels:
+        clr     <blit_subbyte
+        lda     #15                     ; AA7D base col
+        suba    scroll_shift            ; col = 15 - shift
+        bcs     draw_a7d_clipped        ; col < 0 -> partially off-left: left-clip it
+        ldb     #152
+        ldx     #scene6_cliff_AA7D
+        jmp     HAL_gfx_blit_sprite_opaque   ; col >= 0 (clip_left_border trims bytes 0-4 after)
+
+* draw_a7d_clipped — AA7D has scrolled partly off the left edge (col < 0). Draw only the still-
+*   visible cel columns (skip the first K = shift-15) at byte 0, opaque; clip_left_border then
+*   trims bytes 0-4 so it slides off smoothly to the virtual left edge (px20).
+draw_a7d_clipped:
+        lda     scroll_shift
+        suba    #15
+        sta     clip_k                  ; K = columns off the left
+        lda     #11
+        suba    clip_k
+        ble     dac_done                ; fully off-left
+        sta     clip_w                  ; visible width = 11 - K
+        lda     <page_register
+        cmpa    #PAGE_A_TOKEN
+        bne     dac_useb
+        ldu     #$8000+152*80
+        bra     dac_go
+dac_useb:
+        ldu     #$C000+152*80
+dac_go:
+        ldx     #scene6_cliff_AA7D+2    ; cel data (skip h/w header)
+        lda     clip_k
+        leax    a,x                     ; X = row 0 data + K (skip clipped-off columns)
+        ldb     #29                     ; 29 rows
+dac_row:
+        pshs    b,u,x
+        lda     clip_w
+dac_byte:
+        ldb     ,x+
+        stb     ,u+
+        deca
+        bne     dac_byte
+        puls    b,u,x
+        leax    11,x                    ; next cel row (full stride = width 11)
+        leau    80,u
+        decb
+        bne     dac_row
+dac_done:
+        rts
+cliff_tbl:
+        fdb     scene6_cliff_AA7D       ; the climbable cliff sprite (AB4A is a FIXED Fuji sprite)
+        fcb     0,15,152
         fdb     0                       ; end
-* NOTE (cut 1): AB4A/AB7C/AB94 structure + cliff-face + AA7D base deferred — they extend
-*   below the 12-row post band; adding them needs the amortized/bbox restore (see report).
+
+* draw_ground_seam — redraw the ground's ONE leftmost column (byte 25-shift, the cliff cel's
+*   byte 10 position) over the cliff's right edge, rows 152-180, with the ground pattern
+*   (even rows orange $55 / odd rows blue $AA). In the static tableau the ground was drawn
+*   AFTER the cliff and covered this column; here the cliff is on top of the strip, so its
+*   black-containing right column would seam over the floor without this.
+draw_ground_seam:
+        lda     #25
+        suba    scroll_shift            ; col = 25 - shift
+        cmpa    #5                      ; clipped at the virtual left edge?
+        blo     gs_done
+        tfr     a,b                     ; B = col
+        lda     <page_register
+        cmpa    #PAGE_A_TOKEN
+        bne     gs_useb
+        ldx     #$8000+152*80
+        bra     gs_go
+gs_useb:
+        ldx     #$C000+152*80
+gs_go:
+        abx                             ; X = back base + 152*80 + col
+        lda     #$55                    ; row 152 (even) = orange
+        ldb     #29                     ; rows 152..180
+gs_row:
+        sta     ,x
+        leax    80,x
+        eora    #$FF                    ; toggle $55 <-> $AA (orange even / blue odd)
+        decb
+        bne     gs_row
+gs_done:
+        rts
+
+* clip_left_border — force bytes 0..4 (px0..19, left border) black across the band, so a
+*   scrolled cliff cel can't bleed past the virtual left edge (px20 = byte 5).
+clip_left_border:
+        ldx     back_band
+        lda     #SA_BAND_ROWS
+clb_l:
+        clr     ,x
+        clr     1,x
+        clr     2,x
+        clr     3,x
+        clr     4,x
+        leax    80,x
+        deca
+        bne     clb_l
+        rts
 
 * --- Stage-A state ---
-cur52           fcb     SA_S52_HI       ; current scripted $52 (sweep 30->1B)
-scroll_shift    fcb     0               ; $30 - $52 (columns to shift LEFT)
-scroll_save     rmb     SA_BAND_LEN     ; clean band snapshot (1920 bytes)
+mg_phase        fcb     0
+cur52           fcb     SA_S52_HI
+scroll_shift    fcb     0
+strip_row       fcb     0
+chunk_ct        fcb     0
+edge_byte       fcb     0
+copy_ct         fcb     0
+a9e2_h          fcb     0
+a9e2_w          fcb     0
+clip_k          fcb     0
+clip_w          fcb     0
+back_band       fdb     0
+cur_src         fdb     0
+cur_dst         fdb     0
+scroll_save     rmb     SA_BAND_LEN     ; clean gated-band snapshot (6480 bytes)
 
-* --- HAL + shared substrate + cliff cels (single source) ---
+* --- HAL + shared substrate modules (single source) ---
         include "../../src/hal/coco3-dsk/sys.s"
         include "../../src/hal/coco3-dsk/irq_vbl.s"
         include "../../src/hal/coco3-dsk/gfx.s"
         include "../../src/hal/coco3-dsk/time.s"
 
         include "scene6_backdrop.s"
-        include "scene6_cliff.s"
+        include "scene6_cliff_walltop.s"
+        include "scene6_cliff_face.s"
         include "scene6_hud.s"
 
 * palette (Jay-gated index-selected; overrides prod default WITHOUT touching gfx.s prod) ---
@@ -244,7 +506,7 @@ aph_loop:
 pal_select:
         fcb     PAL_SEL_DEFAULT
 palette_sets:
-        fcb     $00,$26,$2D,$3F         ; set 0 = COMPOSITE
-        fcb     $00,$26,$19,$3F         ; set 1 = RGB
+        fcb     $00,$26,$2D,$3F
+        fcb     $00,$26,$19,$3F
 
         end     test_start
