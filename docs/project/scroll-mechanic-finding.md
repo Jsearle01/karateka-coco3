@@ -1,5 +1,19 @@
 # The attract scroll mechanic — TRACE finding (2026-07-18) — REPORT ONLY, no build
 
+> **⚠ CORRECTED (2026-07-19) — see `walk-scroll-mechanic-finding.md` for the reconciled conclusion.**
+> Two claims below are superseded by the follow-up trace + Jay's eye:
+> - **`$AB8E` (cliff) is NOT fixed — it scrolls: `col = $52 − $26`.** It only *appeared* fixed here
+>   because this trace observed it during the `$52`=`$30` hold (the climb), where `col` is constant at
+>   `$0A`; when `$52` sweeps, the cliff translates 1:1. Only **Fuji (`$A9`, hardcoded)** is genuinely
+>   `$52`-independent. (So "the scroll is the scene-sprite group only, not the backdrop" below is wrong:
+>   the mid-ground scrolls too, at `$52 − offset`.)
+> - **The `$52`=`$30` hold is the CLIMB, not a walk dead-band.** Jay's eye confirms there is **no walk
+>   dead-band** — the scroll starts with the player's forward move (the `$52` sweep).
+> **Settled:** `$52` is the **GLOBAL scene scroll** (mid-ground `$52 − offset` + scene-sprite `$52 + xadj`;
+> Fuji fixed). The sweep starts f6455, ~32 frames **before** the guard draws (f6487) — scroll-before-guard,
+> matching Jay's eye. The mism=0 locked-group table + the causal-pin result below stand; the layer
+> classification and the "dead-band" framing are corrected as above.
+
 **Classification: TRUE — `$52` is the WALK-DRIVEN scroll driver.** A locked-group translation
 (`X = $52 ± xadj[i]`, verified mism=0), with a **dead-band** (`$52` held at `$30` through the
 climb until `$62` crosses `$0F`), the **upper backdrop fixed**, and the walk **causally drives
