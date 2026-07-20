@@ -75,7 +75,13 @@ def main():
     tk.Label(bar, text="(active cel)").pack(side="left")
 
     canvas = tk.Canvas(root, width=820, height=600, bg="#282828"); canvas.pack(fill="both", expand=True)
-    status = tk.Label(root, text="", anchor="w", font=("Consolas", 9)); status.pack(fill="x")
+    # prominent SAVE banner (bottom): only save writes it, so redraw() can't clobber the result.
+    savebar = tk.Label(root, text="ready — paint, then Save (Ctrl-S)", anchor="w",
+                       font=("Consolas", 12, "bold"), fg="white", bg="#444",
+                       padx=10, pady=8, justify="left", wraplength=1100)
+    savebar.pack(side="bottom", fill="x")
+    status = tk.Label(root, text="", anchor="w", font=("Consolas", 9))
+    status.pack(side="bottom", fill="x")
 
     def opac_map():  return {cid: ce.opacity for cid, ce in edit.cels.items()}
     def chg_map():   return {cid: ce.changed() for cid, ce in edit.cels.items()}
@@ -126,7 +132,7 @@ def main():
         import tkinter.messagebox as mb
         edited = edit.edited_cels()
         if not edited:
-            status.config(text="nothing edited — nothing to save", fg="#bbbbbb"); return
+            savebar.config(text="nothing edited — nothing to save", fg="white", bg="#666"); return
         ok_msgs, stop_msgs = [], []
         for ce in edited:
             try:
@@ -146,10 +152,10 @@ def main():
                              f"{ce.cel_id}: {ex}\nThe pre-save state was restored (no half-written files).")
                 stop_msgs.append(f"SAVE FAILED (rolled back) — {ce.cel_id}: {ex}")
         if stop_msgs:
-            status.config(text="  ||  ".join(stop_msgs + ok_msgs), fg="#ff5555")
+            savebar.config(text="  ||  ".join(stop_msgs + ok_msgs), fg="white", bg="#b02020")
         else:
-            status.config(text="  |  ".join(ok_msgs), fg="#55ff55")
-        redraw()
+            savebar.config(text="  |  ".join(ok_msgs), fg="white", bg="#1b7f1b")
+        redraw()   # updates the info line only; the save banner above is untouched
 
     tk.Button(bar, text="undo", command=do_undo).pack(side="right")
     tk.Button(bar, text="redo", command=do_redo).pack(side="right")
