@@ -71,11 +71,29 @@ def main():
                   activebackground=SWATCH_RGB[name], width=6,
                   command=lambda n=name: (arm(n))).pack()
         swatches[name] = fr
-    # cel selector (overlap routing)
+    # FRAME selector (primary): every animation frame + every static placement.
+    frame_specs = []
+    for block, frames in table.anim.items():
+        for i, fr in enumerate(frames):
+            frame_specs.append((f"{block} {fr.fid}", ("anim", block, i)))
+    for pid in table.placement:
+        frame_specs.append((f"static: {pid}", ("static", pid, None)))
+    spec_by_label = dict(frame_specs)
+    if len(ident) >= 2:
+        init_label = f"{ident[0]} {table.anim[ident[0]][ident[1]].fid}"
+    else:
+        init_label = f"static: {ident[0]}"
+    prev_label = [init_label]
+    tk.Label(bar, text="frame:").pack(side="left")
+    framevar = tk.StringVar(value=init_label)
+    tk.OptionMenu(bar, framevar, *[l for l, _ in frame_specs],
+                  command=lambda l: select_frame(l)).pack(side="left")
+    # cel selector (secondary — overlap routing only)
+    tk.Label(bar, text="paint cel:").pack(side="left", padx=(8, 0))
     celvar = tk.StringVar(value=edit.selected)
     def on_cel(*_): edit.selected = celvar.get()
-    tk.OptionMenu(bar, celvar, *edit.cels.keys(), command=on_cel).pack(side="left", padx=6)
-    tk.Label(bar, text="(active cel)").pack(side="left")
+    celmenu = tk.OptionMenu(bar, celvar, *edit.cels.keys(), command=on_cel)
+    celmenu.pack(side="left")
 
     canvas = tk.Canvas(root, width=1040, height=640, bg="#282828"); canvas.pack(fill="both", expand=True)
     # prominent SAVE banner (bottom): only save writes it, so redraw() can't clobber the result.
@@ -112,6 +130,27 @@ def main():
         canvas.config(scrollregion=(0, 0, nx + new.width + MARGIN, LABEL_H + new.height + MARGIN))
         status.config(text=f"zoom {z}x  cell {CELL_W*z}x{CELL_H*z}px (4:5)  "
                            f"active={edit.selected}  edited={[c.cel_id for c in edit.edited_cels()]}")
+
+    def select_frame(label):
+        nonlocal frame, edit
+        if label == prev_label[0]:
+            return
+        if edit.edited_cels():                       # discard-guard for unsaved edits
+            import tkinter.messagebox as mb
+            if not mb.askyesno("Discard edits?",
+                               f"Unsaved edits on {[c.cel_id for c in edit.edited_cels()]} will be "
+                               f"LOST switching frames. Switch anyway?"):
+                framevar.set(prev_label[0]); return   # revert the dropdown
+        kind, a, b = spec_by_label[label]
+        frame = assemble_animation(table, a, b) if kind == "anim" else assemble_static(table, a)
+        edit = FrameEdit(table, frame)
+        prev_label[0] = label
+        m = celmenu["menu"]; m.delete(0, "end")       # rebuild the cel selector for the new frame
+        for cid in edit.cels:
+            m.add_command(label=cid, command=lambda c=cid: (celvar.set(c), on_cel()))
+        celvar.set(edit.selected)
+        root.title(f"sprite tool — {frame.label}")
+        redraw()
 
     def canvas_to_frame(e):
         return screen_to_sprite(e.x - state.get("new_x0", MARGIN), e.y - state.get("new_y0", MARGIN), state["zoom"])
