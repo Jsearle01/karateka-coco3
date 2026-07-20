@@ -62,9 +62,13 @@ def derive(cel, opacity):
     if not any_sub:
         return 'mixed', _mixed_rects(cel, byte_op)
 
-    # sub-byte present -> masked requires the per-column mask to be uniform down rows
-    mask = _masked_mask(cel, opacity)     # raises CannotEncode if row-varying
-    return 'masked', mask
+    # sub-byte present -> try masked (per-column, uniform down rows); else the universal
+    # per-pixel STENCIL (a full 2D mask). With stencil there is no unrepresentable marking,
+    # so cheapest-that-fits is chosen: mixed > masked > stencil.
+    try:
+        return 'masked', _masked_mask(cel, opacity)   # raises CannotEncode if row-varying
+    except CannotEncode:
+        return 'stencil', _stencil_mask(cel, opacity)
 
 def _mixed_rects(cel, byte_op):
     """Decompose byte-uniform opacity into rectangles. Emit only OPAQUE regions +
@@ -122,6 +126,25 @@ def _masked_mask(cel, opacity):
     return mask
 
 
+def _stencil_mask(cel, opacity):
+    """Full 2D mask (h rows x w bytes) for HAL_gfx_blit_stencil_punch: bit-pair 11 where a pixel
+    is index-0 AND opaque (force black), 00 elsewhere (colour pixels + keyed index-0 untouched).
+    Cel-local (sprite-aligned). NOTE: stencil_punch is BYTE-ALIGNED — a cel PLACED at a sub-byte
+    X needs build-side mask shifting; the tool authors/verifies the mask cel-locally (placement-
+    independent), and the build applies it (a flagged build-integration follow-up)."""
+    mask = []
+    for r in range(cel.h):
+        row = []
+        for c in range(cel.w):
+            b = 0
+            for k in range(4):
+                px = c * 4 + k
+                if cel.pixels[r][px] == 0 and opacity[r][px]:
+                    b |= 0b11 << (2 * (3 - k))
+            row.append(b)
+        mask.append(row)
+    return mask
+
 # ---- VERIFY: re-render the cel THROUGH the derived descriptor, compare to the marks ----
 
 def _truth(cel, opacity):
@@ -149,6 +172,16 @@ def _apply_masked(cel, mask):
                 res[(r, c)] = (bits == 0b11)
     return res
 
+def _apply_stencil(cel, mask):
+    res = {}
+    for r in range(cel.h):
+        for c in range(cel.w * 4):
+            if cel.pixels[r][c] == 0:
+                byte = mask[r][c // 4]
+                bits = (byte >> (2 * (3 - (c % 4)))) & 0b11
+                res[(r, c)] = (bits == 0b11)
+    return res
+
 def verify(cel, opacity, kind, payload):
     """Re-render through the descriptor; return (ok, detail). ok == reproduces marks exactly."""
     truth = _truth(cel, opacity)
@@ -158,6 +191,8 @@ def verify(cel, opacity, kind, payload):
         got = _apply_mixed(cel, payload)
     elif kind == 'masked':
         got = _apply_masked(cel, payload)
+    elif kind == 'stencil':
+        got = _apply_stencil(cel, payload)
     else:
         return False, f"unknown kind {kind}"
     if got == truth:

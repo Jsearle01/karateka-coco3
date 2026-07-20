@@ -60,14 +60,19 @@ def m4b_derive_verify():
     c = _Stub(2, 1, g(2, 1)); op = O.blank_opacity(c)
     for rr in range(2): op[rr][0] = op[rr][1] = True
     k, p = O.derive(c, op); v, _ = O.verify(c, op, k, p); ok = ok and k == 'masked' and p == [0xF0] and v
-    # STOP (row-varying sub-byte)
+    # row-varying sub-byte -> STENCIL (universal per-pixel; no STOP now)
     c = _Stub(2, 1, g(2, 1)); op = O.blank_opacity(c)
     op[0][0] = op[0][1] = True; op[1][0] = True
+    k, p = O.derive(c, op); v, _ = O.verify(c, op, k, p); ok = ok and k == 'stencil' and v
+    # stencil sidecar round-trips
+    import sidecar as SC, tempfile as _tf
+    d = _tf.mkdtemp(prefix="stencil_")
     try:
-        O.derive(c, op); ok = False
-    except O.CannotEncode:
-        pass
-    print(f"M4b derive+verify (mixed/masked/STOP, no default): {'PASS' if ok else 'FAIL'}")
+        SC.write_sidecar(d, "cel", k, p)
+        ok = ok and SC.read_sidecar(d) == (k, p)
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+    print(f"M4b derive+verify (mixed/masked/stencil, cheapest-fits, no STOP): {'PASS' if ok else 'FAIL'}")
     return ok
 
 def m5_save():
