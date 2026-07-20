@@ -93,6 +93,18 @@ Untagged = serial, reads exactly as today.
       « visibility surface that makes a capture omission catchable at verdict (it is exactly »
       « what the P3′ recon used to detect the paused feeder). Capture is fire-and-forget, so »
       « this line is REPORTED, never a gate. »
+      « REPORT DELIVERY (standard): write the Form B report to »
+      «   reports/<YYYYMMDD-HHMMSS>-<task-slug>.md   (UTC; colon-free; Windows-safe; sorts chrono) »
+      « Commit + push it to origin/wip WITH (or immediately before) the task commit, and state »
+      « the report path + commit in the report. This is IN ADDITION to any inline paste — the »
+      « tracked reports/ file is the Orchestrator's primary fetch source (routes around the »
+      « Ctrl-V / empty-attachment problem). »
+      « (.gitignore note: `git check-ignore reports/` — the directory-with-slash form — reports a »
+      «  PHANTOM match, but real report files are NOT ignored: they stage, commit, and push fine »
+      «  (proven by the bootstrap dummy). It is a CRLF/trailing-slash artifact — do NOT "fix" »
+      «  .gitignore for it. Filename is colon-free YYYYMMDD-HHMMSS, never raw ISO t0 with `:` »
+      «  (colons are invalid in Windows filenames where Clyde runs; the compact form still sorts »
+      «  chronologically and stays unique).) »
       … existing "User interaction" section …
       « (d) C-35 UNDER PARALLELISM — present only when Clyde fanned out: »
       « "elapsed = max-branch + join (NOT sum); add a one-line per-branch breakdown." »
