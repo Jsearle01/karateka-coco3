@@ -117,6 +117,69 @@ def c_reload():
     print(f"C reload round-trip (mixed/masked/stencil decode->re-derive lossless): {'PASS' if ok else 'FAIL'}")
     return ok
 
+def p1_color():
+    """Part 1: color edit -> save -> reload lossless (Gate A); recolor on authored re-derives with
+    full coverage (Gate B); recolor a marked-opaque pixel drops its opacity mark (Gate C)."""
+    from edit_model import CelEdit
+    from save import save_cel
+    import sidecar as SC
+    src = os.path.join(ROOT, "content", "player", "scene6_climb_A3C5")
+    if not os.path.exists(os.path.join(src, "opacity.s")):
+        print("p1_color: (A3C5 not authored — skipped)"); return True
+    tmp = tempfile.mkdtemp(prefix="p1_"); cd = os.path.join(tmp, "A3C5"); os.makedirs(cd)
+    try:
+        shutil.copy2(os.path.join(src, "converted.s"), os.path.join(cd, "converted.s"))
+        shutil.copy2(os.path.join(src, "opacity.s"), os.path.join(cd, "opacity.s"))
+        tbl = os.path.join(tmp, "t.txt")
+        open(tbl, "w", newline="").write("[registry]\r\nA3C5   content/player/scene6_climb_A3C5   authored\r\n")
+        ce = CelEdit("A3C5", Cel(os.path.join(cd, "converted.s")), cd, "scene6_climb_A3C5", "A3C5")
+        # Gate A
+        sp = next(((c, r) for r in range(ce.cel.h) for c in range(ce.cel.w*4) if ce.cel.pixels[r][c] == 1), None)
+        ce.begin_stroke(); ce.paint(sp[0], sp[1], "white")
+        save_cel(ce.cel, cd, "scene6_climb_A3C5", ce.opacity, "A3C5", tbl)
+        re = Cel(os.path.join(cd, "converted.s"))
+        gA = re.pixels[sp[1]][sp[0]] == 3 and roundtrip_ok(os.path.join(cd, "converted.s"))[0]
+        # Gate B
+        k, p = O.derive(ce.cel, ce.opacity)
+        gB = O.reload_is_lossless(ce.cel, k, p)[0]
+        if k == "mixed":
+            cov = set((r, c) for scol, w, sr, nr, op in p for r in range(sr, sr+nr) for c in range(scol, scol+w))
+            gB = gB and not [(r, c) for r in range(ce.cel.h) for c in range(ce.cel.w) if (r, c) not in cov]
+        # Gate C
+        op_sp = next(((c, r) for r in range(ce.cel.h) for c in range(ce.cel.w*4)
+                      if ce.cel.pixels[r][c] == 0 and ce.opacity[r][c]), None)
+        gC = True
+        if op_sp:
+            ce.begin_stroke(); ce.paint(op_sp[0], op_sp[1], "orange")
+            gC = (ce.cel.pixels[op_sp[1]][op_sp[0]] == 1 and ce.opacity[op_sp[1]][op_sp[0]] is False)
+        ok = gA and gB and gC
+        print(f"P1 color (A round-trip={gA}, B recolor-coverage={gB}, C mark-drop={gC}): {'PASS' if ok else 'FAIL'}")
+        return ok
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+def p3_revert():
+    """Part 3: Revert/Undo-Revert availability matches the table."""
+    from frame_assembly import assemble_animation
+    from edit_model import FrameEdit
+    t = Table(); fe = FrameEdit(t, assemble_animation(t, "climb_crawl", 0))
+    ce = fe.cels[fe.selected]
+    def chg(r, c):    # a palette entry guaranteed to change pixel (r,c)
+        return "white" if ce.cel.pixels[r][c] != 3 else "orange"
+    p = [x for x in fe.frame.placed if x.cel_id == fe.selected][0]
+    cx, cy = (p.x - fe.frame.x0), (p.y - fe.frame.y0)      # local (0,0) on the selected cel
+    ok = (not fe.is_dirty() and not fe.can_undo_revert())                       # clean
+    fe.paint_canvas(cx, cy, chg(0, 0)); ok = ok and fe.is_dirty() and not fe.can_undo_revert()   # dirty
+    fe.revert_all();          ok = ok and not fe.is_dirty() and fe.can_undo_revert()             # just reverted
+    fe.paint_canvas(cx, cy, chg(0, 0)); ok = ok and fe.is_dirty() and not fe.can_undo_revert()   # reverted+edited
+    # undo-revert restores; save/touch grays it
+    fe2 = FrameEdit(t, assemble_animation(t, "climb_crawl", 0))
+    fe2.paint_canvas(cx, cy, "orange"); fe2.revert_all()
+    ok = ok and fe2.undo_revert() and fe2.is_dirty()
+    fe2.revert_all(); fe2.touched(); ok = ok and not fe2.can_undo_revert()
+    print(f"P3 revert/undo-revert availability table: {'PASS' if ok else 'FAIL'}")
+    return ok
+
 def m5b_lint():
     errs, conv = opacity_lint()
     print(f"M5b lint (real tree clean): {len(errs)} errors, {len(conv)} converted — {'PASS' if not errs else 'FAIL'}")
@@ -125,7 +188,7 @@ def m5b_lint():
 if __name__ == "__main__":
     r = [("M1", m1_roundtrip()), ("M2", m2_assembly()), ("M3-math", m3_mapping()),
          ("M4b", m4b_derive_verify()), ("M5", m5_save()), ("M5b", m5b_lint()),
-         ("C-reload", c_reload())]
+         ("C-reload", c_reload()), ("P1-color", p1_color()), ("P3-revert", p3_revert())]
     print()
     for name, ok in r:
         print(f"  {name}: {'PASS' if ok else 'FAIL'}")

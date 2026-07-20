@@ -84,6 +84,24 @@ class CelEdit:
     def is_edited(self):
         return bool(self.changed())
 
+    # ---- Part 3: revert-to-baseline / snapshot (separate from the stroke undo/redo) ----
+    def snapshot(self):
+        return (copy.deepcopy(self.cel.pixels), copy.deepcopy(self.opacity))
+
+    def restore(self, snap):
+        self.cel.pixels = copy.deepcopy(snap[0]); self.opacity = copy.deepcopy(snap[1])
+
+    def revert_to_baseline(self):
+        """Snap New back to the Old/last-saved baseline; reset the stroke stacks to it."""
+        self.cel.pixels = copy.deepcopy(self.orig_pixels)
+        self.opacity = copy.deepcopy(self.orig_opacity)
+        self.undo.clear(); self.redo.clear()
+
+    def mark_saved(self):
+        """After a save, the current state becomes the new Old baseline (clean)."""
+        self.orig_pixels = copy.deepcopy(self.cel.pixels)
+        self.orig_opacity = copy.deepcopy(self.opacity)
+
 class FrameEdit:
     """Editable cels for an assembled frame; routes canvas paint to the selected cel."""
     def __init__(self, table, frame):
@@ -99,6 +117,38 @@ class FrameEdit:
     def reload_errors(self):
         return [ce.reload_error for ce in self.cels.values() if ce.reload_error]
 
+    # ---- Part 2/3: dirty flag + Revert-to-Old / one-shot Undo-Revert state machine ----
+    def is_dirty(self):
+        return any(ce.is_edited() for ce in self.cels.values())
+
+    def revert_all(self):
+        """Revert every cel to its baseline (the guard's Discard + the Revert-to-Old button share
+        this). Captures a one-shot pre-revert snapshot so Undo-Revert can restore it."""
+        self._pre_revert = {cid: ce.snapshot() for cid, ce in self.cels.items()}
+        for ce in self.cels.values():
+            ce.revert_to_baseline()
+        self._just_reverted = True
+
+    def can_undo_revert(self):
+        return bool(getattr(self, "_just_reverted", False) and getattr(self, "_pre_revert", None))
+
+    def undo_revert(self):
+        if not self.can_undo_revert():
+            return False
+        for cid, snap in self._pre_revert.items():
+            self.cels[cid].restore(snap)
+        self._just_reverted = False
+        return True
+
+    def touched(self):
+        """Any edit/save invalidates the one-shot Undo-Revert."""
+        self._just_reverted = False
+
+    def mark_saved(self):
+        for ce in self.cels.values():
+            ce.mark_saved()
+        self._just_reverted = False
+
     def paint_canvas(self, canvas_px, canvas_py, entry):
         """Paint a CANVAS pixel: route to the selected owning cel; returns the cel_id painted or None."""
         cpx, cpy = self.frame.x0 + canvas_px, self.frame.y0 + canvas_py
@@ -108,6 +158,7 @@ class FrameEdit:
             return None
         ce = self.cels[target.cel_id]
         ce.paint(cpx - target.x, cpy - target.y, entry)
+        self.touched()                    # an edit invalidates the one-shot Undo-Revert
         return target.cel_id
 
     def edited_cels(self):

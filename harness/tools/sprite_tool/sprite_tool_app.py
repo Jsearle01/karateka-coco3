@@ -128,6 +128,7 @@ def main():
         canvas.config(scrollregion=(0, 0, nx + new.width + MARGIN, LABEL_H + new.height + MARGIN))
         status.config(text=f"zoom {z}x  cell {CELL_W*z}x{CELL_H*z}px (4:5)  "
                            f"active={edit.selected}  edited={[c.cel_id for c in edit.edited_cels()]}")
+        refresh_buttons()      # Revert/Undo-Revert enabled/grayed per the state machine
 
     def _load(label):
         """Load an entry (assembled anim frame or standalone cel) into frame/edit; rewire cels; redraw."""
@@ -149,23 +150,45 @@ def main():
         if errs:                                          # Part C gate: never a silent lossy reload
             savebar.config(text="RELOAD STOP: " + " | ".join(errs), fg="white", bg="#b02020")
 
-    def _guard_discard():
-        if not edit.edited_cels():
-            return True
-        import tkinter.messagebox as mb
-        return mb.askyesno("Discard edits?",
-                           f"Unsaved edits on {[c.cel_id for c in edit.edited_cels()]} will be "
-                           f"LOST. Continue anyway?")
+    def _ask_save_discard_cancel(name):
+        """Modal Save/Discard/Cancel. Returns 'save' | 'discard' | 'cancel'."""
+        dlg = tk.Toplevel(root); dlg.title("Unsaved changes")
+        dlg.transient(root); dlg.grab_set(); dlg.resizable(False, False)
+        tk.Label(dlg, text=f"You have live changes in {name}.",
+                 font=("Consolas", 11), padx=18, pady=14).pack()
+        res = {"v": "cancel"}
+        def pick(v): res["v"] = v; dlg.destroy()
+        row = tk.Frame(dlg); row.pack(pady=(0, 12))
+        tk.Button(row, text="Save", width=10, command=lambda: pick("save")).pack(side="left", padx=5)
+        tk.Button(row, text="Discard", width=10, command=lambda: pick("discard")).pack(side="left", padx=5)
+        tk.Button(row, text="Cancel", width=10, command=lambda: pick("cancel")).pack(side="left", padx=5)
+        dlg.protocol("WM_DELETE_WINDOW", lambda: pick("cancel"))
+        dlg.wait_window()
+        return res["v"]
+
+    def _guard():
+        """Unsaved-changes guard on switch. Returns 'proceed' or 'cancel'. Save saves; Discard
+        reverts to baseline (shared with the Revert-to-Old op); never a silent discard."""
+        if not edit.is_dirty():
+            return "proceed"
+        ans = _ask_save_discard_cancel(frame.label)
+        if ans == "cancel":
+            return "cancel"
+        if ans == "save":
+            do_save()
+        else:                               # discard
+            edit.revert_all()               # same revert-to-baseline op as the Revert button
+        return "proceed"
 
     def select_entry(label):
         if label == prev_label[0]:
             return
-        if not _guard_discard():
+        if _guard() == "cancel":
             framevar.set(prev_label[0] or ""); return
         _load(label)
 
     def select_category(cat):
-        if not _guard_discard():
+        if _guard() == "cancel":
             catvar.set(prev_cat[0]); return
         prev_cat[0] = cat
         entries = catalog.entries_for(table, cat)
@@ -221,8 +244,7 @@ def main():
                 conv = "converted.s byte-identical" if r["byte_identical"] else "converted.s colour-changed"
                 sc = f"opacity.s ({r['kind']}) written" if r["state"] == "authored" else "no sidecar (none)"
                 ok_msgs.append(f"Saved {ce.cel_id} — {conv}, {sc}, registry→{r['state']}")
-                ce.orig_pixels = [row[:] for row in ce.cel.pixels]
-                ce.orig_opacity = [row[:] for row in ce.opacity]
+                ce.mark_saved()                 # the saved state is the new Old baseline (clean)
             except O.CannotEncode as ex:
                 stop_msgs.append(f"NOT SAVED — {ce.cel_id}: marking needs per-pixel (row-varying) "
                                  f"opacity; mixed/masked can't encode it → stencil_punch path. [{ex}]")
@@ -232,14 +254,28 @@ def main():
                 mb.showerror("Save failed (rolled back)",
                              f"{ce.cel_id}: {ex}\nThe pre-save state was restored (no half-written files).")
                 stop_msgs.append(f"SAVE FAILED (rolled back) — {ce.cel_id}: {ex}")
+        edit.touched()                          # a save invalidates the one-shot Undo-Revert
         if stop_msgs:
             savebar.config(text="  ||  ".join(stop_msgs + ok_msgs), fg="white", bg="#b02020")
         else:
             savebar.config(text="  |  ".join(ok_msgs), fg="white", bg="#1b7f1b")
         redraw()   # updates the info line only; the save banner above is untouched
 
+    def do_revert(_=None):
+        if edit.is_dirty():
+            edit.revert_all(); redraw()         # snap New->Old; enables Undo-Revert
+    def do_undo_revert(_=None):
+        if edit.undo_revert():
+            redraw()                            # restore the just-reverted edits
+
+    def refresh_buttons():
+        revert_btn.config(state="normal" if edit.is_dirty() else "disabled")
+        undorevert_btn.config(state="normal" if edit.can_undo_revert() else "disabled")
+
     tk.Button(bar, text="undo", command=do_undo).pack(side="right")
     tk.Button(bar, text="redo", command=do_redo).pack(side="right")
+    revert_btn = tk.Button(bar, text="Revert to Old", command=do_revert); revert_btn.pack(side="right", padx=(8, 0))
+    undorevert_btn = tk.Button(bar, text="Undo Revert", command=do_undo_revert); undorevert_btn.pack(side="right")
     tk.Button(bar, text="SAVE", command=do_save).pack(side="right", padx=6)
     tk.Button(bar, text="+", command=zoom_in).pack(side="right")
     tk.Button(bar, text="-", command=zoom_out).pack(side="right")
