@@ -114,10 +114,11 @@ CANDIDATE SELF-CAPTURE (always present, serial or parallel) — per convention-c
 §9  Commit (verdict-and-commit)       — unchanged
 §10 Invariants & cautions             — unchanged
       Standing invariants every scene-6 dispatch carries (alongside prod byte-identity / oracle read-only):
-      - **Single-home placement (§2F):** sprite pixels in the cel `.s` only; placement
-        in the scene table only. NO inline/hardcoded placement, NO pixel data outside a
-        cel `.s`. New/trace-pulled cels get a registry row + placement row(s).
-        Corrections go to the table. Verdict checks the tree for bypass.
+      - **Single-home placement (§2F/§2F.1):** pixels in the `.s`, placement in the table
+        (`col,sub,row`, sub never dropped); animated→`[animation]`, static→`[placement]`;
+        registry covers ALL converted cels; collect every input to assemble a frame;
+        migration gate = render-neutral, relocation-only; fills stay substrate. Verdict
+        checks the tree.
       (shared deps like deriveBaseUrl already live here; a [contract] tag in §3
        just makes that dependency explicit for the freeze gate)
 ```
