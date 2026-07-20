@@ -91,7 +91,8 @@ def save_cel(cel, cel_dir, label, opacity_grid, sprite_id, table_path):
             SC.remove_sidecar(cel_dir); state = 'none'
         else:
             SC.write_sidecar(cel_dir, label, kind, payload); state = 'authored'
-        write_state(table_path, sprite_id, state)
+        if state_before is not None:                     # only cels IN the [registry] track state;
+            write_state(table_path, sprite_id, state)    #   standalone content cels use the sidecar alone
     except (IOError, OSError) as ex:                     # roll back — no half-written state
         _restore(conv); _restore(sc)
         if state_before is not None:

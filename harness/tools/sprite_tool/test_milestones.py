@@ -99,6 +99,24 @@ def m5_save():
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
+def c_reload():
+    def g(h, w): return [[0] * (w * 4) for _ in range(h)]
+    ok = True
+    # mixed
+    c = _Stub(2, 2, g(2, 2)); op = O.blank_opacity(c)
+    for rr in range(2):
+        for k in range(4): op[rr][k] = True
+    k, p = O.derive(c, op); r, _, _ = O.reload_is_lossless(c, k, p); ok = ok and r and k == 'mixed'
+    # masked
+    c = _Stub(2, 1, g(2, 1)); op = O.blank_opacity(c)
+    for rr in range(2): op[rr][0] = op[rr][1] = True
+    k, p = O.derive(c, op); r, _, _ = O.reload_is_lossless(c, k, p); ok = ok and r and k == 'masked'
+    # stencil
+    c = _Stub(2, 1, g(2, 1)); op = O.blank_opacity(c); op[0][0] = op[0][1] = True; op[1][0] = True
+    k, p = O.derive(c, op); r, _, _ = O.reload_is_lossless(c, k, p); ok = ok and r and k == 'stencil'
+    print(f"C reload round-trip (mixed/masked/stencil decode->re-derive lossless): {'PASS' if ok else 'FAIL'}")
+    return ok
+
 def m5b_lint():
     errs, conv = opacity_lint()
     print(f"M5b lint (real tree clean): {len(errs)} errors, {len(conv)} converted — {'PASS' if not errs else 'FAIL'}")
@@ -106,7 +124,8 @@ def m5b_lint():
 
 if __name__ == "__main__":
     r = [("M1", m1_roundtrip()), ("M2", m2_assembly()), ("M3-math", m3_mapping()),
-         ("M4b", m4b_derive_verify()), ("M5", m5_save()), ("M5b", m5b_lint())]
+         ("M4b", m4b_derive_verify()), ("M5", m5_save()), ("M5b", m5b_lint()),
+         ("C-reload", c_reload())]
     print()
     for name, ok in r:
         print(f"  {name}: {'PASS' if ok else 'FAIL'}")

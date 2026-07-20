@@ -14,6 +14,7 @@ import copy, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from celio import Cel
 import opacity as O
+import sidecar as SC
 
 PALETTE = {
     'white':  (3, None), 'blue': (2, None), 'orange': (1, None),
@@ -26,6 +27,17 @@ class CelEdit:
         self.cel_id, self.cel, self.cel_dir, self.label, self.sprite_id = \
             cel_id, cel, cel_dir, label, sprite_id
         self.opacity = O.blank_opacity(cel)
+        self.reload_error = None
+        # PART C: reload an authored cel's saved shadow (opacity.s sidecar) into the edit layer,
+        # so re-open shows it and a paint+save refines rather than overwrites. Gated: the reloaded
+        # marks must re-derive to the byte-identical descriptor, else STOP (keep blank + surface).
+        sc = SC.read_sidecar(cel_dir)
+        if sc:
+            ok, decoded, detail = O.reload_is_lossless(cel, sc[0], sc[1])
+            if ok:
+                self.opacity = decoded
+            else:
+                self.reload_error = f"{cel_id}: {detail}"
         self.orig_pixels = copy.deepcopy(cel.pixels)
         self.orig_opacity = copy.deepcopy(self.opacity)
         self.undo, self.redo = [], []
@@ -78,10 +90,14 @@ class FrameEdit:
         self.table, self.frame = table, frame
         self.cels = {}
         for pc in frame.placed:
-            cel_dir = os.path.dirname(table.cel_path(pc.cel_id))
-            sid = pc.cel_id
-            self.cels[pc.cel_id] = CelEdit(pc.cel_id, pc.cel, cel_dir, table.registry[sid].split('/')[-1], sid)
+            # cel_dir carried on the PlacedCel (works for table cels AND standalone content cels
+            # not in the registry — Part A). label/sprite_id default to the cel dir's basename.
+            cel_dir = pc.cel_dir
+            self.cels[pc.cel_id] = CelEdit(pc.cel_id, pc.cel, cel_dir, os.path.basename(cel_dir), pc.cel_id)
         self.selected = frame.placed[-1].cel_id if frame.placed else None
+
+    def reload_errors(self):
+        return [ce.reload_error for ce in self.cels.values() if ce.reload_error]
 
     def paint_canvas(self, canvas_px, canvas_py, entry):
         """Paint a CANVAS pixel: route to the selected owning cel; returns the cel_id painted or None."""

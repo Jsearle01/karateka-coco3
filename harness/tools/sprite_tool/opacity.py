@@ -182,6 +182,26 @@ def _apply_stencil(cel, mask):
                 res[(r, c)] = (bits == 0b11)
     return res
 
+def decode_to_opacity(cel, kind, payload):
+    """Inverse of derive: a saved descriptor -> the per-pixel opacity EDIT LAYER (index-0 pixels
+    marked opaque/keyed). Used to reload an authored cel's shadow on open so it can be refined."""
+    op = blank_opacity(cel)
+    if kind in (None, 'none'):
+        return op
+    marks = {'mixed': _apply_mixed, 'masked': _apply_masked, 'stencil': _apply_stencil}[kind](cel, payload)
+    for (r, c), opaque in marks.items():
+        op[r][c] = opaque
+    return op
+
+def reload_is_lossless(cel, kind, payload):
+    """Gate: decode the descriptor -> marks, re-derive -> must reproduce the SAME descriptor
+    byte-for-byte (no lossy reload). Returns (ok, decoded_opacity, detail)."""
+    op = decode_to_opacity(cel, kind, payload)
+    rk, rp = derive(cel, op)
+    if (rk, rp) == (kind, payload):
+        return True, op, f"{kind} reload lossless"
+    return False, op, f"reload NOT lossless: sidecar {kind} -> re-derives {rk} (differs)"
+
 def verify(cel, opacity, kind, payload):
     """Re-render through the descriptor; return (ok, detail). ok == reproduces marks exactly."""
     truth = _truth(cel, opacity)

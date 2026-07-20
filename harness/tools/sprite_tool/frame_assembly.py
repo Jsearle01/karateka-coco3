@@ -17,8 +17,8 @@ from celio import Cel
 from placement_table import Table
 
 class PlacedCel:
-    def __init__(self, cel_id, cel, x, y):
-        self.cel_id, self.cel, self.x, self.y = cel_id, cel, x, y
+    def __init__(self, cel_id, cel, x, y, cel_dir):
+        self.cel_id, self.cel, self.x, self.y, self.cel_dir = cel_id, cel, x, y, cel_dir
         self.w_px, self.h_px = cel.w * 4, cel.h
     def covers(self, px, py):
         return self.x <= px < self.x + self.w_px and self.y <= py < self.y + self.h_px
@@ -49,15 +49,25 @@ class AssembledFrame:
                         grid[p.y - self.y0 + cy][p.x - self.x0 + cx] = v
         return grid
 
+def _cel_dir(table, cel_id):
+    return os.path.dirname(table.cel_path(cel_id))
+
 def assemble_animation(table, block, frame_index):
     frame = table.anim[block][frame_index]
     placed = []
     for part in frame.parts:
         cel = Cel(table.cel_path(part.cel_id))
-        placed.append(PlacedCel(part.cel_id, cel, part.x_px, part.y_px))
+        placed.append(PlacedCel(part.cel_id, cel, part.x_px, part.y_px, _cel_dir(table, part.cel_id)))
     return AssembledFrame(placed, f"{block}[{frame.fid}]")
 
 def assemble_static(table, placement_id):
     sid, col, sub, row = table.placement[placement_id]
     cel = Cel(table.cel_path(sid))
-    return AssembledFrame([PlacedCel(sid, cel, col * 4 + sub, row)], placement_id)
+    return AssembledFrame([PlacedCel(sid, cel, col * 4 + sub, row, _cel_dir(table, sid))], placement_id)
+
+def assemble_cel(cel_dir, cel_id=None):
+    """Standalone single cel at origin — author ANY content cel individually (Part A),
+    placed or not, at its own converted dims. cel_dir is an absolute content dir."""
+    cel = Cel(os.path.join(cel_dir, "converted.s"))
+    cid = cel_id or os.path.basename(cel_dir)
+    return AssembledFrame([PlacedCel(cid, cel, 0, 0, cel_dir)], cid)
