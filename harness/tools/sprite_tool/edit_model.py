@@ -84,12 +84,17 @@ class CelEdit:
     def is_edited(self):
         return bool(self.changed())
 
-    # ---- Part 3: revert-to-baseline / snapshot (separate from the stroke undo/redo) ----
+    # ---- Part 3 (buffer-based): full-edit-state snapshot for the one-shot revert buffer ----
+    # The snapshot captures the canvas (pixels+opacity) AND the ordered stroke stacks, so
+    # Undo-Revert restores the undo stack WHOLESALE — same structure, EXACT original order.
+    # It is restored as-is (a copy of the stored list), never replayed/rebuilt, so no inversion.
     def snapshot(self):
-        return (copy.deepcopy(self.cel.pixels), copy.deepcopy(self.opacity))
+        return (copy.deepcopy(self.cel.pixels), copy.deepcopy(self.opacity),
+                copy.deepcopy(self.undo), copy.deepcopy(self.redo))
 
     def restore(self, snap):
         self.cel.pixels = copy.deepcopy(snap[0]); self.opacity = copy.deepcopy(snap[1])
+        self.undo = copy.deepcopy(snap[2]); self.redo = copy.deepcopy(snap[3])
 
     def revert_to_baseline(self):
         """Snap New back to the Old/last-saved baseline; reset the stroke stacks to it."""
@@ -135,19 +140,25 @@ class FrameEdit:
     def undo_revert(self):
         if not self.can_undo_revert():
             return False
+        # Restore each cel's canvas AND ordered undo stack wholesale from the one-shot buffer,
+        # then CONSUME the buffer (§3). dirty is implicitly set (canvas now differs from Old).
         for cid, snap in self._pre_revert.items():
             self.cels[cid].restore(snap)
         self._just_reverted = False
+        self._pre_revert = None
         return True
 
     def touched(self):
-        """Any edit/save invalidates the one-shot Undo-Revert."""
+        """Any edit/save/switch invalidates the one-shot Undo-Revert AND clears the buffer
+        (§3: the buffer is cleared by any edit/save/switch, not merely grayed)."""
         self._just_reverted = False
+        self._pre_revert = None
 
     def mark_saved(self):
         for ce in self.cels.values():
             ce.mark_saved()
         self._just_reverted = False
+        self._pre_revert = None
 
     def paint_canvas(self, canvas_px, canvas_py, entry):
         """Paint a CANVAS pixel: route to the selected owning cel; returns the cel_id painted or None."""

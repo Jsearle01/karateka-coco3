@@ -159,7 +159,10 @@ def p1_color():
         shutil.rmtree(tmp, ignore_errors=True)
 
 def p3_revert():
-    """Part 3: Revert/Undo-Revert availability matches the table."""
+    """Part 3 (buffer-based): Revert/Undo-Revert availability matches the table, the buffer is
+    one-shot, AND — the load-bearing gate — Undo-Revert restores the undo stack in EXACT
+    original order (strokes A,B,C -> after undo-revert, Undo steps back C, then B, then A)."""
+    import copy as _copy
     from frame_assembly import assemble_animation
     from edit_model import FrameEdit
     t = Table(); fe = FrameEdit(t, assemble_animation(t, "climb_crawl", 0))
@@ -168,17 +171,42 @@ def p3_revert():
         return "white" if ce.cel.pixels[r][c] != 3 else "orange"
     p = [x for x in fe.frame.placed if x.cel_id == fe.selected][0]
     cx, cy = (p.x - fe.frame.x0), (p.y - fe.frame.y0)      # local (0,0) on the selected cel
+    # --- availability table ---
     ok = (not fe.is_dirty() and not fe.can_undo_revert())                       # clean
     fe.paint_canvas(cx, cy, chg(0, 0)); ok = ok and fe.is_dirty() and not fe.can_undo_revert()   # dirty
     fe.revert_all();          ok = ok and not fe.is_dirty() and fe.can_undo_revert()             # just reverted
     fe.paint_canvas(cx, cy, chg(0, 0)); ok = ok and fe.is_dirty() and not fe.can_undo_revert()   # reverted+edited
-    # undo-revert restores; save/touch grays it
     fe2 = FrameEdit(t, assemble_animation(t, "climb_crawl", 0))
     fe2.paint_canvas(cx, cy, "orange"); fe2.revert_all()
     ok = ok and fe2.undo_revert() and fe2.is_dirty()
-    fe2.revert_all(); fe2.touched(); ok = ok and not fe2.can_undo_revert()
-    print(f"P3 revert/undo-revert availability table: {'PASS' if ok else 'FAIL'}")
-    return ok
+    fe2.revert_all(); fe2.touched(); ok = ok and not fe2.can_undo_revert()      # switch/touch grays + clears buffer
+    avail = ok
+
+    # --- ordering gate: three distinct strokes A,B,C on the selected cel, each begin_stroke()'d ---
+    fe3 = FrameEdit(t, assemble_animation(t, "climb_crawl", 0))
+    ge = fe3.cels[fe3.selected]
+    pts = [(0, 0), (1, 0), (2, 0)]                              # three distinct local pixels
+    s0 = _copy.deepcopy(ge.cel.pixels)                          # baseline canvas
+    states = [_copy.deepcopy(s0)]                              # states[i] = canvas after i strokes
+    for (px, py) in pts:                                        # strokes A, B, C
+        ge.begin_stroke(); ge.paint(px, py, "white" if ge.cel.pixels[py][px] != 3 else "orange")
+        states.append(_copy.deepcopy(ge.cel.pixels))
+    stack_depth_before = len(ge.undo)                          # == 3
+    fe3.revert_all()                                           # canvas->Old, stack CLEARED
+    reverted_empty = (ge.undo == [] and ge.cel.pixels == s0)
+    fe3.undo_revert()                                          # restore canvas + ordered stack
+    restored_top = (ge.cel.pixels == states[3] and len(ge.undo) == 3)
+    # Undo must now step back in ORIGINAL order: C (->states[2]), then B (->states[1]), then A (->states[0])
+    order_ok = True
+    for expect in (states[2], states[1], states[0]):
+        ge.undo_stroke()
+        order_ok = order_ok and (ge.cel.pixels == expect)
+    ordering = (stack_depth_before == 3 and reverted_empty and restored_top and order_ok)
+
+    result = avail and ordering
+    print(f"P3 revert/undo-revert (availability={avail}, ordering C->B->A original-order={ordering}): "
+          f"{'PASS' if result else 'FAIL'}")
+    return result
 
 def m5b_lint():
     errs, conv = opacity_lint()
