@@ -1,3 +1,16 @@
+> **SUPERSEDED (2026-07-20).** This 4bpp `f`-format refactor is NOT needed. The
+> existing HAL blits already do mixed per-pixel opacity with NO pixel-format change,
+> 2bpp preserved:
+>   - `HAL_gfx_blit_sprite_mixed`  — byte-aligned opaque/transparent rectangles.
+>   - `HAL_gfx_blit_sprite_masked` — sub-byte, per-column-uniform opacity.
+>   - `HAL_gfx_blit_stencil_punch` — arbitrary per-pixel 2D silhouette (Akuma-grade).
+> Opacity lives in a **derived sidecar** (`opacity.s`) beside each cel, authored by the
+> sprite tool (derive-by-geometry, no default, verified by re-render); `converted.s`
+> stays 2bpp byte-identical; the registry three-state (`converted`/`none`/`authored`)
+> + a lint (`authored`⟺sidecar) enforce determinacy. So the cross-cutting 4bpp change
+> (HAL rewrite, re-encode all opaque content, re-gate everything) is avoided entirely.
+> Plan retained below for provenance only — do NOT implement it.
+
 # Opaque-black `f` refactor — plan (dedicated effort, Jay-directed 2026-06-19)
 
 ## Goal
