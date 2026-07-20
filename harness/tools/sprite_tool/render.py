@@ -41,20 +41,22 @@ def render_frame(frame, zoom=3, boundaries=True, opacity_by_cel=None, changed_by
         for cy in range(p.h_px):
             for cx in range(p.w_px):
                 val = pixels[cy][cx]
-                if val == 0 and opac is not None and opac[cy][cx]:
-                    color = OPAQUE_BLACK
-                elif (cx, cy) in chg:
-                    color = CHANGED
-                else:
-                    color = RGB[val]
+                # ALWAYS the true colour: opaque-black solid, trans gray, 1/2/3 colours.
+                color = OPAQUE_BLACK if (val == 0 and opac is not None and opac[cy][cx]) else RGB[val]
                 ox = (p.x - frame.x0 + cx) * cw
                 oy = (p.y - frame.y0 + cy) * ch
                 for yy in range(ch):
                     for xx in range(cw):
                         px[ox + xx, oy + yy] = color
+    d = ImageDraw.Draw(img)
     if boundaries:
-        d = ImageDraw.Draw(img)
         for p in frame.placed:
             x0 = (p.x - frame.x0) * cw; y0 = (p.y - frame.y0) * ch
             d.rectangle([x0, y0, x0 + p.w_px * cw - 1, y0 + p.h_px * ch - 1], outline=BOUNDARY)
+    # changed-pixel indicator = a yellow OUTLINE, drawn LAST so it's never hidden and never
+    # replaces the pixel's real colour (trans stays gray, opaque-black stays solid, etc.)
+    for p in frame.placed:
+        for (cx, cy) in (changed_by_cel or {}).get(p.cel_id, set()):
+            ox = (p.x - frame.x0 + cx) * cw; oy = (p.y - frame.y0 + cy) * ch
+            d.rectangle([ox, oy, ox + cw - 1, oy + ch - 1], outline=CHANGED)
     return img
