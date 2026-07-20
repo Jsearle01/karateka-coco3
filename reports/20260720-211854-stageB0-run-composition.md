@@ -252,3 +252,95 @@ Figure height went 35–39 px → 42–46 px with the head restored.
 - New residue: the `flip=$FF` mask-pass reading is inferred, not read from the blit code; `st` and
   its 21-VBL dwell are observed once.
 - **Second candidate captured:** `a-bank-filter-makes-absence-look-like-structure` — see §11.
+
+---
+
+## ADDENDUM 2 — 25.3 gate outcome + the tool work it triggered (appended 2026-07-20)
+
+### 25.3 — Jay's visual gate: COMPOSITION PASSED, pixels outstanding
+Jay's verdict on the corrected 12-frame set, verbatim: **"nothing significant is wrong. just need
+some touch up in the tool."** So **the composition gate is satisfied** — cel pairings, offsets,
+frame set and order are accepted; what remains is **pixel-level touch-up Jay will do himself** in
+the sprite tool. (The earlier "no head in any pose" remark was retracted by Jay as stale — the heads
+are present.) On timing: **"the run pace looks pretty good without seeing it in game."** That is
+supporting evidence for the 11-VBL dwell, **not** a settlement of the §8 dwell residue — only
+locating the constant in code would settle it. Recorded as-is, not upgraded.
+
+**Consequence for the protection catalog (CLAUDE.md §2B).** Jay authoring run cels in the tool makes
+the catalog's `player_run_*` row ("77 pure / 0 protected") go stale the moment he saves. Rather than
+predict which cels he edits, a **standing rule** was added at the top of
+`docs/project/protection-catalog.md` (commit `55444d1`, Jay-approved wording request "add the line"):
+the catalog table is a **2026-07-18 snapshot**, the sprite tool's `[registry]` **`authored` flag is
+LIVE** (written by `save.py` at save time), and **before any convert/re-convert the flag is
+authoritative** — a "pure" verdict is valid only for a cel whose registry row carries no flag. This
+fails safe regardless of which frames get touched.
+
+### Tool work (Jay-requested, this session) — 4 commits
+| commit | change |
+|---|---|
+| `8914501` | `@loop` directive + group selector + playback |
+| `60c9cd4` | fix: Play button clipped off the toolbar |
+| `80344ab` | single-step in file order |
+| `55444d1` | protection-catalog standing rule |
+
+**1. `@loop <first_fid> <last_fid>` — new optional `[animation]` directive (schema change).**
+Frame ORDER was already machine-readable (file order); **where a block REPEATS was encoded only in
+fid naming + prose**, which no consumer could read. `run:` now declares `@loop c0 c7`. Parsed by
+**both** readers — `sprite_tool/placement_table.py` (`Table.anim_loop` / `loop_span()`, which
+validates the named fids exist and run forwards) and `gen_scene6_placement.py`, **which would
+otherwise have crashed on the line** (`int(parts[1])` on `c0`). The codegen emits
+`cl_loop_first/last` only for an emitted block that declares a loop; `climb_crawl` declares none
+(it is a one-shot that settles and holds), so **no generated `.s` changed**.
+**For the Orchestrator:** Stage B2's animation controller needs exactly this field — it is now a
+single home shared by the tool and the engine, instead of the tool guessing and the engine
+hard-coding. `climb_crawl` deliberately has **no** `@loop` because the oracle's climb does not
+repeat; inventing one would be inventing behaviour.
+
+**2. Group selector — `category → group → frame/cel`.** A group is one `[animation]` block or
+`(individual cels)`. Requested because the flat per-category list had become unwieldy: **player was
+one 77-entry menu, now 7 / 12 / 58.** `catalog.groups_for()` is new; `entries_for()` takes an
+optional group and is unchanged when omitted (no other caller affected).
+
+**3. Playback + single-step.** Play/Stop (Space) walks the current group at each frame's own dwell
+(`VBL × 1000/59.94`), honouring `@loop` — `run` plays `s0,s1` in then cycles `c0..c7`; a block
+without `@loop` cycles whole. Manual step (`|◀`/`▶|`, arrow keys) walks **plain file order,
+deliberately NOT honouring `@loop`** (the loop skips `e0`/`st` forever, and Jay's requirement was
+"I want to be able to see each frame"), clamping at both ends so "seen every frame" is unambiguous
+— verified 12/12. Status line shows `frame 6/12  dwell 11 VBL (184 ms)`.
+**Safety:** painting/Save/Undo/Revert are disabled *only* while actively playing; a stepped or
+stopped frame is fully editable. Stepping and playing both route through the existing unsaved-edit
+guard, because `_load()` rebuilds the edit model and a raw step would silently drop live pixel work.
+
+**4. The Play-button bug (worth recording as a class).** Jay: *"when I select run I get the Play
+button, when I select climb_crawl it doesn't appear."* It was **not disabled — it was clipped.** The
+toolbar was one row and a Tk `OptionMenu` sizes to the SELECTED label; `climb_crawl f0` (14 chars)
+vs `run s0` (6) widened the row past the window and Tk trimmed the right-hand button cluster from
+its left edge, where Play sat. **A UI that silently removes a control** reads to the operator as a
+missing feature. Fixed structurally, not by shaving pixels: selectors moved to their own row, fixed
+menu widths (verified: `reqwidth` 189px for both labels, so the row cannot reflow), plus a
+`minsize`. Relevant because block names will keep getting longer (`walk:`, `guard:`).
+
+### Sharing hazard surfaced to Jay (no action taken — informational)
+Editing an assembled frame edits the **cel**, which is shared storage: `8E9B` (head) is used by
+**all 12 run frames + `climb_crawl f6`** (13), and `899C`/`8ACB` by `run st` **and** `climb_crawl
+f6`. `run st` and `climb_crawl f6` are in fact the **same figure at the same rows with the same
+relative spacing** — only the scene X differs (col 25 vs 39). So a shared cel cannot be "wrong here
+but right there", and the triage given to Jay was: wrong **everywhere** ⇒ paint it; wrong in **one
+frame only** ⇒ it is placement (or the wrong cel reference), which Clyde settles against the oracle
+trace — **do not** hand-author a divergent cel, which would invent art the oracle lacks and
+permanently join the protected set (cf. the hand-extended Mt-Fuji edges).
+
+### Verification after all four commits
+`build.bat` COMPLETE · `run_kernel_dispatch_test` PASS · prod
+`88eba89b15cdf17c8d25e082d2d3e1f3cce57d38` **byte-identical** · **no generated `.s` changed** ·
+`wip == origin/wip`.
+
+### Open for the Orchestrator
+1. **`conventions.md §12.3` still says "16-frame run cycle"** — execution says 16 cels → 12 frames
+   (2 start + 8-frame cycle + stop + standing). Not edited by Clyde (not dispatched).
+2. **Dwell residue stands** — 11 VBL is measured, not a located code constant; Jay's eye says the
+   pace is plausible, which is not the same thing.
+3. **Stage B2 inputs are ready:** `@loop` gives the cycle bounds; legs col == `$62` gives the
+   anchor; the same trace log carries the per-frame X advance, so no new oracle run is needed.
+4. **Mirror/leftward run** and the **`flip=$FF` mask-pass** reading remain unconfirmed.
+5. **Pixel touch-ups are with Jay**; the catalog standing rule covers the protection side.
