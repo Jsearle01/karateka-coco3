@@ -94,20 +94,8 @@ wtp_row_done:
         blo     wtp_row
         rts
 
-draw_climb_startpose:
-        lda     #3
-        sta     <blit_subbyte
-        lda     #21
-        ldb     #158
-        ldx     #scene6_climb_A3E9
-        jsr     HAL_gfx_blit_sprite
-        lda     #2
-        sta     <blit_subbyte
-        lda     #22
-        ldb     #141
-        ldx     #scene6_climb_A3C5
-        jsr     HAL_gfx_blit_sprite
-        rts
+* (draw_climb_startpose removed — DEAD code: the crawl renders the start pose via the controller's
+*  cl_frames f0; only stage-3 draws it, and stage-3 reads plc_start_ via scene6_cliff.s. §2F 2026-07-20.)
 
 climb_scn_tbl:
         fdb     scene6_cliff_AB4A
