@@ -50,7 +50,7 @@ def main():
 
     root = tk.Tk()
     root.title(f"sprite tool — {frame.label}")
-    state = {"zoom": 5, "entry": "black", "img": None, "painting": False}
+    state = {"zoom": 4, "entry": "black", "img": None, "painting": False}
 
     bar = tk.Frame(root); bar.pack(fill="x")
     coord = tk.Label(bar, text="move over a pixel…", font=("Consolas", 10)); coord.pack(side="left", padx=6)
@@ -74,7 +74,7 @@ def main():
     tk.OptionMenu(bar, celvar, *edit.cels.keys(), command=on_cel).pack(side="left", padx=6)
     tk.Label(bar, text="(active cel)").pack(side="left")
 
-    canvas = tk.Canvas(root, width=820, height=600, bg="#282828"); canvas.pack(fill="both", expand=True)
+    canvas = tk.Canvas(root, width=1040, height=640, bg="#282828"); canvas.pack(fill="both", expand=True)
     # prominent SAVE banner (bottom): only save writes it, so redraw() can't clobber the result.
     savebar = tk.Label(root, text="ready — paint, then Save (Ctrl-S)", anchor="w",
                        font=("Consolas", 12, "bold"), fg="white", bg="#444",
@@ -86,17 +86,32 @@ def main():
     def opac_map():  return {cid: ce.opacity for cid, ce in edit.cels.items()}
     def chg_map():   return {cid: ce.changed() for cid, ce in edit.cels.items()}
 
+    LABEL_H = 18
     def redraw():
-        img = render_frame(frame, zoom=state["zoom"], boundaries=True,
+        z = state["zoom"]
+        old = render_frame(frame, zoom=z, boundaries=True,
+                           pixels_by_cel={cid: ce.orig_pixels for cid, ce in edit.cels.items()},
+                           opacity_by_cel={cid: ce.orig_opacity for cid, ce in edit.cels.items()})
+        new = render_frame(frame, zoom=z, boundaries=True,
                            opacity_by_cel=opac_map(), changed_by_cel=chg_map())
-        state["img"] = ImageTk.PhotoImage(img)
+        state["old_img"] = ImageTk.PhotoImage(old)
+        state["new_img"] = ImageTk.PhotoImage(new)
         canvas.delete("all")
-        canvas.create_image(MARGIN, MARGIN, anchor="nw", image=state["img"])
-        status.config(text=f"zoom {state['zoom']}x  cell {CELL_W*state['zoom']}x{CELL_H*state['zoom']}px (4:5)  "
+        # OLD (read-only, left) | NEW (editable, right)
+        canvas.create_text(MARGIN, 2, anchor="nw", text="OLD  (read-only)", fill="#bbbbbb",
+                           font=("Consolas", 10, "bold"))
+        canvas.create_image(MARGIN, LABEL_H, anchor="nw", image=state["old_img"])
+        nx = MARGIN + old.width + 36
+        state["new_x0"], state["new_y0"] = nx, LABEL_H
+        canvas.create_text(nx, 2, anchor="nw", text="NEW  (paint here — yellow = changed)",
+                           fill="#ffe400", font=("Consolas", 10, "bold"))
+        canvas.create_image(nx, LABEL_H, anchor="nw", image=state["new_img"])
+        canvas.config(scrollregion=(0, 0, nx + new.width + MARGIN, LABEL_H + new.height + MARGIN))
+        status.config(text=f"zoom {z}x  cell {CELL_W*z}x{CELL_H*z}px (4:5)  "
                            f"active={edit.selected}  edited={[c.cel_id for c in edit.edited_cels()]}")
 
     def canvas_to_frame(e):
-        return screen_to_sprite(e.x - MARGIN, e.y - MARGIN, state["zoom"])
+        return screen_to_sprite(e.x - state.get("new_x0", MARGIN), e.y - state.get("new_y0", MARGIN), state["zoom"])
 
     def on_move(e):
         fx, fy = canvas_to_frame(e)

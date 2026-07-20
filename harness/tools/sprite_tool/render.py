@@ -23,10 +23,12 @@ BOUNDARY = (255, 0, 255)          # cel-boundary overlay
 OPAQUE_BLACK = (0, 0, 0)          # index-0 marked opaque (shadow) — solid, distinct from trans gray
 CHANGED = (255, 255, 0)           # changed-pixel (New vs Old) highlight
 
-def render_frame(frame, zoom=3, boundaries=True, opacity_by_cel=None, changed_by_cel=None):
+def render_frame(frame, zoom=3, boundaries=True, opacity_by_cel=None, changed_by_cel=None,
+                 pixels_by_cel=None):
     """Render each placed cel, later on top. index 1/2/3 = colours; index 0 = TRANS gray,
     unless opacity_by_cel[cel_id][y][x] is True (opaque shadow) -> solid black.
-    changed_by_cel[cel_id] = set of (x,y) local pixels to highlight (New vs Old)."""
+    changed_by_cel[cel_id] = set of (x,y) local pixels to highlight (New vs Old).
+    pixels_by_cel[cel_id] overrides the pixel source (used to render the Old/on-open view)."""
     if Image is None:
         raise RuntimeError("Pillow required: pip install pillow")
     cw, ch = CELL_W * zoom, CELL_H * zoom
@@ -35,9 +37,10 @@ def render_frame(frame, zoom=3, boundaries=True, opacity_by_cel=None, changed_by
     for p in frame.placed:                        # back to front
         opac = (opacity_by_cel or {}).get(p.cel_id)
         chg = (changed_by_cel or {}).get(p.cel_id, set())
+        pixels = (pixels_by_cel or {}).get(p.cel_id, p.cel.pixels)
         for cy in range(p.h_px):
             for cx in range(p.w_px):
-                val = p.cel.pixels[cy][cx]
+                val = pixels[cy][cx]
                 if val == 0 and opac is not None and opac[cy][cx]:
                     color = OPAQUE_BLACK
                 elif (cx, cy) in chg:
