@@ -18,6 +18,29 @@ a MAME **failure** on coco3 is a **shipping bug** (C-11 / I-BOTH), not deferrabl
 
 ---
 
+## 0. Measuring the port's per-frame COST: no Lua cycle counter — count **VBLs via frame_number**
+**MAME 0.281's Lua device wrapper exposes neither `cpu.clock` nor `cpu:total_cycles()`** (both
+`nil` — probed, `build/logs/b2_probe.txt`), and **`manager.machine.time` is quantised to the
+scheduler timeslice**, so an intra-frame `machine.time` delta around a routine reads as ~4 cycles
+and is **useless for cost** (it looks like the work is free). `scr:frame_number()` **is** exact.
+So: **measure cost in VBL units** — read-tap each routine's entry address (6809 read-taps fire on
+opcode fetch, §10) and diff `frame_number` between marks. 1 VBL = the entire per-frame budget, so
+"this routine costs 5 frame-deltas" is already the verdict; convert with
+**VBL = 29,859 cycles** (coco3 maincpu 894,886 Hz from `mame -listxml coco3`, **×2** because
+`HAL_gfx_init` writes `$FFD9` SAM double-speed, `src/hal/coco3-dsk/gfx.s:198`; ÷59.94 Hz).
+- **A whole-frame overrun is also directly visible**: tap the frame loop's `HAL_time_vbl_wait`
+  entry and diff `frame_number` per iteration — 1 = fits, ≥2 = the frame missed its VBL. This is
+  the cheapest go/no-go and needs no cycle counting at all.
+- **⚠ ARM the taps after the `.bin` is loaded.** Driver routines living in low RAM (`$02xx-$04xx`)
+  are addresses **DECB/BASIC itself executes** during boot (§5 overlap), so unarmed taps fire at
+  ~f22 and a "first hit only" rule burns on BASIC, not the driver — it reads as the routine running
+  impossibly early. Gate every tap on an `armed` flag set when PC is set to the driver's entry.
+Tools: `harness/tools/stageb2_budget.lua` (frame-loop overrun), `stageb2_initcost.lua`
+(per-routine VBL cost + blits/frame). *Established:* Stage-B2 §0 VBL-budget gate 2026-07-20.
+*Candidate:* `measure-cost-in-vbls-when-the-emulator-exposes-no-cycle-counter`.
+
+---
+
 ## 1. The load-bearing one: **the CoCo3 has NO autoboot**
 Inserting a disk **runs nothing.** There is no autoboot. The entry point is **Disk BASIC
 (DECB)** — you reach the game by having DECB `LOADM` + `EXEC` the binary (or an equivalent
