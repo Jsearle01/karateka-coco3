@@ -34,15 +34,17 @@ bwl_byte:
         blo     bwl_row
         rts
 
+* table entry = fdb cel ; fdb plc_ptr (§2F: AB4A/AA7D placement lives ONCE in plc_<id>).
 draw_climb_scenery:
         ldy     #climb_scn_tbl
 dcs_loop:
-        ldx     ,y++
+        ldx     ,y++                    ; X = cel ptr (0 = end)
         beq     dcs_done
-        lda     ,y+
+        ldu     ,y++                    ; U -> plc_ row (col,sub,row) — §2F single home
+        lda     1,u                     ; sub
         sta     <blit_subbyte
-        lda     ,y+
-        ldb     ,y+
+        lda     ,u                      ; col
+        ldb     2,u                     ; row
         pshs    y
         jsr     HAL_gfx_blit_sprite_opaque
         puls    y
@@ -97,11 +99,9 @@ wtp_row_done:
 * (draw_climb_startpose removed — DEAD code: the crawl renders the start pose via the controller's
 *  cl_frames f0; only stage-3 draws it, and stage-3 reads plc_start_ via scene6_cliff.s. §2F 2026-07-20.)
 
-climb_scn_tbl:
-        fdb     scene6_cliff_AB4A
-        fcb     0,5,112
-        fdb     scene6_cliff_AA7D
-        fcb     0,15,152
+climb_scn_tbl:                          ; fdb cel, plc_ptr (placement single-homed in [placement])
+        fdb     scene6_cliff_AB4A,plc_AB4A
+        fdb     scene6_cliff_AA7D,plc_AA7D
         fdb     0
 
         include "../../content/scenery/scene6_cliff_AB4A/converted.s"
