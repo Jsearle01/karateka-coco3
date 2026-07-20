@@ -100,7 +100,7 @@ cl_r_loop:
         lda     2,x                     ; A = byte col
         ldb     4,x                     ; B = row
         ldx     ,x                      ; X = cel pointer
-        jsr     HAL_gfx_blit_sprite     ; the ONE shared render leaf
+        jsr     cl_blit_dispatch        ; plain blit, OR opacity blit if the cel is authored
         ldx     <cl_partp
         leax    5,x                     ; next part
         dec     <cl_pcnt
@@ -110,6 +110,49 @@ cl_r_loop:
         eora    #$60                    ; toggle A<->B
         sta     <page_register
         rts
+
+* ===============================================================
+* cl_blit_dispatch — opacity-aware per-part blit. Entry: X=cel, A=col, B=row, blit_subbyte=sub.
+*   Scans cl_opacity_tbl (from scene6_climb_opacity_gen.s): plain transparent blit if the cel is
+*   NOT authored (zero cost for the hundreds of non-shadowed cels), else the matching opacity HAL:
+*     mixed  -> HAL_gfx_blit_sprite_mixed  (regions ride blit_subbyte natively)
+*     masked -> HAL_gfx_blit_sprite_masked (byte-aligned per-column mask)
+*     stencil-> plain blit (colours, at sub) THEN byte-aligned HAL_gfx_blit_stencil_punch with the
+*               PRE-SHIFTED 2D mask (the codegen shifted it by sub, so the punch lands on the pixels)
+* ===============================================================
+cl_blit_dispatch:
+        pshs    a,b                     ; save col,row (X=cel preserved through the scan)
+        ldy     #cl_opacity_tbl
+cbd_scan:
+        ldd     ,y                      ; table cel (0 = end)
+        beq     cbd_plain
+        cmpx    ,y                      ; is THIS cel authored?
+        beq     cbd_found
+        leay    5,y                     ; next entry {fdb cel; fcb type; fdb desc}
+        bra     cbd_scan
+cbd_found:
+        lda     2,y                     ; opacity type
+        ldu     3,y                     ; U = descriptor ptr
+        cmpa    #1
+        beq     cbd_mixed
+        cmpa    #2
+        beq     cbd_masked
+        puls    a,b                     ; --- stencil --- A=col B=row (blit_subbyte=sub, X=cel)
+        pshs    a,b,u                   ; save col,row,desc
+        jsr     HAL_gfx_blit_sprite     ; draw the sprite colours (sub-byte) first
+        clr     <blit_subbyte           ; the punch is byte-aligned
+        puls    a,b,u                   ; A=col B=row, U=desc
+        tfr     u,x                     ; X = stencil descriptor (height,width,mask)
+        jmp     HAL_gfx_blit_stencil_punch
+cbd_mixed:
+        puls    a,b                     ; X=cel, U=desc, A=col B=row, blit_subbyte=sub
+        jmp     HAL_gfx_blit_sprite_mixed
+cbd_masked:
+        puls    a,b
+        jmp     HAL_gfx_blit_sprite_masked
+cbd_plain:
+        puls    a,b
+        jmp     HAL_gfx_blit_sprite
 
 * ===============================================================
 * cl_restore — copy cl_clean -> back-buffer bbox (removes the previous pose,

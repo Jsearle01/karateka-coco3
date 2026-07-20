@@ -145,6 +145,7 @@ cab_l:
         include "scene6_cliff_walltop.s"
         include "scene6_hud.s"
         include "scene6_climb_anim_gen.s"  ; §2F single-home: climb crawl animation table (cl_frames)
+        include "scene6_climb_opacity_gen.s"  ; authored-shadow descriptors + cl_opacity_tbl (build-render)
         include "scene6_placement_gen.s"   ; §2F single-home: plc_ (walltop climb_scn_tbl reads plc_AB4A/AA7D)
 
 * --- additional crawl pose cels (A3C5/A3E9 come via scene6_cliff.s) ---

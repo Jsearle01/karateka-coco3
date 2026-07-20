@@ -34,6 +34,10 @@ rem --- §2F: regenerate the single-home scene-6 placement table (plc_ + climb c
 rem     text-source BEFORE any driver that includes it (crawl drivers + scrollA). No drift. ---
 python harness\tools\gen_scene6_placement.py
 if errorlevel 1 goto :error
+rem --- build-render: codegen the authored-shadow opacity descriptors (read opacity.s sidecars on
+rem     disk) for the climb draw path, BEFORE the crawl driver includes scene6_climb_opacity_gen.s ---
+python harness\tools\gen_climb_opacity.py
+if errorlevel 1 goto :error
 
 lwasm --decb -o tests/scripted/sys_init_driver.bin tests/scripted/sys_init_driver.s
 if errorlevel 1 goto :error
