@@ -39,6 +39,27 @@ Tools: `harness/tools/stageb2_budget.lua` (frame-loop overrun), `stageb2_initcos
 (per-routine VBL cost + blits/frame). *Established:* Stage-B2 §0 VBL-budget gate 2026-07-20.
 *Candidate:* `measure-cost-in-vbls-when-the-emulator-exposes-no-cycle-counter`.
 
+### 0a. The VBL spin-wait IS a cycle counter — how to verify the live CPU CLOCK by execution
+MAME exposes **no clock accessor either** (`cpu.clock` / `configured_clock` / `unscaled_clock` /
+`clock_scale` all nil — `build/logs/clk_probe.txt`), so "are we at 0.89 or 1.78 MHz?" must be
+answered **behaviourally**. `HAL_time_vbl_wait` spins in a 2-instruction loop
+(`cmpb <hal_frame_lo` = 4 cyc + `beq` taken = 3 cyc = **7 cycles/iteration**), burning every cycle
+the engine is *not* working. Read-tap `hal_vbl_spin` and count hits per frame:
+`spins*7 = idle cycles`, so **`spins*7` is a hard LOWER BOUND on the frame's cycle budget** — and a
+bound is often all you need: measuring **29,736** cycles inside one frame *disproves* 0.89 MHz
+outright, because that window only holds 14,929.
+- **A/B/A control makes it conclusive and self-calibrating:** poke `$FFD8` (SAM speed LO) from Lua
+  mid-run, then `$FFD9` (HI) to restore. Work per frame is unchanged, so with phase-matched samples
+  `total_fast = 14*(spins_fast - spins_slow)` — no datasheet trust and no absolute-clock assumption.
+  Measured: 1.76–1.79 MHz across 13 phases; forced-slow segment capped at 14,805 ≈ the 0.89 MHz
+  window (0.8%), confirming MAME models the bit and the engine runs the doubled clock.
+- **⚠ Phase-matching breaks where the work differs between segments** (a phase state-machine
+  advances at different points when the clock changes) — those phases yield nonsense (0.007 MHz);
+  use the assumption-free `max(spins)*7` bound as the primary, the differential as corroboration.
+Tool: `harness/tools/verify_cpu_speed.lua`. *Established:* CPU-speed verification 2026-07-20 —
+the engine's ONLY speed write is `HAL_gfx_init`'s `$FFD9` at `pc=$1E9B` (boot-time, not per-scene).
+*Candidate:* `a-spin-wait-loop-is-a-free-cycle-counter-for-clock-verification`.
+
 ---
 
 ## 1. The load-bearing one: **the CoCo3 has NO autoboot**

@@ -33,7 +33,12 @@ literal per-frame draw-on-demand. §4 gives the numbers and the one architectura
 
 ### §4  The measurement (execution evidence)
 
-**The budget unit.** VBL window = **29,859 cycles / 16.68 ms**. Clock derived, not assumed: coco3
+**The budget unit.** VBL window = **29,859 cycles / 16.68 ms**.
+**[VERIFIED 2026-07-20 by execution — see `reports/20260720-225328-verify-cpu-speed.md`.** The
+double-speed premise below was, at the time of writing, a static read (a `$FFD9` write + a comment).
+It has since been execution-confirmed: one frame was measured spending **29,736 cycles**, which the
+0.89 MHz window (14,929) cannot hold, and a forced-slow control reproduced the normal-speed window.
+**The budget and this gate's NO-GO verdict stand unchanged.]** Clock derived, not assumed: coco3
 `maincpu` = **894,886 Hz** (`mame -listxml coco3`, `<chip type="cpu" tag="maincpu" …>`), **×2**
 because `HAL_gfx_init` writes `$FFD9` (SAM 1.78 MHz double speed, `src/hal/coco3-dsk/gfx.s:198`),
 ÷ 59.94 Hz.
