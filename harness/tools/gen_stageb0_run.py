@@ -39,22 +39,28 @@ def place_px(x_apple, addr):
     x = x_apple + 20
     return (x >> 2) + leading_trim(addr), x & 3
 
-# (fid, legs_addr, torso_addr, dx, rowLegs, rowTorso) — dx/rows verbatim from the trace
-FRAMES = [
-    ("s0", 0x9CAF, 0x9E4A,  7, 143, 123),   # run start  (accelerate 1)
-    ("s1", 0x9CD7, 0x9E74,  7, 139, 125),   # run start  (accelerate 2)
-    ("c0", 0x9B00, 0x9D68,  7, 141, 126),   # cycle
-    ("c1", 0x9B6B, 0x9D68, 10, 141, 126),
-    ("c2", 0x9BE5, 0x9DD5, 14, 149, 126),
-    ("c3", 0x9C1B, 0x9E05,  7, 138, 125),
-    ("c4", 0x9B00, 0x9D97,  7, 141, 126),
-    ("c5", 0x9B6B, 0x9D97, 10, 141, 126),
-    ("c6", 0x9BE5, 0x9DD5, 14, 149, 126),
-    ("c7", 0x9C65, 0x9E2E,  7, 138, 125),
-    ("e0", 0x9D1E, 0x9E92,  0, 138, 126),   # run stop / settle
-]
+HEAD = 0x8E9B              # the head draws in EVERY pose — 3 parts/frame, not 2
 
-for fid, legs, torso, dx, rl, rt in FRAMES:
+# (fid, dwell, legs, torso, torso_dx, head_dx, rowLegs, rowTorso, rowHead)
+# dx/rows verbatim from the trace; 44 poses / 11 pairings, each offset set UNIQUE + invariant.
+# Draw order per frame is trace order: legs, head, torso (torso last = on top).
+FRAMES = [
+    ("s0", DWELL, 0x9CAF, 0x9E4A,  7, 12, 143, 123, 116),   # run start (accelerate 1)
+    ("s1", DWELL, 0x9CD7, 0x9E74,  7, 15, 139, 125, 118),   # run start (accelerate 2)
+    ("c0", DWELL, 0x9B00, 0x9D68,  7, 19, 141, 126, 119),   # cycle
+    ("c1", DWELL, 0x9B6B, 0x9D68, 10, 22, 141, 126, 119),
+    ("c2", DWELL, 0x9BE5, 0x9DD5, 14, 20, 149, 126, 119),
+    ("c3", DWELL, 0x9C1B, 0x9E05,  7, 11, 138, 125, 118),
+    ("c4", DWELL, 0x9B00, 0x9D97,  7, 19, 141, 126, 119),
+    ("c5", DWELL, 0x9B6B, 0x9D97, 10, 22, 141, 126, 119),
+    ("c6", DWELL, 0x9BE5, 0x9DD5, 14, 20, 149, 126, 119),
+    ("c7", DWELL, 0x9C65, 0x9E2E,  7, 11, 138, 125, 118),
+    ("e0", DWELL, 0x9D1E, 0x9E92,  0,  7, 138, 126, 118),   # run stop
+    ("st",    21, 0x899C, 0x8ACB,  0,  6, 138, 124, 116),   # STANDING STRAIGHT (terminal pose;
+]                                                           #   same trio+rows as climb_crawl f6)
+
+for fid, dwell, legs, torso, tdx, hdx, rl, rt, rh in FRAMES:
     lc, ls = place_px(ANCHOR, legs)
-    tc, ts = place_px(ANCHOR + dx, torso)
-    print(f"  {fid:<3} {DWELL:>3}   {legs:04X}:{lc},{ls},{rl}   {torso:04X}:{tc},{ts},{rt}")
+    hc, hs = place_px(ANCHOR + hdx, HEAD)
+    tc, ts = place_px(ANCHOR + tdx, torso)
+    print(f"  {fid:<3} {dwell:>3}   {legs:04X}:{lc},{ls},{rl}   {HEAD:04X}:{hc},{hs},{rh}   {torso:04X}:{tc},{ts},{rt}")

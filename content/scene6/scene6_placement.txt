@@ -110,14 +110,23 @@ run:  # PLAYER RUN — legs+torso per frame, execution-confirmed from the oracle
 #   (same x=col*7+sub+20 / leading_trim formula as the climb crawl). Dwell 11 VBL = the
 #   steady-state measured cadence (f8802-8947); the loop is compute-bound so the observed
 #   gap ranges 7-21 under scene load (idioms 8a) — 11 is the clean free-running value.
-  s0   11   9CAF:39,1,143   9E4A:40,0,123
-  s1   11   9CD7:38,1,139   9E74:40,0,125
-  c0   11   9B00:38,1,141   9D68:41,0,126
-  c1   11   9B6B:38,1,141   9D68:41,3,126
-  c2   11   9BE5:39,1,149   9DD5:41,3,126
-  c3   11   9C1B:38,1,138   9E05:40,0,125
-  c4   11   9B00:38,1,141   9D97:41,0,126
-  c5   11   9B6B:38,1,141   9D97:41,3,126
-  c6   11   9BE5:39,1,149   9DD5:41,3,126
-  c7   11   9C65:38,1,138   9E2E:40,0,125
-  e0   11   9D1E:38,1,138   9E92:38,1,126
+#   CORRECTION (Jay visual gate, 2026-07-20): the first cut of this block had only 2 parts and
+#   no terminal standing pose. Both were MY filter's fault, not the oracle's — the capture was
+#   bank-filtered to $9B-$9E, which hid the HEAD ($8E9B, a $8E-bank cel that draws in EVERY run
+#   pose) and hid the standing settle entirely (idioms 9, "wholesale bank exclusion hides actors
+#   sharing the bank"). Re-traced unfiltered: 44 poses, 11 pairings, each with a UNIQUE and
+#   invariant torso AND head offset. Draw order is trace order: legs, head, torso (torso on top).
+#   `st` = the standing straight pose the run settles into — the same trio and the same rows as
+#   climb_crawl f6 (899C 138 / 8ACB 124 / 8E9B 116); dwell 21 VBL (f6649->f6670, observed once).
+  s0   11   9CAF:39,1,143   8E9B:41,1,116   9E4A:40,0,123
+  s1   11   9CD7:38,1,139   8E9B:42,0,118   9E74:40,0,125
+  c0   11   9B00:38,1,141   8E9B:43,0,119   9D68:41,0,126
+  c1   11   9B6B:38,1,141   8E9B:43,3,119   9D68:41,3,126
+  c2   11   9BE5:39,1,149   8E9B:43,1,119   9DD5:41,3,126
+  c3   11   9C1B:38,1,138   8E9B:41,0,118   9E05:40,0,125
+  c4   11   9B00:38,1,141   8E9B:43,0,119   9D97:41,0,126
+  c5   11   9B6B:38,1,141   8E9B:43,3,119   9D97:41,3,126
+  c6   11   9BE5:39,1,149   8E9B:43,1,119   9DD5:41,3,126
+  c7   11   9C65:38,1,138   8E9B:41,0,118   9E2E:40,0,125
+  e0   11   9D1E:38,1,138   8E9B:40,0,118   9E92:38,1,126
+  st   21   899C:39,1,138   8E9B:39,3,116   8ACB:39,1,124

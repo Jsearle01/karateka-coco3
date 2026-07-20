@@ -180,3 +180,75 @@ independent geometry. Also added as MAME idiom §12a (`mame-idioms-apple2e-oracl
 ### §12 Commit
 `4cceb500dfe9b120b8c1603b027759e5934dd56a` — port + map doc + instruments + idiom.
 (This report is committed on top; both pushed to `origin/wip`.)
+
+---
+
+## CORRECTION — appended 2026-07-20 after Jay's visual gate (25.3 partial)
+
+**Jay's two notes on the assembled frames:** (1) "there should be a standing straight pose at the
+end of the run that I don't see"; (2) "any byte duplicates? a few look like duplicates by eye."
+
+### Note 1 — CONFIRMED, and it exposed a second defect. My error, not the oracle's.
+`stageb0_run_capture.lua` filtered to the run bank `$9B00-$9EB7`. That filter hid **two** things:
+- the **standing straight pose** Jay expected — it is `$899C`+`$8ACB`+`$8E9B`, none of them run-bank
+  cels, so the filtered pass could not see it at all;
+- the **head `$8E9B`**, which draws in **EVERY** run pose — so all 11 shipped frames were missing a
+  part and the run figure was headless.
+
+This is **idioms §9 verbatim** — *"wholesale bank exclusion hides actors sharing the bank"* — the
+exact trap that file warns about, walked into while quoting the file for everything else. The
+filtered trace was self-consistent (42 poses, invariant offsets), which is precisely why it read as
+complete: **a filter makes absence look like structure.** Nothing in the filtered data could have
+flagged it; the operator's eye did (CLAUDE.md §2 / the "past scene 4 the eye wins" idiom, earning
+its keep again).
+
+**Re-trace, unfiltered** (`build/logs/stageb0_run_full1.txt` f6390–6700, `stageb0_run_full2.txt`
+f8580–8960): **44 poses, 0 incomplete, 11 pairings — each with a UNIQUE and invariant torso AND head
+offset.** Composition parts = entry-`A`, `flip=$00` draws (entry `By` = the guard; `flip=$FF` = the
+mask pass, excluded — inferred as mask/erase, residue). Draw order = **legs → head → torso**.
+
+The `run:` block is now **12 frames × 3 parts** (`s0,s1,c0..c7,e0,st`). The new `st` frame is
+`899C:39,1,138  8E9B:39,3,116  8ACB:39,1,124`, dwell 21 VBL (f6649→f6670, observed once) — and it
+lands on **the same trio and the same rows as `climb_crawl f6`**, so two independently-derived beats
+of the port agree on the standing figure. No new `[registry]` rows were needed (`$8E9B`/`$899C`/
+`$8ACB` were already members via the climb block).
+
+**A transcription bug in my own analysis, caught and fixed:** the first grouping pass sorted draws
+by `(frame, cel)`, which reordered same-frame draws (cel `$8E9B` sorts before `$9C1B`) and produced
+9 spurious "incomplete" poses plus two phantom offset variants. Preserving **execution order**
+resolved all 9 and both variants — the invariance is exact, not approximate.
+
+### Note 2 — no byte duplicates; the repetition is compositional
+All 16 run cels are **byte-distinct** in the oracle dump (header+data MD5) and all 16 `converted.s`
+are byte-distinct in the port. What reads as duplication:
+- **`c2` and `c6` are the identical frame** (same trio, same offsets) — it genuinely occurs twice
+  per 8-frame cycle. That is the oracle's cycle, not a data error.
+- **`c0`/`c4`, `c1`/`c5`, `c3`/`c7` are near-twins:** same legs, same head, differing only in the
+  torso cel (`$9D68` vs `$9D97`; `$9E05` vs `$9E2E`) — the arm-swing alternation that makes an
+  8-frame cycle out of 5 leg phases. Those torso cels differ even in **width** (3 vs 4 bytes; 3 vs
+  2), so they are genuinely different art, not copies.
+
+### Re-verification after the correction
+```
+--- build.bat ---                    === BUILD COMPLETE ===
+--- run_kernel_dispatch_test.bat --- === P2.2 MAME TEST: PASS ===
+--- prod hash ---                    88eba89b15cdf17c8d25e082d2d3e1f3cce57d38   [byte-identical]
+--- sprite tool ---
+  run[s0] dwell=11 parts=3 [9CAF 8E9B 9E4A]   run[c5] dwell=11 parts=3 [9B6B 8E9B 9D97]
+  run[s1] dwell=11 parts=3 [9CD7 8E9B 9E74]   run[c6] dwell=11 parts=3 [9BE5 8E9B 9DD5]
+  run[c0] dwell=11 parts=3 [9B00 8E9B 9D68]   run[c7] dwell=11 parts=3 [9C65 8E9B 9E2E]
+  run[c1] dwell=11 parts=3 [9B6B 8E9B 9D68]   run[e0] dwell=11 parts=3 [9D1E 8E9B 9E92]
+  run[c2] dwell=11 parts=3 [9BE5 8E9B 9DD5]   run[st] dwell=21 parts=3 [899C 8E9B 8ACB]
+  run[c3] dwell=11 parts=3 [9C1B 8E9B 9E05]
+  run[c4] dwell=11 parts=3 [9B00 8E9B 9D97]
+```
+Figure height went 35–39 px → 42–46 px with the head restored.
+
+### Consequences for §8/§9 of the report above
+- The §5 AC1 pairing table and the §4 anchor derivation are **unaffected** — torso offsets and the
+  legs==`$62` anchor are identical in the unfiltered data. What changed is **completeness**, not
+  correctness.
+- **25.3 remains pending Jay** on the corrected 12-frame, 3-part set.
+- New residue: the `flip=$FF` mask-pass reading is inferred, not read from the blit code; `st` and
+  its 21-VBL dwell are observed once.
+- **Second candidate captured:** `a-bank-filter-makes-absence-look-like-structure` — see §11.

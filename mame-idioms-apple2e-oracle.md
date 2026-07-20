@@ -651,8 +651,19 @@ constants you can falsify: identical `(dx,dy)` on every recurrence across **inde
 (42 observations / 10 pairings / 0 contradictions), plus free geometry checks
 (`row_torso + h_torso == row_legs` for all frames). **Also log `$10`** — X = `$05*7 + $10`, so a
 sub-byte-only step (`$10` 1→6) moves the actor with `$05` unchanged; dropping `$10` silently
-collapses distinct positions. Tool: `harness/tools/stageb0_run_capture.lua` (bank-filtered so a
-whole attract cycle stays readable). *Established:* Stage-B0 run-composition port 2026-07-20. See
+collapses distinct positions. Tool: `harness/tools/stageb0_run_capture.lua` (`RUN_ALL=1` = **no
+filter — use this**; the bank filter exists only for a first readable sweep).
+
+**⚠ DO NOT bank-filter the CAPTURE — §9's "wholesale bank exclusion hides actors sharing the bank"
+applies to the capture script, not just to analysis excludes.** Filtering `stageb0_run_capture.lua`
+to `$9B00-$9EB7` hid the **head `$8E9B`** (drawn in EVERY run pose, from the `$8E` bank) and hid the
+run's **terminal standing pose** completely (it is `$899C`/`$8ACB`/`$8E9B` — no run-bank cel at all).
+The filtered trace was **fully self-consistent** — 42 poses, invariant per-pairing offsets, a passing
+`row_torso + h_torso == row_legs` check on every frame — so **no internal check could catch it**; the
+operator's eye did. A capture-time filter is an irreversible commitment made when you understand the
+scene least: **capture wide, filter at analysis** (a whole attract cycle unfiltered is ~3.4k lines —
+readable). *Candidate:* `a-capture-filter-makes-absence-look-like-structure`.
+*Established:* Stage-B0 run-composition port 2026-07-20. See
 `docs/project/run-composition-map.md`. *Candidate:*
 `read-the-animation-anchor-off-the-trace-dont-invent-one`.
 
