@@ -85,9 +85,9 @@ def m5_save():
         for rr in range(cel.h):
             for k in range(4):
                 if cel.pixels[rr][k] == 0: op[rr][k] = True     # byte-col 0 opaque -> mixed
-        state, kind = save_cel(cel, cd, "scene6_climb_A3C5", op, "A3C5", tbl)
+        r = save_cel(cel, cd, "scene6_climb_A3C5", op, "A3C5", tbl)
         after = open(os.path.join(cd, "converted.s"), newline="").read()
-        ok = (after == orig and state == "authored" and kind == "mixed"
+        ok = (after == orig and r["state"] == "authored" and r["kind"] == "mixed" and r["byte_identical"]
               and SC.read_sidecar(cd) == O.derive(cel, op) and read_state(tbl, "A3C5") == "authored")
         print(f"M5 save: opacity-only converted.s byte-identical + sidecar + state=authored: {'PASS' if ok else 'FAIL'}")
         return ok

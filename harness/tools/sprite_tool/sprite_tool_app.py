@@ -19,7 +19,11 @@ from pixel_map import CELL_W, CELL_H, screen_to_sprite
 from render import render_frame
 from edit_model import FrameEdit, PALETTE
 import opacity as O
-from save import save_cel
+from save import save_cel, SaveIOError
+
+SWATCH_RGB = {"white": "#FFFFFF", "blue": "#00AAFF", "orange": "#FF5500",
+              "black": "#000000", "trans": "#808080"}
+ARM = "#FFE400"      # armed-swatch highlight border
 
 MARGIN = 10
 
@@ -50,11 +54,20 @@ def main():
 
     bar = tk.Frame(root); bar.pack(fill="x")
     coord = tk.Label(bar, text="move over a pixel…", font=("Consolas", 10)); coord.pack(side="left", padx=6)
-    # palette
+    # palette — each swatch shows its colour; the ARMED one gets a bright highlight border
+    swatches = {}
+    def arm(n):
+        state["entry"] = n
+        for nm, fr in swatches.items():
+            fr.config(bg=ARM if nm == n else bar.cget("bg"),
+                      highlightbackground=ARM if nm == n else bar.cget("bg"))
     for name in ("white", "blue", "orange", "black", "trans"):
-        def pick(n=name): state["entry"] = n; sel.config(text=f"paint: {state['entry']}")
-        tk.Button(bar, text=name, command=pick).pack(side="left")
-    sel = tk.Label(bar, text=f"paint: {state['entry']}"); sel.pack(side="left", padx=6)
+        fr = tk.Frame(bar, bg=bar.cget("bg"), bd=0, padx=3, pady=3); fr.pack(side="left")
+        tk.Button(fr, text=name, bg=SWATCH_RGB[name],
+                  fg="#000000" if name in ("white", "orange", "trans") else "#FFFFFF",
+                  activebackground=SWATCH_RGB[name], width=6,
+                  command=lambda n=name: (arm(n))).pack()
+        swatches[name] = fr
     # cel selector (overlap routing)
     celvar = tk.StringVar(value=edit.selected)
     def on_cel(*_): edit.selected = celvar.get()
@@ -110,18 +123,32 @@ def main():
     def zoom_out(_=None): state["zoom"] = max(1, state["zoom"]-1); redraw()
 
     def do_save(_=None):
-        saved, errs = [], []
-        for ce in edit.edited_cels():
+        import tkinter.messagebox as mb
+        edited = edit.edited_cels()
+        if not edited:
+            status.config(text="nothing edited — nothing to save", fg="#bbbbbb"); return
+        ok_msgs, stop_msgs = [], []
+        for ce in edited:
             try:
-                st, kind = save_cel(ce.cel, ce.cel_dir, ce.label, ce.opacity, ce.sprite_id, table.path)
-                saved.append(f"{ce.cel_id}:{st}/{kind}")
+                r = save_cel(ce.cel, ce.cel_dir, ce.label, ce.opacity, ce.sprite_id, table.path)
+                conv = "converted.s byte-identical" if r["byte_identical"] else "converted.s colour-changed"
+                sc = f"opacity.s ({r['kind']}) written" if r["state"] == "authored" else "no sidecar (none)"
+                ok_msgs.append(f"Saved {ce.cel_id} — {conv}, {sc}, registry→{r['state']}")
                 ce.orig_pixels = [row[:] for row in ce.cel.pixels]
                 ce.orig_opacity = [row[:] for row in ce.opacity]
-            except (O.CannotEncode, AssertionError) as ex:
-                errs.append(f"{ce.cel_id}: {ex}")
-        msg = "SAVED " + " ".join(saved) if saved else "nothing edited"
-        if errs: msg += "  |  STOP: " + " ; ".join(errs)
-        status.config(text=msg)
+            except O.CannotEncode as ex:
+                stop_msgs.append(f"NOT SAVED — {ce.cel_id}: marking needs per-pixel (row-varying) "
+                                 f"opacity; mixed/masked can't encode it → stencil_punch path. [{ex}]")
+            except AssertionError as ex:
+                stop_msgs.append(f"NOT SAVED — {ce.cel_id}: {ex}")
+            except SaveIOError as ex:                     # hard error → modal popup + rolled back
+                mb.showerror("Save failed (rolled back)",
+                             f"{ce.cel_id}: {ex}\nThe pre-save state was restored (no half-written files).")
+                stop_msgs.append(f"SAVE FAILED (rolled back) — {ce.cel_id}: {ex}")
+        if stop_msgs:
+            status.config(text="  ||  ".join(stop_msgs + ok_msgs), fg="#ff5555")
+        else:
+            status.config(text="  |  ".join(ok_msgs), fg="#55ff55")
         redraw()
 
     tk.Button(bar, text="undo", command=do_undo).pack(side="right")
@@ -135,6 +162,7 @@ def main():
     canvas.bind("<ButtonRelease-1>", on_release)
     root.bind("<Control-z>", do_undo); root.bind("<Control-y>", do_redo)
     root.bind("<Control-s>", do_save); root.bind("+", zoom_in); root.bind("-", zoom_out)
+    arm(state["entry"])          # show the initially-armed swatch
     redraw()
     root.mainloop()
 

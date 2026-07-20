@@ -61,26 +61,41 @@ def write_state(table_path, sprite_id, state):
     with open(table_path, "w", newline="") as f:
         f.write(out)
 
+class SaveIOError(Exception):
+    """A file/.bak write failed; save.py rolled back so no half-written state remains."""
+
+def _restore(path):
+    if os.path.exists(path + ".bak"):
+        shutil.copy2(path + ".bak", path)
+
 def save_cel(cel, cel_dir, label, opacity_grid, sprite_id, table_path):
-    """Derive+verify the opacity descriptor, then write converted.s + sidecar + state atomically.
-    Returns (state, kind). Raises O.CannotEncode / AssertionError (STOP) — never a silent fallback."""
+    """Derive+verify the opacity descriptor, then write converted.s + sidecar + state.
+    Returns {state, kind, byte_identical}. Raises:
+      - O.CannotEncode / AssertionError (STOP — marking unrepresentable; nothing written)
+      - SaveIOError (a file write failed; rolled back to the pre-save state)."""
     kind, payload = O.derive(cel, opacity_grid)          # raises CannotEncode if unrepresentable
     ok, detail = O.verify(cel, opacity_grid, kind, payload)
     if not ok:
         raise AssertionError(f"opacity descriptor did NOT verify ({detail}) — STOP")
 
     conv = os.path.join(cel_dir, "converted.s")
-    _bak(conv)
-    cel.write(conv)                                      # M1 lossless writer
-
-    if kind == 'none':
-        _bak(SC.path_for(cel_dir))
-        SC.remove_sidecar(cel_dir)
-        state = 'none'
-    else:                                                # mixed / masked = opaque authored
-        _bak(SC.path_for(cel_dir))
-        SC.write_sidecar(cel_dir, label, kind, payload)
-        state = 'authored'
-
-    write_state(table_path, sprite_id, state)
-    return state, kind
+    sc = SC.path_for(cel_dir)
+    before = open(conv, newline="").read() if os.path.exists(conv) else None
+    state_before = read_state(table_path, sprite_id)
+    try:
+        _bak(conv); _bak(sc)                             # back up before touching either
+        cel.write(conv)                                  # M1 lossless writer
+        after = open(conv, newline="").read()
+        byte_identical = (before is not None and after == before)
+        if kind == 'none':
+            SC.remove_sidecar(cel_dir); state = 'none'
+        else:
+            SC.write_sidecar(cel_dir, label, kind, payload); state = 'authored'
+        write_state(table_path, sprite_id, state)
+    except (IOError, OSError) as ex:                     # roll back — no half-written state
+        _restore(conv); _restore(sc)
+        if state_before is not None:
+            try: write_state(table_path, sprite_id, state_before)
+            except Exception: pass
+        raise SaveIOError(f"write failed ({ex}); rolled back to pre-save state") from ex
+    return {"state": state, "kind": kind, "byte_identical": byte_identical}
