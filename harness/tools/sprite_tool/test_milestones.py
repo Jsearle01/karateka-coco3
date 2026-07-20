@@ -208,6 +208,32 @@ def p3_revert():
           f"{'PASS' if result else 'FAIL'}")
     return result
 
+def p3b_button_state():
+    """UI availability: Save==dirty, Undo==undo-stack-nonempty, Redo==redo-stack-nonempty (cleared
+    on a new edit), plus the §2 revert-transition rows. Signal-level (what refresh_buttons reads)."""
+    from frame_assembly import assemble_animation
+    from edit_model import FrameEdit
+    t = Table(); fe = FrameEdit(t, assemble_animation(t, "climb_crawl", 0))
+    ge = fe.cels[fe.selected]
+    def color(px, py): return "white" if ge.cel.pixels[py][px] != 3 else "orange"
+    def press_paint(px, py):                          # mirrors on_press: begin_stroke ALL, paint selected
+        for ce in fe.cels.values(): ce.begin_stroke()
+        ge.paint(px, py, color(px, py))
+    def undo():
+        for ce in fe.cels.values(): ce.undo_stroke()
+    def sig(): return (fe.is_dirty(), fe.can_undo(), fe.can_redo(), fe.can_undo_revert())   # (Save,Undo,Redo,UndoRevert)
+    ok = True
+    ok = ok and sig() == (False, False, False, False)                 # clean: Save/Undo/Redo/UndoRevert all grayed
+    press_paint(0, 0); ok = ok and sig() == (True, True, False, False)   # dirty: Save+Undo enabled, Redo grayed
+    undo();            ok = ok and sig()[:3] == (False, False, True)     # undone to baseline: Redo enabled
+    press_paint(1, 0); ok = ok and sig() == (True, True, False, False)   # new edit CLEARS redo -> Redo re-grays
+    # §2 transition: after Revert -> Save/Undo/Redo/Revert grayed, Undo-Revert enabled
+    fe.revert_all();   after_revert = sig(); ok = ok and after_revert == (False, False, False, True)
+    # §2 transition: after Undo-Revert -> Save+Undo enabled (stack restored), Undo-Revert grayed
+    fe.undo_revert();  ar = sig(); ok = ok and ar[0] and ar[1] and not ar[3]
+    print(f"P3b button-state (avail table + §2 revert transitions): {'PASS' if ok else 'FAIL'}")
+    return ok
+
 def m5b_lint():
     errs, conv = opacity_lint()
     print(f"M5b lint (real tree clean): {len(errs)} errors, {len(conv)} converted — {'PASS' if not errs else 'FAIL'}")
@@ -216,7 +242,8 @@ def m5b_lint():
 if __name__ == "__main__":
     r = [("M1", m1_roundtrip()), ("M2", m2_assembly()), ("M3-math", m3_mapping()),
          ("M4b", m4b_derive_verify()), ("M5", m5_save()), ("M5b", m5b_lint()),
-         ("C-reload", c_reload()), ("P1-color", p1_color()), ("P3-revert", p3_revert())]
+         ("C-reload", c_reload()), ("P1-color", p1_color()), ("P3-revert", p3_revert()),
+         ("P3b-buttons", p3b_button_state())]
     print()
     for name, ok in r:
         print(f"  {name}: {'PASS' if ok else 'FAIL'}")

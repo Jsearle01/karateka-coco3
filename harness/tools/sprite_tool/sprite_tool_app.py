@@ -269,14 +269,18 @@ def main():
             redraw()                            # restore the just-reverted edits
 
     def refresh_buttons():
+        # every action button advertises whether its action is valid (reads existing signals only)
+        save_btn.config(state="normal" if edit.is_dirty() else "disabled")
+        undo_btn.config(state="normal" if edit.can_undo() else "disabled")
+        redo_btn.config(state="normal" if edit.can_redo() else "disabled")
         revert_btn.config(state="normal" if edit.is_dirty() else "disabled")
         undorevert_btn.config(state="normal" if edit.can_undo_revert() else "disabled")
 
-    tk.Button(bar, text="undo", command=do_undo).pack(side="right")
-    tk.Button(bar, text="redo", command=do_redo).pack(side="right")
+    undo_btn = tk.Button(bar, text="undo", command=do_undo); undo_btn.pack(side="right")
+    redo_btn = tk.Button(bar, text="redo", command=do_redo); redo_btn.pack(side="right")
     revert_btn = tk.Button(bar, text="Revert to Old", command=do_revert); revert_btn.pack(side="right", padx=(8, 0))
     undorevert_btn = tk.Button(bar, text="Undo Revert", command=do_undo_revert); undorevert_btn.pack(side="right")
-    tk.Button(bar, text="SAVE", command=do_save).pack(side="right", padx=6)
+    save_btn = tk.Button(bar, text="SAVE", command=do_save); save_btn.pack(side="right", padx=6)
     tk.Button(bar, text="+", command=zoom_in).pack(side="right")
     tk.Button(bar, text="-", command=zoom_out).pack(side="right")
     canvas.bind("<Motion>", on_move)

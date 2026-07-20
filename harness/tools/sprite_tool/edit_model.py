@@ -126,6 +126,14 @@ class FrameEdit:
     def is_dirty(self):
         return any(ce.is_edited() for ce in self.cels.values())
 
+    def can_undo(self):
+        """Undo is valid iff some cel has a stroke to undo (aggregate — do_undo undoes all cels)."""
+        return any(ce.undo for ce in self.cels.values())
+
+    def can_redo(self):
+        """Redo is valid iff some cel has a redone-able stroke (empty after a new paint clears redo)."""
+        return any(ce.redo for ce in self.cels.values())
+
     def revert_all(self):
         """Revert every cel to its baseline (the guard's Discard + the Revert-to-Old button share
         this). Captures a one-shot pre-revert snapshot so Undo-Revert can restore it."""
