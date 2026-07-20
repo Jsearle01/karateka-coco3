@@ -85,6 +85,12 @@ A948    36   0   81
 #   tool reads/edits placement + timing here. SINGLE HOME for animated placement.
 #   Row:  frame  dwell  cel:col,sub,row  cel:col,sub,row ...   (one cel token per drawn part, in
 #   draw order; part-count is derived from the token count; sub = sub-byte pixel shift 0..3).
+#   Directive:  @loop <first_fid> <last_fid>   — OPTIONAL, at most one per block. Declares which
+#   frames are the REPEATING cycle: frames before it play in once, frames after it play out once,
+#   and the named span repeats. Without it a block is a plain one-shot that loops as a whole.
+#   Machine-readable on purpose: the frame ORDER is already the file order, but "where does it
+#   repeat" was previously encoded only in fid naming + prose, which nothing could read. Consumed
+#   by the sprite tool's playback and (later) by the engine's animation controller — one home.
 climb_crawl:  # -> cl_frames / cl_f0..cl_f6 (fdb table + {fcb dwell,pcnt; {fdb cel; fcb col,sub,row}..}),
 #              read by src/engine/climb_controller.s. Also the single home of the stage-3 crawl-start
 #              pose (f0) — stage-3 derives its startpose from f0, no duplicate row.
@@ -118,6 +124,7 @@ run:  # PLAYER RUN — legs+torso per frame, execution-confirmed from the oracle
 #   invariant torso AND head offset. Draw order is trace order: legs, head, torso (torso on top).
 #   `st` = the standing straight pose the run settles into — the same trio and the same rows as
 #   climb_crawl f6 (899C 138 / 8ACB 124 / 8E9B 116); dwell 21 VBL (f6649->f6670, observed once).
+  @loop c0 c7          # s0,s1 play in -> c0..c7 repeat -> e0,st play out (oracle: exactly this)
   s0   11   9CAF:39,1,143   8E9B:41,1,116   9E4A:40,0,123
   s1   11   9CD7:38,1,139   8E9B:42,0,118   9E74:40,0,125
   c0   11   9B00:38,1,141   8E9B:43,0,119   9D68:41,0,126

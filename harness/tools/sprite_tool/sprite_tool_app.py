@@ -72,20 +72,29 @@ def main():
                   activebackground=SWATCH_RGB[name], width=6,
                   command=lambda n=name: (arm(n))).pack()
         swatches[name] = fr
-    # CATEGORY selector (primary) -> scopes the FRAME/CEL list to that content/<category>/.
+    # THREE-LEVEL scoping: category -> group -> frame/cel. The group level exists because a
+    # category's flat list gets unwieldy (player alone is 77 entries); a group is one [animation]
+    # block (its frames, in file order) or the standalone cels.
     cats = catalog.categories(table)
     init_cat = "player"
-    entry_by_label = {}                                  # label -> (kind, arg) for the current category
+    entry_by_label = {}                                  # label -> (kind, arg) for the current group
+    entry_order = []                                     # labels in list order (playback walks this)
     tk.Label(bar, text="category:").pack(side="left")
     catvar = tk.StringVar(value=init_cat)
     tk.OptionMenu(bar, catvar, *cats, command=lambda c: select_category(c)).pack(side="left")
-    # FRAME/CEL selector (scoped to the category): anim frames assembled, other cels standalone.
+    # GROUP selector (secondary) -> one animation block, or the loose cels.
+    tk.Label(bar, text="group:").pack(side="left", padx=(8, 0))
+    groupvar = tk.StringVar(value="")
+    groupmenu = tk.OptionMenu(bar, groupvar, "")
+    groupmenu.pack(side="left")
+    # FRAME/CEL selector (scoped to category+group): anim frames assembled, other cels standalone.
     tk.Label(bar, text="frame/cel:").pack(side="left", padx=(8, 0))
     framevar = tk.StringVar(value="")
     framemenu = tk.OptionMenu(bar, framevar, "")
     framemenu.pack(side="left")
     prev_label = [None]
     prev_cat = [init_cat]
+    prev_group = [None]
     # cel selector (secondary — overlap routing only)
     tk.Label(bar, text="paint cel:").pack(side="left", padx=(8, 0))
     celvar = tk.StringVar(value=edit.selected)
@@ -183,21 +192,96 @@ def main():
     def select_entry(label):
         if label == prev_label[0]:
             return
+        stop_play()                      # a manual pick takes over from playback
         if _guard() == "cancel":
             framevar.set(prev_label[0] or ""); return
         _load(label)
 
-    def select_category(cat):
+    def select_group(group):
+        stop_play()
         if _guard() == "cancel":
-            catvar.set(prev_cat[0]); return
-        prev_cat[0] = cat
-        entries = catalog.entries_for(table, cat)
+            groupvar.set(prev_group[0] or ""); return
+        prev_group[0] = group
+        entries = catalog.entries_for(table, catvar.get(), group)
         entry_by_label.clear(); entry_by_label.update({l: (k, a) for l, k, a in entries})
+        entry_order[:] = [l for l, _k, _a in entries]
         m = framemenu["menu"]; m.delete(0, "end")
         for l, _k, _a in entries:
             m.add_command(label=l, command=lambda ll=l: (framevar.set(ll), select_entry(ll)))
         if entries:
             framevar.set(entries[0][0]); _load(entries[0][0])
+        refresh_buttons()
+
+    def select_category(cat):
+        stop_play()
+        if _guard() == "cancel":
+            catvar.set(prev_cat[0]); return
+        prev_cat[0] = cat
+        groups = catalog.groups_for(table, cat)
+        m = groupmenu["menu"]; m.delete(0, "end")
+        for g in groups:
+            m.add_command(label=g, command=lambda gg=g: (groupvar.set(gg), select_group(gg)))
+        if groups:
+            groupvar.set(groups[0]); select_group(groups[0])
+
+    # ---- playback -------------------------------------------------------------------------
+    # Walks the current GROUP's frames in file order at each frame's own dwell. Dwell is in VBL
+    # (the oracle's timebase, one VBL = one display frame), so ms = dwell * 1000/59.94. Where the
+    # block declares @loop, the repeating span is honoured: frames before it play in once, then the
+    # span repeats forever (that IS what the oracle does). Without @loop the whole block cycles.
+    VBL_MS = 1000.0 / 59.94
+
+    def _anim_block():
+        """The block name if the current group is an animation, else None (cels don't play)."""
+        g = groupvar.get()
+        return g if g in table.anim else None
+
+    def stop_play(_=None):
+        if state.get("after_id"):
+            root.after_cancel(state["after_id"]); state["after_id"] = None
+        if state.get("playing"):
+            state["playing"] = False
+            savebar.config(text="playback stopped", fg="white", bg="#444")
+        refresh_buttons()
+
+    def _step():
+        if not state["playing"]:
+            return
+        block = _anim_block()
+        if block is None or not entry_order:
+            stop_play(); return
+        i = state["play_i"]
+        label = entry_order[i]
+        _load(label); framevar.set(label)
+        dwell = table.anim[block][i].dwell
+        span = table.loop_span(block)
+        if span and i == span[1]:            # end of the repeating span -> back to its start
+            state["play_i"] = span[0]
+        else:
+            state["play_i"] = (i + 1) % len(entry_order)
+        state["after_id"] = root.after(max(16, int(dwell * VBL_MS)), _step)
+
+    def do_play(_=None):
+        if state.get("playing"):
+            stop_play(); return
+        block = _anim_block()
+        if block is None:
+            savebar.config(text="playback needs an animation group (this group is standalone cels)",
+                           fg="white", bg="#666"); return
+        if _guard() == "cancel":             # never discard live edits to start a preview
+            return
+        try:
+            span = table.loop_span(block)    # validates @loop against the block's frames
+        except ValueError as ex:
+            savebar.config(text=f"@loop ERROR: {ex}", fg="white", bg="#b02020"); return
+        state["playing"] = True
+        state["play_i"] = entry_order.index(framevar.get()) if framevar.get() in entry_order else 0
+        note = (f"looping {table.anim_loop[block][0]}..{table.anim_loop[block][1]}"
+                if span else "looping the whole block (no @loop declared)")
+        savebar.config(text=f"playing {block} — {note}.  Painting is disabled while playing; "
+                            f"press Play again (or Space) to stop.", fg="white", bg="#1b5e9f")
+        refresh_buttons()
+        _step()
 
     def canvas_to_frame(e):
         return screen_to_sprite(e.x - state.get("new_x0", MARGIN), e.y - state.get("new_y0", MARGIN), state["zoom"])
@@ -213,11 +297,12 @@ def main():
             coord.config(text=f"({fx},{fy}) background")
 
     def on_press(e):
+        if state.get("playing"): return                   # frames are being swapped under us
         for ce in edit.cels.values(): ce.begin_stroke()   # snapshot all for a coherent undo step
         state["painting"] = True
         on_drag(e)
     def on_drag(e):
-        if not state["painting"]: return
+        if not state["painting"] or state.get("playing"): return
         fx, fy = canvas_to_frame(e)
         if 0 <= fx < frame.W and 0 <= fy < frame.H:
             edit.paint_canvas(fx, fy, state["entry"]); redraw()
@@ -270,17 +355,22 @@ def main():
 
     def refresh_buttons():
         # every action button advertises whether its action is valid (reads existing signals only)
-        save_btn.config(state="normal" if edit.is_dirty() else "disabled")
-        undo_btn.config(state="normal" if edit.can_undo() else "disabled")
-        redo_btn.config(state="normal" if edit.can_redo() else "disabled")
-        revert_btn.config(state="normal" if edit.is_dirty() else "disabled")
-        undorevert_btn.config(state="normal" if edit.can_undo_revert() else "disabled")
+        playing = bool(state.get("playing"))
+        save_btn.config(state="disabled" if playing else ("normal" if edit.is_dirty() else "disabled"))
+        undo_btn.config(state="disabled" if playing else ("normal" if edit.can_undo() else "disabled"))
+        redo_btn.config(state="disabled" if playing else ("normal" if edit.can_redo() else "disabled"))
+        revert_btn.config(state="disabled" if playing else ("normal" if edit.is_dirty() else "disabled"))
+        undorevert_btn.config(state="disabled" if playing
+                              else ("normal" if edit.can_undo_revert() else "disabled"))
+        play_btn.config(text="■ Stop" if playing else "▶ Play",
+                        state="normal" if (playing or _anim_block()) else "disabled")
 
     undo_btn = tk.Button(bar, text="undo", command=do_undo); undo_btn.pack(side="right")
     redo_btn = tk.Button(bar, text="redo", command=do_redo); redo_btn.pack(side="right")
     revert_btn = tk.Button(bar, text="Revert to Old", command=do_revert); revert_btn.pack(side="right", padx=(8, 0))
     undorevert_btn = tk.Button(bar, text="Undo Revert", command=do_undo_revert); undorevert_btn.pack(side="right")
     save_btn = tk.Button(bar, text="SAVE", command=do_save); save_btn.pack(side="right", padx=6)
+    play_btn = tk.Button(bar, text="▶ Play", command=do_play); play_btn.pack(side="right", padx=(8, 2))
     tk.Button(bar, text="+", command=zoom_in).pack(side="right")
     tk.Button(bar, text="-", command=zoom_out).pack(side="right")
     canvas.bind("<Motion>", on_move)
@@ -289,6 +379,8 @@ def main():
     canvas.bind("<ButtonRelease-1>", on_release)
     root.bind("<Control-z>", do_undo); root.bind("<Control-y>", do_redo)
     root.bind("<Control-s>", do_save); root.bind("+", zoom_in); root.bind("-", zoom_out)
+    root.bind("<space>", do_play)                 # Space = play/stop toggle
+    root.protocol("WM_DELETE_WINDOW", lambda: (stop_play(), root.destroy()))
     arm(state["entry"])          # show the initially-armed swatch
     select_category(init_cat)    # populate the scoped frame/cel list + load the first entry
     root.mainloop()

@@ -38,6 +38,7 @@ def main():
     registry = {}   # sprite_id -> cel_file
     placement = []  # (placement_id, sprite_id, x, y)
     anim = []       # frames of the climb_crawl block: (frame_id, dwell, [(cel,col,sub,row)...])
+    anim_loop = {}  # block -> (first_fid, last_fid) from an @loop directive (see below)
     fuji = []       # (sprite_id, col, sub, row)  Fuji backdrop cels
     section = None
     cur_block = None    # current [animation] named block
@@ -62,6 +63,9 @@ def main():
                 if len(parts) == 1 and s.endswith(":"):   # "<name>:" starts a named block
                     cur_block = s[:-1]
                     continue
+                if parts[0] == "@loop":       # directive: the block's repeating span (first last).
+                    anim_loop[cur_block] = (parts[1], parts[2])   # not a frame row — never emitted
+                    continue                  #   as a frame; see the loop symbols below.
                 # frame_id  dwell  cel:col,sub,row  cel:col,sub,row ...  (belongs to cur_block)
                 fid, dwell, tokens = parts[0], int(parts[1]), parts[2:]
                 pparts = []
@@ -122,6 +126,13 @@ def main():
     an.append("*   frame block = {fcb dwell, pcnt; per part: fdb cel; fcb col,sub,row}.")
     an.append("cl_frames:")
     an.append("        fdb     " + ",".join("cl_" + fid for fid, _, _ in anim))
+    # loop span: emitted ONLY if the block declares @loop (climb_crawl currently does not, so this
+    # adds nothing today). The controller reads cl_loop_first/last as frame INDICES into cl_frames.
+    if "climb_crawl" in anim_loop:
+        ids = [fid for fid, _, _ in anim]
+        first, last = anim_loop["climb_crawl"]
+        an.append(f"cl_loop_first:  fcb {ids.index(first)}   ; @loop {first}")
+        an.append(f"cl_loop_last:   fcb {ids.index(last)}   ; @loop {last}")
     for fid, dwell, pparts in anim:
         an.append(f"cl_{fid}:  fcb     {dwell},{len(pparts)}")
         for cel, col, sub, row in pparts:

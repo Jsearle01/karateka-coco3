@@ -7,6 +7,7 @@ Wraps the §2F single-home table format (same sections gen_scene6_placement.py e
   [placement]  placement_id sprite_id col sub row     (static single position)
   [fuji]       sprite_id col sub row
   [animation]  <name>:  then rows "frame dwell cel:col,sub,row ..."  (animated, per-frame/part)
+               optional "@loop <first_fid> <last_fid>" — the repeating span (see anim_loop)
 
 Read fresh each open; no persisted manifest (§2F).
 """
@@ -34,6 +35,7 @@ class Table:
         self.placement = {}   # placement_id -> (sprite_id, col, sub, row)
         self.fuji = {}        # sprite_id -> (col, sub, row)
         self.anim = {}        # block_name -> [Frame, ...]
+        self.anim_loop = {}   # block_name -> (first_fid, last_fid) from @loop, or absent
         self._parse()
 
     def _parse(self):
@@ -57,6 +59,8 @@ class Table:
                 elif section == "anim":
                     if len(p) == 1 and s.endswith(":"):
                         block = s[:-1]; self.anim[block] = []; continue
+                    if p[0] == "@loop":            # directive, not a frame: the repeating span
+                        self.anim_loop[block] = (p[1], p[2]); continue
                     fid, dwell, toks = p[0], int(p[1]), p[2:]
                     parts = []
                     for t in toks:
@@ -67,3 +71,19 @@ class Table:
 
     def cel_path(self, cel_id):
         return os.path.join(ROOT, self.registry[cel_id], "converted.s")
+
+    def loop_span(self, block):
+        """(first_index, last_index) of the block's repeating span, or None if it has no @loop.
+        Raises if @loop names a frame the block doesn't have — a silent wrong loop is worse."""
+        if block not in self.anim_loop:
+            return None
+        first, last = self.anim_loop[block]
+        ids = [f.fid for f in self.anim[block]]
+        for fid in (first, last):
+            if fid not in ids:
+                raise ValueError(f"[animation] {block}: @loop names unknown frame '{fid}' "
+                                 f"(block has {ids})")
+        i, j = ids.index(first), ids.index(last)
+        if i > j:
+            raise ValueError(f"[animation] {block}: @loop {first}..{last} runs backwards")
+        return i, j

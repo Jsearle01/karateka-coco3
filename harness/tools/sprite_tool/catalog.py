@@ -30,22 +30,48 @@ def _block_category(table, block):
                 cats.add(table.registry[part.cel_id].split("/")[1])
     return cats
 
-def entries_for(table, cat):
+CELS_GROUP = "(individual cels)"
+
+def groups_for(table, cat):
+    """The category's GROUPS, for the secondary selector: one per [animation] block whose cels
+    live in `cat`, plus CELS_GROUP for the standalone cels. Scopes the frame list, which grows
+    unwieldy once a category holds several animations (player: climb_crawl + run + its cast)."""
+    blocks = [b for b in table.anim if cat in _block_category(table, b)]
+    out = list(blocks)
+    if _loose_cels(table, cat, blocks):
+        out.append(CELS_GROUP)
+    return out
+
+def _anim_dirs(table, blocks):
+    dirs = set()
+    for block in blocks:
+        for fr in table.anim[block]:
+            for part in fr.parts:
+                if part.cel_id in table.registry:
+                    dirs.add(os.path.normpath(os.path.join(ROOT, table.registry[part.cel_id])))
+    return dirs
+
+def _loose_cels(table, cat, blocks):
+    """Cel dirs in `cat` that no animation block uses."""
+    used = _anim_dirs(table, blocks)
+    return [d for d in sorted(glob.glob(os.path.join(CONTENT, cat, "*")))
+            if os.path.isdir(d) and os.path.exists(os.path.join(d, "converted.s"))
+            and os.path.normpath(d) not in used]
+
+def entries_for(table, cat, group=None):
     """List of (label, kind, arg):
          kind='anim' arg=(block, index) — an assembled animation frame
          kind='cel'  arg=cel_dir        — a standalone individual cel
-       Animation frames (whose cels live in `cat`) first, then individual cels not in a block."""
-    out, anim_dirs = [], set()
-    for block in table.anim:
-        if cat in _block_category(table, block):
+       group=None  -> everything in the category (animation frames first, then loose cels)
+       group=<block name> -> only that block's frames, in file order
+       group=CELS_GROUP   -> only the loose cels"""
+    blocks = [b for b in table.anim if cat in _block_category(table, b)]
+    out = []
+    if group is None or group != CELS_GROUP:
+        for block in ([group] if group in blocks else blocks if group is None else []):
             for i, fr in enumerate(table.anim[block]):
                 out.append((f"{block} {fr.fid}", "anim", (block, i)))
-            for fr in table.anim[block]:
-                for part in fr.parts:
-                    if part.cel_id in table.registry:
-                        anim_dirs.add(os.path.normpath(os.path.join(ROOT, table.registry[part.cel_id])))
-    for celdir in sorted(glob.glob(os.path.join(CONTENT, cat, "*"))):
-        if os.path.isdir(celdir) and os.path.exists(os.path.join(celdir, "converted.s")):
-            if os.path.normpath(celdir) not in anim_dirs:
-                out.append((os.path.basename(celdir), "cel", celdir))
+    if group is None or group == CELS_GROUP:
+        for celdir in _loose_cels(table, cat, blocks):
+            out.append((os.path.basename(celdir), "cel", celdir))
     return out
