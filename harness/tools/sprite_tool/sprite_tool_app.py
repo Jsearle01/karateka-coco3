@@ -51,9 +51,15 @@ def main():
 
     root = tk.Tk()
     root.title(f"sprite tool — {frame.label}")
+    root.minsize(1120, 720)      # below this the toolbar rows clip and controls vanish silently
     state = {"zoom": 4, "entry": "black", "img": None, "painting": False}
 
+    # TWO toolbar rows. The selectors get their own row because an OptionMenu sizes itself to the
+    # SELECTED label: switching group to `climb_crawl f0` (14 chars) from `run s0` (6) widened the
+    # row, overflowed the window, and Tk clipped the right-hand button cluster from its left edge —
+    # the Play button silently vanished. Separate rows + fixed menu widths remove the contention.
     bar = tk.Frame(root); bar.pack(fill="x")
+    selbar = tk.Frame(root); selbar.pack(fill="x")
     # FIXED width (monospace) + left-anchored so the readout's changing text never resizes the
     # label and shoves the palette/controls to its right.
     coord = tk.Label(bar, text="move over a pixel…", font=("Consolas", 10), width=46, anchor="w")
@@ -79,27 +85,31 @@ def main():
     init_cat = "player"
     entry_by_label = {}                                  # label -> (kind, arg) for the current group
     entry_order = []                                     # labels in list order (playback walks this)
-    tk.Label(bar, text="category:").pack(side="left")
+    tk.Label(selbar, text="category:").pack(side="left")
     catvar = tk.StringVar(value=init_cat)
-    tk.OptionMenu(bar, catvar, *cats, command=lambda c: select_category(c)).pack(side="left")
+    tk.OptionMenu(selbar, catvar, *cats,
+                  command=lambda c: select_category(c)).pack(side="left")
     # GROUP selector (secondary) -> one animation block, or the loose cels.
-    tk.Label(bar, text="group:").pack(side="left", padx=(8, 0))
+    tk.Label(selbar, text="group:").pack(side="left", padx=(8, 0))
     groupvar = tk.StringVar(value="")
-    groupmenu = tk.OptionMenu(bar, groupvar, "")
+    groupmenu = tk.OptionMenu(selbar, groupvar, "")
+    groupmenu.config(width=16, anchor="w")           # FIXED width: label length can't reflow the row
     groupmenu.pack(side="left")
     # FRAME/CEL selector (scoped to category+group): anim frames assembled, other cels standalone.
-    tk.Label(bar, text="frame/cel:").pack(side="left", padx=(8, 0))
+    tk.Label(selbar, text="frame/cel:").pack(side="left", padx=(8, 0))
     framevar = tk.StringVar(value="")
-    framemenu = tk.OptionMenu(bar, framevar, "")
+    framemenu = tk.OptionMenu(selbar, framevar, "")
+    framemenu.config(width=24, anchor="w")           # FIXED width (longest label is a cel dir name)
     framemenu.pack(side="left")
     prev_label = [None]
     prev_cat = [init_cat]
     prev_group = [None]
-    # cel selector (secondary — overlap routing only)
-    tk.Label(bar, text="paint cel:").pack(side="left", padx=(8, 0))
+    # cel selector (overlap routing only) — also on the selector row, same reason.
+    tk.Label(selbar, text="paint cel:").pack(side="left", padx=(8, 0))
     celvar = tk.StringVar(value=edit.selected)
     def on_cel(*_): edit.selected = celvar.get()
-    celmenu = tk.OptionMenu(bar, celvar, *edit.cels.keys(), command=on_cel)
+    celmenu = tk.OptionMenu(selbar, celvar, *edit.cels.keys(), command=on_cel)
+    celmenu.config(width=10, anchor="w")
     celmenu.pack(side="left")
 
     canvas = tk.Canvas(root, width=1040, height=640, bg="#282828"); canvas.pack(fill="both", expand=True)
