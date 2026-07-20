@@ -9,6 +9,20 @@ committed asset. **Identical ⇒ pure converter output ⇒ safe. ANY diff ⇒ PR
 `$A3E9` converted twice with identical params → byte-identical. The method is deterministic; the diff
 results are trustworthy (F-A1 not triggered).
 
+## ⚠ STANDING RULE — this table is a SNAPSHOT; the registry `authored` flag is LIVE (2026-07-20)
+**Any cel edited in the sprite tool becomes ALTERED the moment it is saved, and this table does not
+know it.** `save.py` writes a `.bak`, writes the opacity sidecar, and flips that cel's
+`[registry]` row in `content/scene6/scene6_placement.txt` to **`authored`** — that flag is written at
+save time and is therefore always current, whereas the counts below are a point-in-time re-convert
+census (2026-07-18). **Before converting/re-converting/overwriting ANY cel (CLAUDE.md §2B), check the
+registry `authored` flag FIRST and treat it as authoritative; a "pure" verdict in the table below is
+only valid for cels whose registry row carries no `authored` flag.** Where the two disagree, the flag
+wins and the table is stale — update it and surface the delta.
+
+Live at this writing: `scene6_climb_A3C5`, `scene6_climb_A3E9` are flagged `authored`. The
+**`player_run_*`** set (16 run cels, ported Stage B0) is **in active in-tool authoring by Jay** — its
+"77 pure / 0 protected" row below is expected to go stale; trust the flags.
+
 ## Re-convertible cels (188 of 280) — 184 pure, 4 altered
 Recipes that supply exact params + oracle addr: `stage0_convert_scene6.py`, `stage0_convert_scene6_bg.py`,
 `stage3_convert_climb.py`, `stage2_convert_arrow.py`.
