@@ -1,3 +1,9 @@
+> **SUPERSEDED (2026-07-20):** the existing `HAL_gfx_blit_sprite_mixed` / `_masked` blits
+> solve mixed per-region/per-column opacity with **NO pixel-format change** (2bpp preserved;
+> opacity lives in a derived sidecar descriptor, authored by the sprite tool). The 4bpp `f`
+> format change below is not being pursued. Kept for provenance. *(One-line marker per the
+> M4/M5 dispatch §7; the Orchestrator owns any fuller superseding text.)*
+
 # Opaque-black `f` refactor — plan (dedicated effort, Jay-directed 2026-06-19)
 
 ## Goal
