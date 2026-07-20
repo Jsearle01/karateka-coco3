@@ -112,6 +112,28 @@ exactly ONE home for each.
   verdict verifies it against the tree (no inline placement; changed pixels are
   `.s` edits). Bypass = failed verdict.
 
+### §2F.1 — Table-driven contract (hardened by the scene-6 migration)
+
+1. Placement is `col, sub, row` (sub-byte-precise) EVERYWHERE — never lossy.
+   (Caught: the climb's flat rows dropped sub=3/2, a latent lossy home.) Both
+   `[placement]` and `[animation]` carry `sub`.
+2. Animated placement lives in `[animation]` — named blocks (`climb_crawl:`,
+   `walk:` …), per-frame/per-part. Static single position lives in `[placement]`.
+   A flat x/y cannot represent animated or sub-byte placement.
+3. Completeness bar: the table holds EVERYTHING needed to assemble a frame — file
+   + dims + `start_col` (cel), per-frame X-offset (where present), scene Y,
+   composition. A missed input ⇒ the tool assembles the wrong frame.
+4. Registry includes EVERY converted scene-6 cel — placed or not (derivable, free
+   from the cel) — so the tool can load unplaced cels; placement rows arrive when
+   placed.
+5. `start_col` is a STRUCTURED registry field (not a cel comment).
+6. Migration gate = RENDER-NEUTRAL (framebuffer-diff byte-identical), NOT
+   `.bin`-byte-identical (a mid-file table shifts addresses; expected). Any pixel
+   change ⇒ STOP.
+7. Relocation only — a migration must not "fix" placement (separate Jay-gated
+   task).
+8. Fills are substrate, NOT table rows (striations, ground, wall, wall-top RMW).
+
 ---
 
 ## 3. PNG Handling Rules
