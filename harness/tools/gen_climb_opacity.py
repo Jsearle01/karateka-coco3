@@ -23,6 +23,7 @@ sys.path.insert(0, os.path.join(HERE, "sprite_tool"))
 from placement_table import Table, ROOT
 from celio import Cel
 import sidecar as SC
+import opacity as O
 
 OUT = os.path.join(ROOT, "tests", "scripted", "scene6_climb_opacity_gen.s")
 TYPE = {"mixed": 1, "masked": 2, "stencil": 3}
@@ -57,11 +58,26 @@ def main():
         sc = SC.read_sidecar(cel_dir)
         if not sc:                                        # converted/none -> no descriptor
             continue
-        kind, payload = sc
+        # RE-DERIVE from the sidecar's marks (robust: a stale/incomplete stored descriptor — e.g.
+        # a pre-fix mixed sidecar that didn't cover colour-only bytes — is corrected here).
+        cel = Cel(os.path.join(cel_dir, "converted.s"))
+        kind, payload = O.derive(cel, O.decode_to_opacity(cel, sc[0], sc[1]))
         label = os.path.basename(cel_dir)                 # the cel's asm label
         desc = f"op_{cel_id}"
         if kind == "mixed":
-            out.append(f"{desc}:  ; mixed (rides sub-byte via the underlying blits)")
+            # coverage guard: the mixed blit draws ONLY its regions, so they MUST cover every
+            # byte of the sprite or colours go undrawn (the white/orange-gap bug). STOP if not.
+            covered = set()
+            for sc_, w_, sr, nr, op in payload:
+                for rr in range(sr, sr + nr):
+                    for cc in range(sc_, sc_ + w_):
+                        covered.add((rr, cc))
+            miss = [(r, c) for r in range(cel.h) for c in range(cel.w) if (r, c) not in covered]
+            if miss:
+                stops.append(f"{cel_id}: mixed descriptor leaves {len(miss)} byte(s) uncovered "
+                             f"(would render partially transparent) — STOP")
+                continue
+            out.append(f"{desc}:  ; mixed (full-sprite coverage; rides sub-byte via the underlying blits)")
             for sc_, w_, sr, nr, op in payload:
                 out.append(f"        fcb     {sc_},{w_},{sr},{nr},{op}")
             out.append("        fcb     0,0,0,0,0")
@@ -73,7 +89,6 @@ def main():
             out.append(f"{desc}:  ; masked (byte-aligned per-column mask)")
             out.append(f"        fcb     {','.join(f'${b:02X}' for b in payload)}")
         else:                                             # stencil: pre-shift by placement sub
-            cel = Cel(os.path.join(cel_dir, "converted.s"))
             rows, w2 = _shift_stencil(payload, cel.w, sub)
             out.append(f"{desc}:  ; stencil (2D mask, pre-shifted right by sub={sub} px for byte-aligned punch)")
             out.append(f"        fcb     {cel.h},{w2}")

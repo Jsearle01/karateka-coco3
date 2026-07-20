@@ -71,20 +71,22 @@ def derive(cel, opacity):
         return 'stencil', _stencil_mask(cel, opacity)
 
 def _mixed_rects(cel, byte_op):
-    """Decompose byte-uniform opacity into rectangles. Emit only OPAQUE regions +
-    explicit TRANSP regions so the descriptor fully determines every byte (keyed bytes
-    with index-0 pixels must be blitted transparent; None bytes need no region)."""
+    """Decompose byte-uniform opacity into rectangles that COVER THE WHOLE SPRITE — the mixed
+    blit draws ONLY the regions it's given, so every byte must be in one or its colours are not
+    drawn (the 'partially transparent in white/orange' bug). A byte is opaque(1) iff it has an
+    OPAQUE index-0 mark; every other byte (keyed index-0, or colour-only/None) is transparent(0)
+    — colours are drawn either way; the flag only decides whether index-0 is solid or keyed."""
+    def op(c_v):
+        return 1 if c_v is True else 0          # True->opaque; False/None->transparent
     rects = []   # (start_col, width, start_row, num_rows, opaque)
     for r in range(cel.h):
         c = 0
         while c < cel.w:
-            v = byte_op[r][c]
-            if v is None:
-                c += 1; continue
+            o = op(byte_op[r][c])
             c0 = c
-            while c < cel.w and byte_op[r][c] == v:
+            while c < cel.w and op(byte_op[r][c]) == o:
                 c += 1
-            rects.append((c0, c - c0, r, 1, 1 if v is True else 0))
+            rects.append((c0, c - c0, r, 1, o))     # every byte covered
     return _merge_row_bands(rects)
 
 def _merge_row_bands(rects):

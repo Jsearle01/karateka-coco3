@@ -12,18 +12,14 @@ op_A3E9:  ; stencil (2D mask, pre-shifted right by sub=3 px for byte-aligned pun
         fcb     $00,$00,$00,$00,$00,$00,$00  ; row 5
         fcb     $00,$00,$00,$00,$00,$00,$00  ; row 6
         fcb     $00,$00,$00,$00,$00,$00,$00  ; row 7
-op_A3C5:  ; mixed (rides sub-byte via the underlying blits)
-        fcb     0,1,7,1,0
+op_A3C5:  ; mixed (full-sprite coverage; rides sub-byte via the underlying blits)
         fcb     0,1,16,1,1
-        fcb     0,2,1,1,0
         fcb     0,2,3,1,0
-        fcb     0,2,5,1,0
-        fcb     1,1,0,1,0
+        fcb     0,4,0,3,0
+        fcb     0,4,4,12,0
         fcb     1,3,16,1,0
         fcb     2,1,3,1,1
-        fcb     2,2,7,5,0
-        fcb     3,1,0,7,0
-        fcb     3,1,12,4,0
+        fcb     3,1,3,1,0
         fcb     0,0,0,0,0
 
 cl_opacity_tbl:  ; {fdb cel; fcb type(1=mixed,2=masked,3=stencil); fdb desc}, term fdb 0
