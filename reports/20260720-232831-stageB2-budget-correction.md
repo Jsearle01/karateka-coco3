@@ -11,8 +11,14 @@ dispatch proper arrived mid-run and the two agree. Stamped on receipt of the dis
 - **§1 mechanism:** Stage A's scroll is a **SOFTWARE band-copy (strip-scroll)**, **amortized over
   16 frames**, presented by a double-buffer page flip. **Not** a GIME hardware offset. Cited below.
 - **§2 changing region — the headline.** Framebuffer diff of consecutive scroll steps:
-  **only 826–827 bytes actually change per step**, inside a bounding box of rows 100–199 ×
-  cols 0–79. Stage A rewrites **6,480 B** to achieve **827 B** of real change — an **~8× overdraw**.
+  **only 192 bytes actually change per step**, in rows 100–180 × cols 12–72 (**244 px wide**).
+  Stage A rewrites **6,480 B** to achieve **192 B** of real change — a **~34× overdraw**.
+  *(First pass said 826 B over rows 100–199/cols 0–79. That was wrong: the GIME mode is
+  **320×192** (`gfx.s:165-170`, `$FF99=$15`), so rows 192–199 are allocated but **never
+  displayed** — pages A and B differ there in **634/640 bytes** because nothing ever paints or
+  syncs them, and the page flip made that off-screen garbage read as per-step "change". Corrected
+  by Jay's observation that the scroll spans x=19..279, which prompted the per-column histogram
+  that exposed the uniform 8-rows-everywhere signature. See §5.)*
 - **§3 honest budget.** Real per-step cost of the *running* scroll = **186,484 cycles = 6.25 VBL**.
   Adding every actor (player run + guard + arch estimate) = **≈205,700 cycles ≈ 6.9 VBL/step**:
   **63% of the oracle's 11-VBL step, 43% of Stage A's own 16-frame window. It FITS.**
@@ -47,19 +53,31 @@ budget. Both terms were wrong.** Corrected: the real scroll work, against the re
 `stageb2_dirtyregion.lua` snapshots the **displayed** page (200×80, base chosen from
 `page_register`) at the end of each step and diffs consecutive steps:
 
-| step | `cur52` | **changed bytes** | bbox rows | bbox cols | bbox area |
-|---|---|---:|---|---|---:|
-| 1–8 | `$2D`→`$26` | **826–827** (stable) | 100–199 (100 rows) | 0–79 (80 B = 320 px) | 8,000 B |
+| step | `cur52` | **changed bytes (visible)** | bbox rows | bbox cols | in x19–279 / outside |
+|---|---|---:|---|---|---|
+| 1 | `$2D` | **192** | 100–180 (81) | 12–72 (61 B = **244 px**) | 154 / 38 |
+| 2 | `$2C` | 192 | 100–180 | 11–71 (244 px) | 154 / 38 |
+| 3 | `$2B` | 193 | 100–180 | 10–70 (244 px) | 155 / 38 |
+| 4 | `$2A` | 192 | 100–180 | 9–69 (244 px) | **192 / 0** |
 
-**Read carefully — the bbox and the working set are very different numbers.** The bounding box
-spans the whole lower screen, but only **~827 bytes inside it actually differ** (10.3% of the bbox,
-**12.8%** of the 6,480 B Stage A rewrites). Stage A pays an **~8× overdraw** for implementation
-simplicity.
+**The working set is 192 bytes per step** — 3.0% of the 6,480 B Stage A rewrites (**~34× overdraw**).
 
-**Versus Jay's estimate (~40 rows × ~240 px = ~2,400 B):** the bbox is *taller and wider* than
-estimated (100 rows × 320 px), but the **true working set is ~3× SMALLER** than the estimate at
-**827 B**. Both halves of that matter: a delta-only redraw is cheaper than Jay expected, while any
-scheme that redraws the *bounding box* is 10× more expensive than it needs to be.
+**⚠ The first pass of this measurement was 4.3× too high, and the error is instructive.** It
+reported 826 B over rows 100–199. The GIME mode is **320×192**, so **rows 192–199 are allocated but
+never displayed**; pages A and B differ there in **634 of 640 bytes** (confirmed by a direct A-vs-B
+read) because nothing paints or syncs off-screen rows — and since the page flips each step, that
+static garbage read as 634 bytes of per-step "change". **I had hard-coded 200 rows from the buffer
+size rather than reading the mode the HAL sets.** The tell was in the data: a *uniform* 8 changed
+bytes in **every** column including the borders — scroll content is never uniform across the full
+width. Jay's "the scroll is x=19..279, not 0..319" is what prompted the per-column histogram that
+exposed it.
+
+**Versus Jay's x=19–279 (byte-cols 4–69):** essentially confirmed — the changing content is a
+**244 px window** (61 byte-cols), narrower than the 260 px he stated, and it **moves left** with the
+scroll. At the start of the sweep ~38 bytes sit at cols 70–72 (x 280–291), i.e. just *outside* the
+right boundary; by step 4 they have scrolled in and the split is 192/0. **That is not slop — it is
+where new content enters from the right edge**, so a B2' clip must treat the right boundary as the
+reveal seam rather than a hard cutoff.
 
 ### §6  §3 — The itemized budget, every blitter priced
 **Window = 29,859 cycles** (double-speed, execution-verified — `20260720-225328-verify-cpu-speed.md`).
@@ -89,7 +107,12 @@ dimensions from `scene6_placement_gen.s`:
 |---|---:|---:|---:|
 | Stage-A scroll as built | 186,484 | 56.8% | 39.0% |
 | **+ player + guard + arch estimate** | **≈205,691** | **≈63%** | **≈43%** |
-| *if B2' redraws only the measured 827 B delta* | *≈37,000* | *≈11%* | *≈8%* |
+| *floor: if B2' moved only the measured 192 B delta* | *≈4,300* | *≈1.3%* | *≈0.9%* |
+
+**The delta floor is ~4,300 cycles — 14% of a SINGLE VBL.** The entire scroll step's real pixel
+change could be done in one frame with room to spare; Stage A currently spends **43× that** to
+achieve it. So the amortization exists to make the *implementation* simple, not because the work is
+large — which means the 16→11 cadence squeeze has enormous headroom and needs no cleverness.
 
 **⇒ IT FITS**, on the architecture that already exists, with the actors included, and with roughly
 a **third to a half** of the step budget unused. **No item fails.** The only item I cannot measure

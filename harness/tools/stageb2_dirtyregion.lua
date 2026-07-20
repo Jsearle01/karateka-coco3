@@ -9,7 +9,11 @@
 local BIN   = os.getenv("S_BIN") or "C:/Projects/karateka_coco3/tests/scripted/scene6_walk_scrollA_driver.bin"
 local OUT   = os.getenv("V_OUT") or "C:/Projects/karateka_coco3/build/logs/stageb2_dirtyregion.txt"
 local PHASE, S52, PAGEREG = 0x049A, 0x049B, 0x0050
-local ROWS, STRIDE = 200, 80
+-- 192, NOT 200: the GIME mode is 320x192x4 (gfx.s:165-170, $FF99=$15). The buffer holds 200
+-- rows' worth of bytes but rows 192-199 are NEVER DISPLAYED. Diffing them counted 634 bytes/step
+-- of off-screen garbage (pages A and B differ there in 634/640 bytes — they are simply never
+-- painted or synced), which inflated the first measurement of the working set by ~4x.
+local ROWS, STRIDE = 192, 80
 local cpu = manager.machine.devices[":maincpu"]
 local mem = cpu.spaces["program"]
 local scr = manager.machine.screens:at(1)
@@ -77,6 +81,31 @@ _G._n = emu.add_machine_frame_notifier(function()
         end
       end
       steps = steps + 1
+      -- per-COLUMN histogram: tests whether the scroll really lives in x=19..279
+      -- (byte-cols 4..69) or spills into the border columns.
+      local colhist = {}
+      for c = 0, STRIDE-1 do
+        local k = 0
+        for r = 0, ROWS-1 do if cur[r][c] ~= prev[r][c] then k = k + 1 end end
+        colhist[c] = k
+      end
+      local parts = {}
+      for c = 0, STRIDE-1 do if colhist[c] > 0 then parts[#parts+1] = string.format("%d:%d", c, colhist[c]) end end
+      f:write("  cols  " .. table.concat(parts, " ") .. "\n")
+      -- per-ROW histogram: identifies any FULL-WIDTH band (a row changing across all 80 cols is
+      -- not scroll content clipped to the play area — it is something else, and worth naming).
+      local rparts = {}
+      for r = 0, ROWS-1 do
+        local k = 0
+        for c = 0, STRIDE-1 do if cur[r][c] ~= prev[r][c] then k = k + 1 end end
+        if k > 0 then rparts[#rparts+1] = string.format("y%d:%d", r, k) end
+      end
+      f:write("  rows  " .. table.concat(rparts, " ") .. "\n")
+      local inreg, outreg = 0, 0
+      for c = 0, STRIDE-1 do
+        if c >= 4 and c <= 69 then inreg = inreg + colhist[c] else outreg = outreg + colhist[c] end
+      end
+      f:write(string.format("  split in x19..279 (cols 4-69) = %d bytes ; OUTSIDE = %d bytes\n", inreg, outreg))
       if n > 0 then
         f:write(string.format("step=%-3d cur52=%02X changed_bytes=%-6d rows=%d..%d (%d) cols=%d..%d (%d bytes = %d px)  bbox=%d B\n",
           steps, mem:read_u8(S52), n, r0, r1, r1-r0+1, c0, c1, c1-c0+1, (c1-c0+1)*4,
