@@ -640,6 +640,24 @@ climb anim_02, `oracle_anim02_capture.lua`):
 
 ---
 
+## 12a. Log the ACTOR-POSITION var beside each draw — it makes a moving animation's ANCHOR readable
+When capturing a **moving** animation's composition (the run, a walk — anything that translates),
+the draw trace alone can't say what a part's column is measured *from*. **Add the actor-position ZP
+to the per-draw line** (`$62` player / `$72` guard / `$52` scroll — the same fields
+`recon1_drawprog.lua` logs) and check whether some part's `$05` **equals** it: in the run, legs
+`$05` == `$62` in every steady-state pose ⇒ that part's `xadj` is 0 ⇒ **the frame origin IS the
+player X**, measured rather than assumed. Then the other parts' offsets fall out as per-pairing
+constants you can falsify: identical `(dx,dy)` on every recurrence across **independent** windows
+(42 observations / 10 pairings / 0 contradictions), plus free geometry checks
+(`row_torso + h_torso == row_legs` for all frames). **Also log `$10`** — X = `$05*7 + $10`, so a
+sub-byte-only step (`$10` 1→6) moves the actor with `$05` unchanged; dropping `$10` silently
+collapses distinct positions. Tool: `harness/tools/stageb0_run_capture.lua` (bank-filtered so a
+whole attract cycle stays readable). *Established:* Stage-B0 run-composition port 2026-07-20. See
+`docs/project/run-composition-map.md`. *Candidate:*
+`read-the-animation-anchor-off-the-trace-dont-invent-one`.
+
+---
+
 ## 13. Loop a scene SEGMENT via SAVE-STATE (live visual-comparison view)
 To loop the oracle over ONE segment (e.g. climb→fight) instead of the whole natural attract loop (which
 replays the full ~2-min intro each cycle): **save-state at the segment start, load-state at the segment end**

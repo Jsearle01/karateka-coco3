@@ -20,8 +20,8 @@ A9E2   content/background/scene6_bg_A9E2
 A9B8   content/background/scene6_bg_A9B8
 A976   content/background/scene6_bg_A976
 A948   content/background/scene6_bg_A948
-A3C5   content/player/scene6_climb_A3C5
-A3E9   content/player/scene6_climb_A3E9
+A3C5    content/player/scene6_climb_A3C5         authored
+A3E9    content/player/scene6_climb_A3E9         authored
 A425   content/player/scene6_climb_A425
 A40B   content/player/scene6_climb_A40B
 A4A4   content/player/scene6_climb_A4A4
@@ -32,6 +32,23 @@ A572   content/player/scene6_climb_A572
 A548   content/player/scene6_climb_A548
 A5DC   content/player/scene6_climb_A5DC
 A5CC   content/player/scene6_climb_A5CC
+# run cycle: 8 legs + 8 torsos ($9B00-$9E92) — composition in [animation] run: below.
+9B00   content/player/player_run_legs_9B00
+9B6B   content/player/player_run_legs_9B6B
+9BE5   content/player/player_run_legs_9BE5
+9C1B   content/player/player_run_legs_9C1B
+9C65   content/player/player_run_legs_9C65
+9CAF   content/player/player_run_legs_9CAF
+9CD7   content/player/player_run_legs_9CD7
+9D1E   content/player/player_run_legs_9D1E
+9D68   content/player/player_run_torso_9D68
+9D97   content/player/player_run_torso_9D97
+9DD5   content/player/player_run_torso_9DD5
+9E05   content/player/player_run_torso_9E05
+9E2E   content/player/player_run_torso_9E2E
+9E4A   content/player/player_run_torso_9E4A
+9E74   content/player/player_run_torso_9E74
+9E92   content/player/player_run_torso_9E92
 899C   content/player/scene6_player_899C
 8ACB   content/player/scene6_player_8ACB
 8E9B   content/player/scene6_player_8E9B
@@ -78,3 +95,29 @@ climb_crawl:  # -> cl_frames / cl_f0..cl_f6 (fdb table + {fcb dwell,pcnt; {fdb c
   f4    7   A572:22,2,141   A548:24,1,131
   f5    7   A5DC:24,1,127   A5CC:26,0,120
   f6   60   899C:25,2,138   8ACB:25,2,124   8E9B:26,0,116
+
+run:  # PLAYER RUN — legs+torso per frame, execution-confirmed from the oracle attract
+#   (blit-entry trace build/logs/stageb0_run_attract.txt: f6423-6630 + f8610-8947, 42 pose
+#   observations; every (legs,torso) pairing gives a UNIQUE dx/dy — see
+#   docs/project/run-composition-map.md). NOT 16 frames: 16 CELS (8 legs + 8 torsos) compose
+#   11 frames = 2 start (s0,s1) + an 8-frame cycle (c0..c7, loops c0) + 1 stop (e0).
+#   Cycle reuses legs/torsos across pairings (9B00 pairs 9D68 in c0 and 9D97 in c4), so a
+#   pairing is a leg-phase x torso-phase composite, NOT a 1:1 leg->torso mapping.
+#   ANCHOR: the legs cel is drawn AT the player position (legs col == $62 every steady-state
+#   pose) => a frame's origin IS the player X and the torso sits at +dx px. Frames here are
+#   normalized to ONE anchor so the cycle plays IN PLACE; the engine (Stage B2) supplies the
+#   live X advance. Rows verbatim oracle. Registration via harness/tools/gen_stageb0_run.py
+#   (same x=col*7+sub+20 / leading_trim formula as the climb crawl). Dwell 11 VBL = the
+#   steady-state measured cadence (f8802-8947); the loop is compute-bound so the observed
+#   gap ranges 7-21 under scene load (idioms 8a) — 11 is the clean free-running value.
+  s0   11   9CAF:39,1,143   9E4A:40,0,123
+  s1   11   9CD7:38,1,139   9E74:40,0,125
+  c0   11   9B00:38,1,141   9D68:41,0,126
+  c1   11   9B6B:38,1,141   9D68:41,3,126
+  c2   11   9BE5:39,1,149   9DD5:41,3,126
+  c3   11   9C1B:38,1,138   9E05:40,0,125
+  c4   11   9B00:38,1,141   9D97:41,0,126
+  c5   11   9B6B:38,1,141   9D97:41,3,126
+  c6   11   9BE5:39,1,149   9DD5:41,3,126
+  c7   11   9C65:38,1,138   9E2E:40,0,125
+  e0   11   9D1E:38,1,138   9E92:38,1,126
