@@ -134,19 +134,29 @@ is the arch, because it is not ported (below).
   plus a 42.2% strip chunk is 61.8% of a frame — still fits — but the worst frame today (67.2%)
   has only 9,786 cycles spare, so **actors must not land on the present/flip frame**. Phase
   placement is a real constraint; it is scheduling, not a budget failure.
-- The 827 B delta is measured for Stage A's **1-column** step. B0 shows the oracle advancing **1–3
-  columns** per pose; a 3-col step changes more bytes (bounded by the same bbox). Cost is per byte,
-  so it scales with the delta, not with the column count — but it was not separately measured.
+- The 192 B delta is measured for Stage A's **1-column** step. B0 shows the oracle advancing **1–3
+  columns** per pose; a 3-col step changes more bytes (bounded by the same 244 px window). Cost is
+  per byte, so it scales with the delta, not with the column count — but it was **not separately
+  measured**, and it is the one number B2' should re-check before sizing a delta-only redraw.
+- **The right boundary is a reveal seam, not a static edge.** ~38 bytes/step sit at cols 70–72
+  (x 280–291) early in the sweep and scroll in by step 4. A clip at x=279 would clip the pixels the
+  scroll is revealing.
 - `stageb2_dirtyregion.lua` diffs the **displayed** page; with double buffering the two pages
   alternate, so a step's diff is against the same-parity page two steps prior in buffer terms. The
-  stable 826–827 across 8 consecutive steps indicates this is not distorting the figure.
+  stable 192–193 across 8 consecutive steps indicates this is not distorting the figure. **This same
+  alternation is what turned the never-painted off-screen rows into a phantom 634 B/step** — see §5.
+- **Measurement-method flag for anyone reusing these tools:** buffer geometry ≠ display geometry.
+  `stageb2_dirtyregion.lua` now hard-codes 192 rows with the mode citation; if a future mode change
+  alters `$FF99`, that constant must follow it.
 
 ### §9  Follow-up candidates
 1. **B2' proceeds** on the amortized architecture. Budget is not the constraint; **phase scheduling**
    is (keep actors off the present/flip frame).
-2. **The 8× overdraw is the optimization headroom** — a delta-only redraw (827 B vs 6,480 B) would
-   cut scroll cost ~5×, buying the 16→11 cadence squeeze outright. Worth doing only if the squeeze
-   proves tight; Stage A already fits at 11 VBL (56.8%) without it.
+2. **The ~34× overdraw is the optimization headroom — but it is almost certainly not needed.**
+   A delta-only redraw would cut the scroll step from 186,484 cycles to ~4,300 (14% of ONE VBL).
+   Stage A **already fits** an 11-VBL step at 56.8% as built, so the squeeze needs no cleverness;
+   the delta figure matters as the answer to "is there room for X?" — and the answer is yes for
+   essentially any X. **Do not spend B2' effort optimizing a budget that is not binding.**
 3. **Measure the arch once ported** — the only unmeasured item.
 4. **Standing acceptance gate:** `stageb2_stepcost.lua` — any frame's `work` ≥ 29,859 is an overrun.
 
@@ -156,6 +166,21 @@ earlier falsified the NO-GO on two independent grounds (a 1 MHz Apple IIe runs t
 figure describes a routine the sandbox never runs per-frame). Both were correct and both are the
 reason this re-measurement exists.
 
+### §10a Correction history of this report (so the Orchestrator can see what moved)
+This report has been corrected once since first commit; the numbers below are current.
+
+| | first commit `83a9b6d` | **current `b522255`+** | why it moved |
+|---|---|---|---|
+| changed bytes/step | 826–827 | **192** | 200-row diff counted **off-screen** rows 192–199 (mode is 320×192) |
+| changing region | rows 100–199, cols 0–79 | **rows 100–180, cols 12–72 (244 px)** | same |
+| overdraw vs Stage A | ~8× | **~34×** | same |
+| delta floor | ~37,000 cyc | **~4,300 cyc (14% of 1 VBL)** | same |
+| **verdict** | **FITS (63% of an 11-VBL step)** | **FITS — unchanged** | the correction only widened the margin |
+
+**Nothing in §4 (mechanism), §6 (per-frame work, actor pricing) or the verdict changed** — those
+were measured against the running loop and are unaffected by the display-height error, which touched
+only the dirty-region figure.
+
 ### §11 Candidate(s) captured this task
 `a-measurement-that-contradicts-a-working-system-in-the-same-repo-is-measuring-the-wrong-thing` —
 the voided gate reported "the scroll cannot fit" while its own M1 table showed the scroll running on
@@ -164,6 +189,15 @@ contradiction was never reconciled. **The check is cheap and mechanical: before 
 infeasibility, look for a working instance of the thing you just declared impossible** — in the same
 repo, in the reference implementation, or in the artifact you already measured. Here all three
 existed (Stage A on budget; a 1 MHz Apple IIe doing the scene; M1). Pool row pending.
+
+`buffer-geometry-is-not-display-geometry-read-the-mode-not-the-allocation` — the dirty-region
+measurement diffed 200 rows because that is the **buffer** size; the **display** is 192 rows
+(`$FF99=$15`), and the 8 never-displayed rows contributed **77% of the measured "change"** as pure
+artifact. Generalizes to any framebuffer/texture/tensor measurement where the allocation is padded
+beyond the live extent. **The self-check that would have caught it without an external prompt: the
+per-column histogram showed a UNIFORM count in every column including the borders — a signature no
+localized change can produce.** When a measurement has a suspiciously flat component, isolate it
+before reporting the total. Pool row pending.
 
 ### §12 Commit
 <hash — stated inline>. Measurement only; prod `88eba89b15cdf17c8d25e082d2d3e1f3cce57d38` untouched.
