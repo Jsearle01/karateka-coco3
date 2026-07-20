@@ -53,7 +53,10 @@ def main():
     state = {"zoom": 4, "entry": "black", "img": None, "painting": False}
 
     bar = tk.Frame(root); bar.pack(fill="x")
-    coord = tk.Label(bar, text="move over a pixel…", font=("Consolas", 10)); coord.pack(side="left", padx=6)
+    # FIXED width (monospace) + left-anchored so the readout's changing text never resizes the
+    # label and shoves the palette/controls to its right.
+    coord = tk.Label(bar, text="move over a pixel…", font=("Consolas", 10), width=46, anchor="w")
+    coord.pack(side="left", padx=6)
     # palette — each swatch shows its colour; the ARMED one gets a bright highlight border
     swatches = {}
     def arm(n):
