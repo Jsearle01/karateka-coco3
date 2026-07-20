@@ -14,7 +14,8 @@ derive-and-verify, .bak). FIXED dims — painting never changes a cel's size/ori
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from placement_table import Table
-from frame_assembly import assemble_animation, assemble_static
+from frame_assembly import assemble_animation, assemble_static, assemble_cel
+import catalog
 from pixel_map import CELL_W, CELL_H, screen_to_sprite
 from render import render_frame
 from edit_model import FrameEdit, PALETTE
@@ -36,7 +37,7 @@ def build_frame(table, args):
 
 def main():
     table = Table()
-    frame, ident = build_frame(table, sys.argv[1:])
+    frame, _ = build_frame(table, sys.argv[1:])   # placeholder; select_category() loads the real first entry
     edit = FrameEdit(table, frame)
 
     try:
@@ -71,23 +72,20 @@ def main():
                   activebackground=SWATCH_RGB[name], width=6,
                   command=lambda n=name: (arm(n))).pack()
         swatches[name] = fr
-    # FRAME selector (primary): every animation frame + every static placement.
-    frame_specs = []
-    for block, frames in table.anim.items():
-        for i, fr in enumerate(frames):
-            frame_specs.append((f"{block} {fr.fid}", ("anim", block, i)))
-    for pid in table.placement:
-        frame_specs.append((f"static: {pid}", ("static", pid, None)))
-    spec_by_label = dict(frame_specs)
-    if len(ident) >= 2:
-        init_label = f"{ident[0]} {table.anim[ident[0]][ident[1]].fid}"
-    else:
-        init_label = f"static: {ident[0]}"
-    prev_label = [init_label]
-    tk.Label(bar, text="frame:").pack(side="left")
-    framevar = tk.StringVar(value=init_label)
-    tk.OptionMenu(bar, framevar, *[l for l, _ in frame_specs],
-                  command=lambda l: select_frame(l)).pack(side="left")
+    # CATEGORY selector (primary) -> scopes the FRAME/CEL list to that content/<category>/.
+    cats = catalog.categories(table)
+    init_cat = "player"
+    entry_by_label = {}                                  # label -> (kind, arg) for the current category
+    tk.Label(bar, text="category:").pack(side="left")
+    catvar = tk.StringVar(value=init_cat)
+    tk.OptionMenu(bar, catvar, *cats, command=lambda c: select_category(c)).pack(side="left")
+    # FRAME/CEL selector (scoped to the category): anim frames assembled, other cels standalone.
+    tk.Label(bar, text="frame/cel:").pack(side="left", padx=(8, 0))
+    framevar = tk.StringVar(value="")
+    framemenu = tk.OptionMenu(bar, framevar, "")
+    framemenu.pack(side="left")
+    prev_label = [None]
+    prev_cat = [init_cat]
     # cel selector (secondary — overlap routing only)
     tk.Label(bar, text="paint cel:").pack(side="left", padx=(8, 0))
     celvar = tk.StringVar(value=edit.selected)
@@ -131,26 +129,52 @@ def main():
         status.config(text=f"zoom {z}x  cell {CELL_W*z}x{CELL_H*z}px (4:5)  "
                            f"active={edit.selected}  edited={[c.cel_id for c in edit.edited_cels()]}")
 
-    def select_frame(label):
+    def _load(label):
+        """Load an entry (assembled anim frame or standalone cel) into frame/edit; rewire cels; redraw."""
         nonlocal frame, edit
-        if label == prev_label[0]:
-            return
-        if edit.edited_cels():                       # discard-guard for unsaved edits
-            import tkinter.messagebox as mb
-            if not mb.askyesno("Discard edits?",
-                               f"Unsaved edits on {[c.cel_id for c in edit.edited_cels()]} will be "
-                               f"LOST switching frames. Switch anyway?"):
-                framevar.set(prev_label[0]); return   # revert the dropdown
-        kind, a, b = spec_by_label[label]
-        frame = assemble_animation(table, a, b) if kind == "anim" else assemble_static(table, a)
+        kind, arg = entry_by_label[label]
+        if kind == "anim":
+            frame = assemble_animation(table, arg[0], arg[1])
+        else:                                             # kind == "cel": standalone content cel
+            frame = assemble_cel(arg)
         edit = FrameEdit(table, frame)
         prev_label[0] = label
-        m = celmenu["menu"]; m.delete(0, "end")       # rebuild the cel selector for the new frame
+        m = celmenu["menu"]; m.delete(0, "end")           # rebuild the cel (overlap) selector
         for cid in edit.cels:
             m.add_command(label=cid, command=lambda c=cid: (celvar.set(c), on_cel()))
         celvar.set(edit.selected)
         root.title(f"sprite tool — {frame.label}")
         redraw()
+        errs = edit.reload_errors()
+        if errs:                                          # Part C gate: never a silent lossy reload
+            savebar.config(text="RELOAD STOP: " + " | ".join(errs), fg="white", bg="#b02020")
+
+    def _guard_discard():
+        if not edit.edited_cels():
+            return True
+        import tkinter.messagebox as mb
+        return mb.askyesno("Discard edits?",
+                           f"Unsaved edits on {[c.cel_id for c in edit.edited_cels()]} will be "
+                           f"LOST. Continue anyway?")
+
+    def select_entry(label):
+        if label == prev_label[0]:
+            return
+        if not _guard_discard():
+            framevar.set(prev_label[0] or ""); return
+        _load(label)
+
+    def select_category(cat):
+        if not _guard_discard():
+            catvar.set(prev_cat[0]); return
+        prev_cat[0] = cat
+        entries = catalog.entries_for(table, cat)
+        entry_by_label.clear(); entry_by_label.update({l: (k, a) for l, k, a in entries})
+        m = framemenu["menu"]; m.delete(0, "end")
+        for l, _k, _a in entries:
+            m.add_command(label=l, command=lambda ll=l: (framevar.set(ll), select_entry(ll)))
+        if entries:
+            framevar.set(entries[0][0]); _load(entries[0][0])
 
     def canvas_to_frame(e):
         return screen_to_sprite(e.x - state.get("new_x0", MARGIN), e.y - state.get("new_y0", MARGIN), state["zoom"])
@@ -227,7 +251,7 @@ def main():
     root.bind("<Control-z>", do_undo); root.bind("<Control-y>", do_redo)
     root.bind("<Control-s>", do_save); root.bind("+", zoom_in); root.bind("-", zoom_out)
     arm(state["entry"])          # show the initially-armed swatch
-    redraw()
+    select_category(init_cat)    # populate the scoped frame/cel list + load the first entry
     root.mainloop()
 
 if __name__ == "__main__":
