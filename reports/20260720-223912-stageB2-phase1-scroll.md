@@ -1,4 +1,28 @@
-## Form B Report — Stage B2: phase-1 scroll — **§0 BUDGET GATE: NO-GO (STOPPED, not built)**
+> # ⚠ THIS REPORT'S VERDICT IS **VOID** (2026-07-20, falsified by Jay + Orchestrator review)
+> **The NO-GO below is WRONG. Do not plan against it.** Two compounding errors, both mine:
+> 1. **Unit mismatch (denominator).** I compared cost against a **1-VBL frame** budget. The oracle
+>    steps the scroll once per **~11 VBL** (B0's measured run-pose dwell) and its own main loop is
+>    compute-bound at ~14 Hz (apple2e idioms §8a) — nothing must happen every frame. The step budget
+>    is **~11 VBL ≈ 328,000 cycles**, not 29,859. Applying only this fix: 5.9 VBL/step ÷ 11 VBL
+>    ≈ **54% of budget — it FITS.**
+> 2. **Wrong routine measured (numerator).** The "5 VBL full-scene draw" is the Stage-A **init**, a
+>    one-shot BUILD path. I reported it as the per-frame cost of a draw-on-demand routine **that
+>    exists nowhere in the repo**, and the running Stage-A sandbox never executes it per frame.
+> 3. **Incomplete inventory.** The per-frame itemization **omitted the guard and the arch** re-blits.
+>
+> **The counter-evidence was inside this very report**: M1 shows Stage A running the real `$52`
+> scroll ON budget (16 phases / 16 VBLs, 0 overruns). A working scroll in the same repo contradicts
+> "the scroll cannot fit"; I reported both and reconciled neither. Jay's falsification — *a 1 MHz
+> Apple IIe runs this scene, so 5.9x at double speed is not credible* — is that same check applied
+> from outside, and it should not have needed to come from outside.
+>
+> **What survives:** the raw measurements (copy ≈13 cyc/byte; cel blits ≥12/VBL; Stage A on budget;
+> the VBL-unit method and the false-cheap `machine.time` trap) and the separately-verified
+> double-speed clock (`reports/20260720-225328-verify-cpu-speed.md`). **What dies:** the M4 table,
+> the 590% figure, and the NO-GO. Successor: re-measure the REAL changing region under a scroll step
+> and itemize every actor (player + guard + arch) against the **per-step** budget.
+
+## Form B Report — Stage B2: phase-1 scroll — **§0 BUDGET GATE: NO-GO (STOPPED, not built)** — ⚠ **VERDICT VOID, see banner above**
 
 ### §1  Timing (C-35 — mandatory)
 t0=2026-07-20T22:39:12.748676000Z
