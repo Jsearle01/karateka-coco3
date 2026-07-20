@@ -220,8 +220,7 @@ def main():
                 r = save_cel(ce.cel, ce.cel_dir, ce.label, ce.opacity, ce.sprite_id, table.path)
                 conv = "converted.s byte-identical" if r["byte_identical"] else "converted.s colour-changed"
                 sc = f"opacity.s ({r['kind']}) written" if r["state"] == "authored" else "no sidecar (none)"
-                note = "  [stencil: authored; build-render wiring is a follow-up]" if r["kind"] == "stencil" else ""
-                ok_msgs.append(f"Saved {ce.cel_id} — {conv}, {sc}, registry→{r['state']}{note}")
+                ok_msgs.append(f"Saved {ce.cel_id} — {conv}, {sc}, registry→{r['state']}")
                 ce.orig_pixels = [row[:] for row in ce.cel.pixels]
                 ce.orig_opacity = [row[:] for row in ce.opacity]
             except O.CannotEncode as ex:

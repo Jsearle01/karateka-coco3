@@ -133,7 +133,8 @@ def _stencil_mask(cel, opacity):
     is index-0 AND opaque (force black), 00 elsewhere (colour pixels + keyed index-0 untouched).
     Cel-local (sprite-aligned). NOTE: stencil_punch is BYTE-ALIGNED — a cel PLACED at a sub-byte
     X needs build-side mask shifting; the tool authors/verifies the mask cel-locally (placement-
-    independent), and the build applies it (a flagged build-integration follow-up)."""
+    independent), and the build applies it — gen_climb_opacity.py pre-shifts by the placement sub
+    and the climb draw path punches it (implemented for the climb path; other paths as authored)."""
     mask = []
     for r in range(cel.h):
         row = []
