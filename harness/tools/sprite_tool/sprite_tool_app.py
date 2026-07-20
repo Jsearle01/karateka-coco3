@@ -124,6 +124,19 @@ def main():
     def opac_map():  return {cid: ce.opacity for cid, ce in edit.cels.items()}
     def chg_map():   return {cid: ce.changed() for cid, ce in edit.cels.items()}
 
+    def _pos_text():
+        """`frame 6/12 dwell 11 VBL (184 ms)` — where you are in the group while stepping.
+        Reads prev_label[0] (what _load actually loaded), not framevar, so it can't lag."""
+        if not entry_order or prev_label[0] not in entry_order:
+            return ""
+        i = entry_order.index(prev_label[0])
+        txt = f"frame {i+1}/{len(entry_order)}"
+        block = groupvar.get()
+        if block in table.anim:
+            d = table.anim[block][i].dwell
+            txt += f"  dwell {d} VBL ({round(d * 1000 / 59.94)} ms)"
+        return txt
+
     LABEL_H = 18
     def redraw():
         z = state["zoom"]
@@ -146,7 +159,8 @@ def main():
         canvas.create_image(nx, LABEL_H, anchor="nw", image=state["new_img"])
         canvas.config(scrollregion=(0, 0, nx + new.width + MARGIN, LABEL_H + new.height + MARGIN))
         status.config(text=f"zoom {z}x  cell {CELL_W*z}x{CELL_H*z}px (4:5)  "
-                           f"active={edit.selected}  edited={[c.cel_id for c in edit.edited_cels()]}")
+                           f"active={edit.selected}  edited={[c.cel_id for c in edit.edited_cels()]}"
+                           f"   {_pos_text()}")
         refresh_buttons()      # Revert/Undo-Revert enabled/grayed per the state machine
 
     def _load(label):
@@ -293,6 +307,22 @@ def main():
         refresh_buttons()
         _step()
 
+    def do_step(delta):
+        """Manual single-step in FILE ORDER — deliberately NOT honouring @loop, so every frame is
+        reachable (the loop skips e0/st forever). Clamps at both ends rather than wrapping, so
+        'I have seen every frame' is unambiguous. Routes through select_entry so the unsaved-edit
+        guard applies: _load() rebuilds the edit model, and a raw step would drop live edits."""
+        stop_play()
+        if not entry_order:
+            return
+        i = entry_order.index(prev_label[0]) if prev_label[0] in entry_order else 0
+        j = max(0, min(len(entry_order) - 1, i + delta))
+        if j == i:
+            savebar.config(text=f"at the {'first' if delta < 0 else 'last'} frame of this group "
+                                f"({len(entry_order)} total)", fg="white", bg="#666")
+            return
+        framevar.set(entry_order[j]); select_entry(entry_order[j])
+
     def canvas_to_frame(e):
         return screen_to_sprite(e.x - state.get("new_x0", MARGIN), e.y - state.get("new_y0", MARGIN), state["zoom"])
 
@@ -374,13 +404,20 @@ def main():
                               else ("normal" if edit.can_undo_revert() else "disabled"))
         play_btn.config(text="■ Stop" if playing else "▶ Play",
                         state="normal" if (playing or _anim_block()) else "disabled")
+        multi = len(entry_order) > 1
+        prev_btn.config(state="normal" if (multi and not playing) else "disabled")
+        next_btn.config(state="normal" if (multi and not playing) else "disabled")
 
     undo_btn = tk.Button(bar, text="undo", command=do_undo); undo_btn.pack(side="right")
     redo_btn = tk.Button(bar, text="redo", command=do_redo); redo_btn.pack(side="right")
     revert_btn = tk.Button(bar, text="Revert to Old", command=do_revert); revert_btn.pack(side="right", padx=(8, 0))
     undorevert_btn = tk.Button(bar, text="Undo Revert", command=do_undo_revert); undorevert_btn.pack(side="right")
     save_btn = tk.Button(bar, text="SAVE", command=do_save); save_btn.pack(side="right", padx=6)
-    play_btn = tk.Button(bar, text="▶ Play", command=do_play); play_btn.pack(side="right", padx=(8, 2))
+    next_btn = tk.Button(bar, text="▶|", width=3, command=lambda: do_step(+1))
+    next_btn.pack(side="right", padx=(0, 2))
+    play_btn = tk.Button(bar, text="▶ Play", command=do_play); play_btn.pack(side="right")
+    prev_btn = tk.Button(bar, text="|◀", width=3, command=lambda: do_step(-1))
+    prev_btn.pack(side="right", padx=(8, 0))
     tk.Button(bar, text="+", command=zoom_in).pack(side="right")
     tk.Button(bar, text="-", command=zoom_out).pack(side="right")
     canvas.bind("<Motion>", on_move)
@@ -390,6 +427,8 @@ def main():
     root.bind("<Control-z>", do_undo); root.bind("<Control-y>", do_redo)
     root.bind("<Control-s>", do_save); root.bind("+", zoom_in); root.bind("-", zoom_out)
     root.bind("<space>", do_play)                 # Space = play/stop toggle
+    root.bind("<Right>", lambda _e: do_step(+1))  # arrows = single-step, file order
+    root.bind("<Left>",  lambda _e: do_step(-1))
     root.protocol("WM_DELETE_WINDOW", lambda: (stop_play(), root.destroy()))
     arm(state["entry"])          # show the initially-armed swatch
     select_category(init_cat)    # populate the scoped frame/cel list + load the first entry
