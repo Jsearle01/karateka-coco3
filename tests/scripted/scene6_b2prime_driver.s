@@ -83,6 +83,7 @@ SA_RPC          equ     12              ; rows per chunk (12*7=84 >= 81)
 *       - the block copy spanned cols 25..79, dragging 10 columns of border-black leftward into
 *         the play area on every step.
 *     Both now stop at PLAY_R. Cols 70-79 are never written, so the border stays black. ---
+PLAY_L          equ     5               ; FIRST play-area byte column = x20-23 (left virtual edge)
 PLAY_R          equ     74              ; last play-area byte column = x296-299
 *   CORRECTED (Jay, 2026-07-21: "it looks like you're clipping too early and not at the logical
 *   screen edge on the right"). The port maps apple->coco with +20, so the 280 px virtual screen
@@ -752,7 +753,7 @@ dpg_post:
         cmpd    #POST_X_RIGHT
         bge     dpg_row                 ; past the right edge -> next row
         cmpd    #POST_X_LEFT
-        blt     dpg_skip
+        blt     dpg_skip                ; left of the virtual screen edge -> clip
         jsr     dpg_draw_one
 dpg_skip:
         ldd     dpg_x
@@ -846,7 +847,16 @@ dpf_byte:
         cmpb    #$FF
         beq     dpf_row_done
         subb    scroll_shift            ; the posts travel with the band
-        bcs     dpf_skip                ; scrolled off the left edge
+        bcs     dpf_skip                ; wrapped negative -> off-screen left
+        cmpb    #PLAY_L
+        blo     dpf_skip                ; left of the VIRTUAL screen edge -> clip (Jay's gate:
+                                        ;   "top wall items are not properly clipped at the left
+                                        ;   edge". The band's strip clips bytes 0..4, but these
+                                        ;   RMW re-asserts — INCLUDING the rail rows, whose masks
+                                        ;   are OR $FF across bytes 24..74 — wrote straight into
+                                        ;   the border once shift pushed them below byte 5.
+                                        ;   Clipping per BYTE (not per post) keeps the partial
+                                        ;   post/rail correct as it leaves the screen.)
         pshs    y
         leay    b,y
         lda     ,u+
