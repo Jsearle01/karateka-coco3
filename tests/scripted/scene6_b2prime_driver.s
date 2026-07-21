@@ -221,28 +221,38 @@ test_start:
 main_loop:
         jsr     HAL_time_vbl_wait
         lda     mg_phase
-        beq     ml_fujiu                ; PHASE 0: step_init + FUJI FIRST (the distant backdrop)
+        beq     ml_init                 ; PHASE 0: step_init only
         cmpa    #SA_NCHUNK
-        bls     ml_sc                   ; phases 1..SA_NCHUNK: strip a chunk of rows OVER Fuji
+        bls     ml_sc                   ; phases 1..SA_NCHUNK: strip the band (sky + wall + ground)
         cmpa    #SA_NCHUNK+1
-        beq     ml_cliff                ; re-blit the cliff sprite at the scrolled col
-        cmpa    #SA_NCHUNK+2
-        beq     ml_flip                 ; actors + present
-        bra     ml_next                 ; idle
+        beq     ml_fujiu                ; FUJI — after the band (which would erase it), before all
+        cmpa    #SA_NCHUNK+2            ;   nearer layers
+        beq     ml_cliff                ; cliff + seam, in FRONT of Fuji
+        cmpa    #SA_NCHUNK+3
+        beq     ml_flip                 ; actors + present, in front of everything
+        bra     ml_next
 
-* DRAW ORDER (Jay, 2026-07-21: "everything should be drawn after Fuji"). Fuji is the DISTANT
-* BACKDROP, so it is painted FIRST and every nearer layer draws over it: Fuji -> band (wall-top,
-* striations, ground) -> cliff -> actors -> present. Previously Fuji was redrawn at the END of the
-* step, which put the mountain IN FRONT of the wall — inherited from Stage A, where the lowest cel
-* was deliberately left unredrawn so the strip would cover it. Drawing Fuji first makes
-* `draw_a9e2_behind` behave as its name claims (occluded by the band) instead of contradicting it.
-*
-* Fuji could not simply move into phase 0's strip slot: step_init + a chunk is ~12,700 cyc and
-* Fuji ~18,100, which together overrun the 29,859-cycle window. So Fuji gets phase 0 to itself
-* (~18,300 = 61%) and the 7 strip chunks shift to phases 1..7 — the 11-VBL cadence is unchanged.
+* DRAW ORDER (Jay, 2026-07-21). Two constraints that look contradictory until the layering is
+* stated explicitly:
+*   (a) "everything should be drawn after Fuji" — Fuji is the distant backdrop; the wall-top,
+*       cliff and actors must all occlude it;
+*   (b) "the Fuji parts in the scroll region still need to be blitted each frame" — because the
+*       strip lays down ONE OPAQUE BITMAP (sky + wall-top + striations + ground together), anything
+*       drawn BEFORE it is erased wherever the band covers it. Fuji drawn first was therefore cut
+*       off at the band's top edge (rows >=100), which is the missing-Fuji symptom.
+* Resolved by ordering within the step rather than by layer count:
+*       step_init -> BAND (sky+wall+ground) -> FUJI -> cliff+seam -> actors -> present
+* so the band's SKY is behind Fuji, and every nearer element (cliff, actors) is drawn after it.
+* The wall-top posts sit at cols 24/25, 45/46, 66/67 while Fuji occupies cols 26-36, so re-blitting
+* Fuji over the band does not visibly cover the posts.
+* Phase budget: Fuji (~18,100 cyc) cannot share phase 0 with a strip chunk (~12,700) — together
+* they overrun the 29,859-cycle window — so it keeps a phase of its own. 11-VBL cadence unchanged.
+
+ml_init:
+        jsr     step_init               ; advance $52, shift, back_band, strip_row=0
+        bra     ml_next
 
 ml_fujiu:
-        jsr     step_init               ; advance $52, shift, back_band, strip_row=0
         jsr     draw_a9e2_behind        ; lowest Fuji cel — now genuinely behind (band paints over)
         jsr     draw_fuji_upper         ; upper Fuji cels
         jsr     clear_border_fuji       ; keep the right border (cols PLAY_R+1..79) black
