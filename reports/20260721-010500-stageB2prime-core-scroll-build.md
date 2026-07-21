@@ -89,6 +89,27 @@ variation is a non-event for the budget; sizing a delta-only redraw for the wors
 a step. *(The 1-col figure is 355 B against Stage A's 192 B because B2' now also redraws the run
 pose and the guard each step — ~160 B of actors, which reconciles the two measurements.)*
 
+**AC10 — second 25.3 pass (Jay): two further defects, both root-caused and fixed.**
+- **"The right side is all black and not filling in."** NOT missing substrate. Jay: the game's
+  virtual screen is **280 px**, so x280–319 (byte cols 70–79) is a **deliberate black border**.
+  Verified on the live framebuffer: the band carries content in cols 64–69 (38/81 rows) and is
+  black in 70+. The bug was that the strip **sampled and copied the border** — `edge_byte` came
+  from snapshot col 79 (black) and was replicated into every vacated column, and the block copy
+  spanned cols 25–79, dragging 10 columns of border-black leftward each step. Both now stop at
+  `PLAY_R=69`; re-verified after ~54 steps (play area filled to col 69, border black).
+  **Also added a right-border invariant** (clear cols 70–79 per row, mirroring the existing
+  left-border clip): the first play-area clip still left cols 70/72 painted by another writer, and
+  a border that relies on every routine stopping correctly breaks the next time one is edited.
+- **"The player looks like he is pulled backward every animation cycle."** Foot-slip: the stride
+  implies translation the pinned figure never performs. **Ruled out first:** the 153/157 per-frame
+  anchor variation is *correct* registration (the converter trims leading blanks and `+leading_trim`
+  re-adds them — verified the shipped cels carry zero leading blank columns). The oracle's player
+  **creeps forward during the scroll** (`$62` 0F→13 over ~10 poses, B0 trace) ≈ 1 byte-col per 2–3
+  poses; modelled as `PLAYER_STEPS_PER_COL=3` drift applied to every part of the run frame.
+  **Residue:** the rate is derived from a 10-pose sample — it is a one-constant change if the drift
+  reads wrong against the scrolling scene.
+- Re-measured after both: **still 0 overruns** (500 iterations), busiest phase unchanged at 74.9%.
+
 ### §5  Verdict-time evidence (§11)
 25.1: `build.bat` → `tests/scripted/scene6_b2prime_driver.bin (7229 bytes)` · `=== BUILD COMPLETE ===`
 (the driver is wired into the build alongside the Stage-A driver). Prod hash unchanged:
