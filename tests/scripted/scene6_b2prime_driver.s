@@ -274,7 +274,8 @@ ml_flip:
 * Phase 14 is also ~99% empty (present = 186 cyc), so this is the only slot satisfying both.
 * The strip rebuilds the band from the pristine snapshot each step, so the actors are erased for
 * free — no clean-restore bbox needed (unlike climb_controller's cl_restore).
-        jsr     draw_posts_over_fuji    ; wall-top posts RE-ASSERTED in front of Fuji
+        jsr     draw_posts_over_fuji    ; the 3 BAKED posts, re-asserted in front of Fuji
+        jsr     draw_posts_generated    ; NEW posts entering from the right at the 85 px pitch
         jsr     draw_player_run         ; 3-part run frame at the B0 anchor
         jsr     draw_guard_parked       ; 3-part guard, parked (does NOT slide with the scroll)
         jsr     HAL_gfx_present
@@ -631,6 +632,11 @@ edge_byte       fcb     0
 copy_ct         fcb     0
 a9e2_h          fcb     0
 a9e2_w          fcb     0
+dpg_shift       fdb     0               ; generated posts: scroll shift in pixels
+dpg_x           fdb     0               ; generated posts: current post x (signed)
+dpg_currow      fcb     0               ; generated posts: current row
+dpg_byte        fcb     0               ; generated posts: byte column (x>>2)
+dpg_phase       fcb     0               ; generated posts: sub-byte phase (x&3)
 player_dx       fcb     0               ; player forward drift (byte cols) — see PLAYER_STEPS_PER_COL
 player_dctr     fcb     0               ; step counter feeding player_dx
 run_idx         fcb     0               ; current run frame (0=s0); advanced once per scroll step
@@ -677,6 +683,108 @@ cbf_b:
         leax    80,x                    ; next row
         deca
         bne     cbf_row
+        rts
+
+* ===============================================================
+* draw_posts_generated — GENERATE new wall-top posts as the scroll reveals fresh wall.
+*
+*   The band's edge-extend can only replicate the rightmost existing column, and there is no post
+*   in it, so no new post ever appeared however far the scene scrolled (Jay's last gate item).
+*
+*   Post shape and pitch are DERIVED from the gated tableau's own masks, not invented:
+*     shape  2 px white at x,x+1 then black at x+2..x+5, on rows 101-103 and 108-110
+*            (rows 104/111 are the full-width rails and come from the band);
+*     pitch  85 px — Jay: use the 2nd->3rd spacing (183->268). The first post sits at 103, which
+*            is OFF-series (the regular series would put it at 98), so it is not the reference.
+*   Validation: regenerating phase 3 reproduces the baked post at x=183 byte-for-byte
+*   (AND $FC,$00,$3F / OR $03,$C0,$00), so the pre-baked table matches the shipped tableau.
+*
+*   Pre-baked per SUB-BYTE PHASE (Jay's suggestion): 85 is not a multiple of 4, so successive posts
+*   land at different phases; post_masks holds all four (3 AND + 3 OR bytes each), selected by
+*   x & 3 and applied at byte x >> 2.
+*
+*   ADDITIVE: starts the series one pitch BEYOND the last baked post (268 + 85 = 353) so the three
+*   posts already in the band are left alone and only genuinely new ones are drawn.
+* ===============================================================
+POST_PITCH      equ     85              ; px between posts (2nd->3rd spacing)
+POST_X_START    equ     353             ; first post beyond the baked three (268 + PITCH)
+POST_X_LEFT     equ     20              ; play-area left edge (px)
+POST_X_RIGHT    equ     300             ; play-area right edge (exclusive)
+
+post_rows       fcb     101,102,103,108,109,110,$FF
+
+draw_posts_generated:
+        lda     scroll_shift
+        ldb     #4
+        mul                             ; D = shift in PIXELS
+        std     dpg_shift
+        ldu     #post_rows
+dpg_row:
+        lda     ,u+
+        cmpa    #$FF
+        beq     dpg_done
+        sta     dpg_currow
+        ldd     #POST_X_START
+        subd    dpg_shift
+        std     dpg_x
+dpg_post:
+        ldd     dpg_x
+        cmpd    #POST_X_RIGHT
+        bge     dpg_row                 ; past the right edge -> next row
+        cmpd    #POST_X_LEFT
+        blt     dpg_skip
+        jsr     dpg_draw_one
+dpg_skip:
+        ldd     dpg_x
+        addd    #POST_PITCH
+        std     dpg_x
+        bra     dpg_post
+dpg_done:
+        rts
+
+* dpg_draw_one — apply the phase-selected mask columns at dpg_x on row dpg_currow.
+dpg_draw_one:
+        ldd     dpg_x
+        andb    #3
+        stb     dpg_phase
+        ldd     dpg_x
+        lsra
+        rorb
+        lsra
+        rorb                            ; D = x >> 2 (byte column)
+        stb     dpg_byte
+        lda     dpg_currow
+        ldb     #80
+        mul
+        addd    #$8000
+        tfr     d,y
+        lda     <page_register
+        cmpa    #PAGE_A_TOKEN
+        beq     dpg_pg
+        leay    $4000,y                 ; back buffer B
+dpg_pg:
+        ldb     dpg_byte
+        leay    b,y                     ; Y -> first affected byte
+        lda     dpg_phase
+        ldb     #6
+        mul
+        addd    #post_masks
+        tfr     d,x                     ; X -> {3 AND bytes, 3 OR bytes}
+        ldb     #3
+dpg_and:
+        lda     ,y
+        anda    ,x+
+        sta     ,y+
+        decb
+        bne     dpg_and
+        leay    -3,y
+        ldb     #3
+dpg_or:
+        lda     ,y
+        ora     ,x+
+        sta     ,y+
+        decb
+        bne     dpg_or
         rts
 
 * ===============================================================
@@ -855,6 +963,7 @@ run_on_halt:
         include "scene6_cliff_face.s"
         include "scene6_hud.s"
         include "scene6_placement_gen.s"  ; §2F single-home PLACEMENT table (codegen'd)
+        include "scene6_post_masks_gen.s" ; pre-baked post masks, 4 sub-byte phases
         include "scene6_run_anim_gen.s"   ; §2F single-home RUN animation table (codegen'd, B0)
 * --- run cels: 8 legs + 8 torsos ($9B00-$9E92) + the shared head/standing trio ---
         include "../../content/player/player_run_legs_9B00/converted.s"
