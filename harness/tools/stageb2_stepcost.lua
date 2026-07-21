@@ -22,7 +22,16 @@ local scr   = manager.machine.screens:at(1)
 local f     = io.open(OUT, "w")
 f:write(string.format("# VBL=%d cycles. work = VBL - spins*7. per-frame, phase-tagged.\n", VBLC))
 
+-- ⚠ PHASE ATTRIBUTION: `ml_next` does `inc mg_phase` at the END of each frame's work, so reading
+-- mg_phase in the frame notifier (frame end) reports P+1 for work done by phase P — an off-by-one
+-- that mis-assigns every cost. Sample the phase at WORK START instead: tap main_loop+3 ($0268),
+-- reached right after HAL_time_vbl_wait returns, where mg_phase still holds the phase about to run.
+local WORK0 = 0x0268
+local cur_phase = -1
 local spins, blits, armed, base_f = 0, 0, false, nil
+_G._w0 = mem:install_read_tap(WORK0, WORK0, "w0", function()
+  if armed then cur_phase = mem:read_u8(PHASE) end
+end)
 _G._spin = mem:install_read_tap(SPIN, SPIN, "spin", function() spins = spins + 1 end)
 _G._b1 = mem:install_read_tap(BLIT,  BLIT,  "b1", function() if armed then blits = blits + 1 end end)
 _G._b2 = mem:install_read_tap(BLITO, BLITO, "b2", function() if armed then blits = blits + 1 end end)
@@ -63,7 +72,7 @@ _G._n = emu.add_machine_frame_notifier(function()
   if rel > 40 then                                  -- past init; steady-state scrolling only
     local work = VBLC - spins * 7
     f:write(string.format("f=%-6d phase=%02X cur52=%02X spins=%-6d work=%-7d work_pct=%5.1f blits=%d\n",
-      fn, mem:read_u8(PHASE), mem:read_u8(S52), spins, work, work * 100 / VBLC, blits)); f:flush()
+      fn, cur_phase, mem:read_u8(S52), spins, work, work * 100 / VBLC, blits)); f:flush()
   end
   spins, blits = 0, 0
   if rel >= 300 then f:close(); manager.machine:exit() end
