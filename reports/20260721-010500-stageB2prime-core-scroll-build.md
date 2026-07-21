@@ -1,0 +1,115 @@
+## Form B Report — Stage B2' core scroll — **BUILT; 0 overruns at the faithful 5.45 steps/sec**
+
+### §1  Timing (C-35 — mandatory)
+t0=2026-07-21T00:39:21.084567200Z (dispatch receipt; the addendum authorised the build mid-task)
+commit-time=<this commit, `git show -s --format=%cI HEAD`> — stated inline in the dispatch reply.
+Elapsed: see inline. Predicted: no band supplied. Classification: n/a.
+
+### §2  Summary
+Built `tests/scripted/scene6_b2prime_driver.s` (7,229 B) on Stage A's strip-scroll, with the player
+run animation, the parked guard, **actors on phase 14 (present)** per the corrected schedule, the
+`$52==$1A` halt, and cadence in named constants. **Acceptance met: 0 no-wait iterations across 900
+(16-VBL) and 700 (11-VBL) sampled iterations.** Cadence set to the **oracle-faithful 11 VBL/step =
+5.45 steps/sec**, which required compressing 12×7-row strip chunks into **7×12-row** chunks — a
+pure constant change, exactly what §5's named constants exist for. Prod
+`88eba89b15cdf17c8d25e082d2d3e1f3cce57d38` untouched.
+
+### §3  Files
+- `tests/scripted/scene6_b2prime_driver.s` — NEW; the B2' driver.
+- `harness/tools/gen_scene6_placement.py` — emits the `run:` block as `scene6_run_anim_gen.s`
+  (`run_frames`, `run_frame_count`, `run_loop_first/last` from `@loop`).
+- `tests/scripted/scene6_run_anim_gen.s` — NEW (generated).
+- `harness/tools/stageb2_phasecost.lua`, `stageb2_dirtyregion.lua` — addresses/trigger parameterised
+  via env (symbols move per driver).
+- `build/logs/b2prime_phasecost.txt`, `b2prime_11vbl.txt` — evidence.
+
+### §4  Verification (AC-by-AC)
+**AC1 — run block emitted as asm.** `run_frames` = 12 frames (`s0 s1 c0..c7 e0 st`),
+`run_loop_first=2`, `run_loop_last=9` — the `@loop c0 c7` span codegen'd from the single home, so
+the tool and the engine read the same source.
+
+**AC2 — driver on Stage A's architecture.** Extends the strip-scroll; no new scroll invented.
+
+**AC3 — actors on phase 14, in-situ costs (replacing the derived estimates).**
+
+| phase (11-VBL cadence) | median cyc | % VBL | headroom |
+|---|---:|---:|---:|
+| 0–6 strip chunks (12 rows each) | 16,048–21,340 | 53.7–71.5% | 8,519+ |
+| 7 Fuji | 18,148 | 60.8% | 11,711 |
+| **8 cliff + seam + clip** | **22,362** | **74.9%** | 7,497 ← busiest, actors kept OFF |
+| **9 ACTORS (player+guard) + PRESENT** | **10,504** | **35.2%** | 19,355 |
+| 10 idle | 123 | 0.4% | 29,736 |
+
+**In-situ actor cost ≈ 10,380 cyc** (phase total minus the 123-cyc idle baseline); at the 16-VBL
+cadence it measured **9,174**. The derived pre-build estimate was 8,793 — **in-situ is 4–18%
+higher**, so the estimate was optimistic but not misleading.
+
+**AC4 — 0 overruns (the spine).** `stageb2_phasecost.lua`: **0 no-wait iterations of 900** at 16 VBL
+and **0 of 700** at 11 VBL. No phase reaches 29,859 cyc. This signal is attribution-independent.
+
+**AC5 — halt.** `cur52` swept `$30 → $1B` and `scroll_halted=1`; the scene freezes (step_init
+leaves `cur52`/`shift` untouched thereafter). Phase 2 walk-through is B3, not built.
+
+**AC6 — run animation semantics.** Observed `run_idx`: `0,1` (s0,s1 play in once) → `2..9` repeating
+(`c0..c7`) → on halt `10` (`e0` stop) → `11` (`st` standing, held). Exactly the `@loop` contract.
+
+**AC7 — guard parked.** 3-part trio at fixed `GUARD_COL/SUB` — redrawn every step over the scrolled
+scene, does not slide.
+
+**AC8 — named constants (§5, hard requirement).** `SCROLL_VBLS_PER_STEP`, `SCROLL_COLS_PER_STEP`,
+`PRESENT_VBLS_PER_STEP`, `RUN_POSES_PER_STEP`, plus `PH_*` phase assignments, `SCROLL_HALT_S52`,
+`SCROLL_SETTLE_S52`. **Proven by use:** the 16→11 VBL cadence change was made *through* the
+constants (`SCROLL_VBLS_PER_STEP` 16→11, `SA_NCHUNK` 12→7, `SA_RPC` 7→12) with no scroll-logic edit
+— the deferred Classic/Enhanced toggle is a constant swap, as required.
+
+### §5  Verdict-time evidence (§11)
+25.1: the driver assembles clean via
+`lwasm --decb -o tests/scripted/scene6_b2prime_driver.bin tests/scripted/scene6_b2prime_driver.s`
+(7,229 B). **It is NOT wired into `build.bat`** — see §7. Prod hash unchanged:
+`88eba89b15cdf17c8d25e082d2d3e1f3cce57d38`.
+25.2: `iterations=700  NO-WAIT (overrun) = 0  ->  PASS: 0 OVERRUNS` ·
+`cadence = 59.94/11 = 5.45 steps/sec  cur52 0x30->0x1b  halted=True` ·
+`run_idx: [0,1,2,3,4,5,6,7,8,9,2,3,4,5] ... tail [3,4,5,10]`
+25.3: **pending Jay** — nothing visual is claimed here.
+
+### §6  Reactive deviations
+- **Cadence set to 11 VBL/step, not Stage A's 16.** §5 specifies the faithful coupled baseline
+  (~5.5 steps/sec); 16 VBL gives 3.7/s. Reaching 11 required 7 chunks × 12 rows instead of 12 × 7.
+  Strip chunks rose to 69–71.5% of a VBL — still under the window and still below the busiest phase.
+- **`build.bat` not modified.** I edited it to add the driver; Jay declined that change, and the
+  edit had already landed on disk, so I reverted it to HEAD. The driver therefore builds only by
+  direct lwasm invocation. Flagged as a decision for Jay, not a defect.
+
+### §7  Uncertainty flags
+- **3-column step delta: NOT MEASURED** (dispatch AC). The dirty-region tool triggers on the last
+  phase of the step machine, and at 11 phases that idle phase (123 cyc) can share a MAME frame with
+  the next, so the trigger never fired. **Fix: anchor the trigger to a `cur52` change, not a phase.**
+  Deferred, with the reason known.
+- **Colour parity NOT verified.** §3's blue/orange swap check needs a pixel comparison at the run
+  figure's render column — that is Jay's visual gate (CLAUDE.md §3 forbids my interpreting pixels).
+  **This is an open acceptance item, not a pass.**
+- **Fills / reveal seam inherited unverified.** The right-edge behaviour comes from Stage A's
+  snapshot edge-extend; I did not re-verify that it reveals rather than clips at the seam.
+- **Guard column derived, not traced:** `$72=$0E` → x=118 → col 29 sub 2. Recon 1 gives the parked
+  value; the port column is arithmetic from it, not an execution-confirmed port position.
+- Per-phase attribution again uses the −1 shift validated by physical plausibility (present must be
+  ~free). The 0-no-wait result does not depend on it.
+
+### §8  Follow-up
+1. **Jay's 25.3 gate** — the visual acceptance, including colour parity.
+2. Measure the 3-col delta (re-anchor the trigger to `cur52`).
+3. Decide whether the B2' driver joins `build.bat`.
+4. Arch (follow-on) can take phase 10 — 29,736 cycles spare there.
+
+### §9  User interaction during task
+Jay declined the `build.bat` edit mid-task; I reverted it and flagged the wiring decision to him.
+
+### §10 Candidate(s) captured this task
+`a-cadence-change-should-be-a-constant-swap-prove-it-by-doing-one` — §5 required named constants to
+preserve a deferred toggle. The proof that the abstraction is real is not that the constants exist
+but that a live requirement was satisfied *through* them: 16→11 VBL/step was a three-constant edit
+with zero scroll-logic change. An abstraction claimed but never exercised is a hypothesis. Pool row
+pending.
+
+### §11 Commit
+<hash — stated inline>. Prod `88eba89b15cdf17c8d25e082d2d3e1f3cce57d38` untouched.

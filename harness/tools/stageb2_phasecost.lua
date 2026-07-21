@@ -15,8 +15,14 @@
 -- cycle arithmetic.
 local BIN   = os.getenv("S_BIN") or "C:/Projects/karateka_coco3/tests/scripted/scene6_walk_scrollA_driver.bin"
 local OUT   = os.getenv("V_OUT") or "C:/Projects/karateka_coco3/build/logs/stageb2_phasecost.txt"
-local SPIN, WORK0, VBLW = 0x23E8, 0x0268, 0x23E0
-local PHASE, S52 = 0x049A, 0x049B
+-- addresses are per-driver (the symbol dump moves when code is added) — override via env
+local SPIN  = tonumber(os.getenv("V_SPIN")  or "0x23E8")
+local WORK0 = tonumber(os.getenv("V_WORK0") or "0x0268")
+local VBLW  = tonumber(os.getenv("V_VBLW")  or "0x23E0")
+local PHASE = tonumber(os.getenv("V_PHASE") or "0x049A")
+local S52   = tonumber(os.getenv("V_S52")   or "0x049B")
+local RUNIDX = tonumber(os.getenv("V_RUNIDX") or "0")
+local HALTED = tonumber(os.getenv("V_HALTED") or "0")
 local VBLC = 29859
 local cpu = manager.machine.devices[":maincpu"]
 local mem = cpu.spaces["program"]
@@ -36,10 +42,12 @@ _G._w0   = mem:install_read_tap(WORK0, WORK0, "w0", function()
     f:write(string.format("phase=%02X work=%-7d pct=%5.1f idle_spins=%-6d %s cur52=%02X f=%d\n",
       prev_phase, work, work * 100 / VBLC, spins,
       spins == 0 and "*** NO-WAIT (previous phase consumed the whole frame) ***" or "ok",
-      mem:read_u8(S52), scr:frame_number())); f:flush()
+      mem:read_u8(S52), scr:frame_number())
+      .. (RUNIDX > 0 and string.format("   run_idx=%d halted=%d",
+           mem:read_u8(RUNIDX), mem:read_u8(HALTED)) or "") .. "\n"); f:flush()
   end
   prev_phase = mem:read_u8(PHASE)     -- the phase about to run this iteration
-  if iters >= 400 then f:close(); manager.machine:exit() end
+  if iters >= (tonumber(os.getenv("V_ITERS") or "400")) then f:close(); manager.machine:exit() end
 end)
 
 local function load_bin(p)

@@ -8,7 +8,10 @@
 -- page_register so we always read what is on screen.
 local BIN   = os.getenv("S_BIN") or "C:/Projects/karateka_coco3/tests/scripted/scene6_walk_scrollA_driver.bin"
 local OUT   = os.getenv("V_OUT") or "C:/Projects/karateka_coco3/build/logs/stageb2_dirtyregion.txt"
-local PHASE, S52, PAGEREG = 0x049A, 0x049B, 0x0050
+local PHASE   = tonumber(os.getenv("V_PHASE") or "0x049A")
+local S52     = tonumber(os.getenv("V_S52")   or "0x049B")
+local PAGEREG = tonumber(os.getenv("V_PAGE")  or "0x0050")
+local TRIGPH  = tonumber(os.getenv("V_TRIGPH") or "15")   -- last phase of the step machine
 -- 192, NOT 200: the GIME mode is 320x192x4 (gfx.s:165-170, $FF99=$15). The buffer holds 200
 -- rows' worth of bytes but rows 192-199 are NEVER DISPLAYED. Diffing them counted 634 bytes/step
 -- of off-screen garbage (pages A and B differ there in 634/640 bytes — they are simply never
@@ -67,7 +70,7 @@ _G._n = emu.add_machine_frame_notifier(function()
   end
   if not armed or fn - base_f < 60 then return end
   local ph = mem:read_u8(PHASE)
-  if ph == 15 and last_phase ~= 15 then                 -- once per step, after the flip
+  if ph == TRIGPH and last_phase ~= TRIGPH then         -- once per step, after the flip
     local cur, base = grab()
     if prev then
       local r0, r1, c0, c1, n = 999, -1, 999, -1, 0
