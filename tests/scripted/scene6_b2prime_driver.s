@@ -103,7 +103,11 @@ SA_HOLD         equ     SCROLL_VBLS_PER_STEP
 *     a CONSTANT SWAP, not a refactor. Baseline = oracle-faithful COUPLED: position is coupled to
 *     the run pose, ~5.5 steps/sec (16 VBL/step at 59.94 Hz = 3.7/s; oracle B0 = 11 VBL/pose).
 *     Do NOT hand-edit cadence anywhere else in this file — change it HERE. ---
-SCROLL_VBLS_PER_STEP equ 16             ; VBLs per scroll step (Stage-A proven; oracle B0 = 11)
+SCROLL_VBLS_PER_STEP equ 11             ; VBLs/step = the ORACLE cadence (B0: 11 VBL/run pose)
+*   59.94/11 = 5.45 steps/sec — the faithful coupled baseline. Stage A used 16 (3.7/s).
+*   With COLS=2 (8 px/step): 8*5.45 = 43.6 px/s vs the oracle's 38.1 px/s.
+*   The 11 phases map exactly: 0 step_init, 1..7 strip (7 x 12 rows = 84 >= 81), 8 Fuji,
+*   9 cliff+seam, 10 posts+actors+present.
 SCROLL_COLS_PER_STEP equ 2              ; byte-cols of $52 travel per step
 * --- SCROLL RATE (Jay's gate: "the player still looks like he is being held back").
 *     The oracle's $52 step is ONE APPLE BYTE COLUMN = 7 px, and the port's registration is 1:1 px,
@@ -632,6 +636,7 @@ edge_byte       fcb     0
 copy_ct         fcb     0
 a9e2_h          fcb     0
 a9e2_w          fcb     0
+dpg_mbase       fdb     0               ; generated posts: active mask table (post_masks/gap_masks)
 dpg_shift       fdb     0               ; generated posts: scroll shift in pixels
 dpg_x           fdb     0               ; generated posts: current post x (signed)
 dpg_currow      fcb     0               ; generated posts: current row
@@ -712,13 +717,28 @@ POST_X_LEFT     equ     20              ; play-area left edge (px)
 POST_X_RIGHT    equ     300             ; play-area right edge (exclusive)
 
 post_rows       fcb     101,102,103,108,109,110,$FF
+rail_rows       fcb     104,111,$FF     ; the rails: notched by the post, not overwritten by it
 
+* The rail rows must be NOTCHED, not left alone: the baked tableau breaks the rail's white line
+* with a 4 px black gap at each post (row 104 shows OR $C0/$3F at the post bytes, never $FF).
+* Without the notch the rail runs straight THROUGH a generated post — Jay: "the white lines from
+* the rail [go] through it." gap_masks blacks x+2..x+5 only, leaving the rest of the rail white.
 draw_posts_generated:
         lda     scroll_shift
         ldb     #4
         mul                             ; D = shift in PIXELS
         std     dpg_shift
+        ldd     #post_masks
+        std     dpg_mbase
         ldu     #post_rows
+        jsr     dpg_rows                ; the posts themselves
+        ldd     #gap_masks
+        std     dpg_mbase
+        ldu     #rail_rows
+        jsr     dpg_rows                ; the notch through the rails
+        rts
+
+dpg_rows:
 dpg_row:
         lda     ,u+
         cmpa    #$FF
@@ -741,6 +761,7 @@ dpg_skip:
         bra     dpg_post
 dpg_done:
         rts
+
 
 * dpg_draw_one — apply the phase-selected mask columns at dpg_x on row dpg_currow.
 dpg_draw_one:
@@ -768,7 +789,7 @@ dpg_pg:
         lda     dpg_phase
         ldb     #6
         mul
-        addd    #post_masks
+        addd    dpg_mbase               ; post_masks or gap_masks for this pass
         tfr     d,x                     ; X -> {3 AND bytes, 3 OR bytes}
         ldb     #3
 dpg_and:
