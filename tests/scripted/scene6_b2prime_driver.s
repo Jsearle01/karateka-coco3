@@ -83,7 +83,17 @@ SA_RPC          equ     12              ; rows per chunk (12*7=84 >= 81)
 *       - the block copy spanned cols 25..79, dragging 10 columns of border-black leftward into
 *         the play area on every step.
 *     Both now stop at PLAY_R. Cols 70-79 are never written, so the border stays black. ---
-PLAY_R          equ     69              ; last play-area byte column (x276-279 of the 280 px screen)
+PLAY_R          equ     74              ; last play-area byte column = x296-299
+*   CORRECTED (Jay, 2026-07-21: "it looks like you're clipping too early and not at the logical
+*   screen edge on the right"). The port maps apple->coco with +20, so the 280 px virtual screen
+*   occupies coco x20..299, NOT x0..279. Borders are therefore SYMMETRIC 20 px:
+*       left  border cols 0..4   (x0..19)    <- already cleared by the existing clip
+*       PLAY  AREA   cols 5..74  (x20..299)  <- 280 px
+*       right border cols 75..79 (x300..319)
+*   PLAY_R=69 clipped 5 columns (20 px) early, and the Fuji border-clear then blacked x280..299
+*   permanently — the static non-scrolling black stripe from Fuji's top down to the HUD.
+*   Two measurements had already said 74 and I misread both: draw_climb_ground_right fills bytes
+*   25..74, and the Fuji rows painted to col 74. Both land exactly on x299.
 WALL_L          equ     25              ; the wall/ground block's LEFT byte at shift 0. The cliff-face
                                         ;   striations (bytes <WALL_L, incl. byte 24 = the px99 black
                                         ;   wall-edge pixel) are a FIXED backdrop; the block slides
