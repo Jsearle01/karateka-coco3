@@ -73,6 +73,17 @@ SA_A_BAND       equ     $8000+SA_BAND_ROW*80    ; buffer A band base ($9F40)
 SA_B_BAND       equ     $C000+SA_BAND_ROW*80    ; buffer B band base ($DF40)
 SA_NCHUNK       equ     7               ; strip chunks (frames) per step (was 12 @ 16 VBL)
 SA_RPC          equ     12              ; rows per chunk (12*7=84 >= 81)
+* --- PLAY AREA (Jay, 2026-07-21): the CoCo3 screen is 320 px but the game's virtual screen is
+*     280 px, so x280-319 (byte cols 70-79) is a deliberate BLACK BORDER, not missing substrate.
+*     Verified on the live framebuffer: cols 64-69 carry content in 38/81 band rows, cols 70+ are
+*     black in all 81. The scroll must therefore treat col 69 as its right edge — the earlier
+*     "right side all black" was the strip sampling and copying the BORDER:
+*       - edge_byte was taken from snapshot col 79 (black) and replicated into every vacated
+*         column, so the reveal painted border-black into the play area;
+*       - the block copy spanned cols 25..79, dragging 10 columns of border-black leftward into
+*         the play area on every step.
+*     Both now stop at PLAY_R. Cols 70-79 are never written, so the border stays black. ---
+PLAY_R          equ     69              ; last play-area byte column (x276-279 of the 280 px screen)
 WALL_L          equ     25              ; the wall/ground block's LEFT byte at shift 0. The cliff-face
                                         ;   striations (bytes <WALL_L, incl. byte 24 = the px99 black
                                         ;   wall-edge pixel) are a FIXED backdrop; the block slides
@@ -86,6 +97,12 @@ SCROLL_VBLS_PER_STEP equ 16             ; VBLs per scroll step (Stage-A proven; 
 SCROLL_COLS_PER_STEP equ 1              ; byte-cols of $52 travel per step (oracle B0 = 1..3)
 PRESENT_VBLS_PER_STEP equ 1             ; presents per step (1 = present once, at phase 14)
 RUN_POSES_PER_STEP   equ 1              ; run-animation poses advanced per scroll step
+* --- PLAYER FORWARD DRIFT (Jay's gate: "the player looks like he is pulled backward a bit every
+*     animation cycle"). The run stride implies forward motion; with the figure pinned to a fixed
+*     anchor the implied motion never happens and the feet read as slipping back. The oracle's
+*     player does creep forward DURING the scroll: $62 = 0F -> 13 over ~10 poses in the walk-off
+*     window (B0 trace) = ~1 byte-col per 2-3 poses. Modelled here as a step counter. ---
+PLAYER_STEPS_PER_COL equ 3              ; scroll steps per +1 byte-col of player drift
 * --- phase assignments (indices into the SA_HOLD phase machine) ---
 PH_FUJI         equ     SA_NCHUNK       ; 12
 PH_CLIFF        equ     SA_NCHUNK+1     ; 13  (busiest — no actors here)
@@ -260,6 +277,13 @@ si_active:
 si_store:
         sta     cur52
         jsr     run_advance             ; one run pose per scroll step (RUN_POSES_PER_STEP)
+        inc     player_dctr             ; forward drift: +1 col every PLAYER_STEPS_PER_COL steps
+        lda     player_dctr
+        cmpa    #PLAYER_STEPS_PER_COL
+        blo     si_store_done
+        clr     player_dctr
+        inc     player_dx
+si_store_done:
 si_shift:
         lda     #SA_S52_HI
         suba    cur52
@@ -323,9 +347,9 @@ sor_block:
         * (2) the wall/ground block: 56 bytes from snapshot[WALL_L], placed at dest[B] (Y is there)
         ldx     cur_src
         leax    WALL_L,x                ; X = snapshot col WALL_L
-        lda     79-WALL_L,x             ; A = edge byte (snapshot col 79)
+        lda     PLAY_R-WALL_L,x         ; A = edge byte from the PLAY EDGE (col 69), not the border
         sta     edge_byte
-        lda     #80-WALL_L              ; 56 bytes (WALL_L..79)
+        lda     #PLAY_R+1-WALL_L        ; 45 bytes (WALL_L..PLAY_R) — never copies the border
         sta     copy_ct
 sor_c:
         ldb     ,x+
@@ -349,6 +373,17 @@ sor_d:
         clr     2,u
         clr     3,u
         clr     4,u
+        * ...and the RIGHT border, symmetrically: bytes PLAY_R+1..79 (px280..319) are outside the
+        * 280 px virtual screen. Enforced as an INVARIANT rather than by trusting every writer to
+        * respect the edge — the first cut of the play-area clip still showed cols 70/72 painted,
+        * and a border that depends on N routines each stopping in the right place will break again
+        * the moment one of them is edited. One clear here cannot be forgotten.
+        leau    PLAY_R+1,u
+        ldb     #79-PLAY_R              ; 10 bytes: cols 70..79
+sor_rb:
+        clr     ,u+
+        decb
+        bne     sor_rb
         rts
 
 * ---------------------------------------------------------------
@@ -559,6 +594,8 @@ edge_byte       fcb     0
 copy_ct         fcb     0
 a9e2_h          fcb     0
 a9e2_w          fcb     0
+player_dx       fcb     0               ; player forward drift (byte cols) — see PLAYER_STEPS_PER_COL
+player_dctr     fcb     0               ; step counter feeding player_dx
 run_idx         fcb     0               ; current run frame (0=s0); advanced once per scroll step
 scroll_halted   fcb     0               ; 1 once $52 hit the halt compare -> scene frozen
 rp_cnt          fcb     0               ; run render: part counter
@@ -591,6 +628,7 @@ dpr_loop:
         lda     3,x                     ; sub-byte (NEVER dropped — the climb lesson)
         sta     <blit_subbyte
         lda     2,x                     ; A = byte col
+        adda    player_dx               ; + forward drift (the stride's implied translation)
         ldb     4,x                     ; B = row
         ldx     ,x                      ; X = cel pointer
         jsr     HAL_gfx_blit_sprite
