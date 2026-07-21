@@ -97,12 +97,29 @@ SCROLL_SETTLE_S52 equ   $1B             ; $52 settles here and the scene freezes
 * --- run animation frame indices (from scene6_run_anim_gen.s: s0 s1 c0..c7 e0 st) ---
 RUN_IDX_E0      equ     10              ; run stop
 RUN_IDX_ST      equ     11              ; standing settle (terminal, held)
-* --- guard: parked/defeated at $72=$0E -> x = $0E*7+20 = 118 px = col 29 sub 2 ---
-GUARD_COL       equ     29
-GUARD_SUB       equ     2
-GUARD_ROW_LEGS  equ     138             ; 899C
-GUARD_ROW_TORSO equ     124             ; 8ACB
-GUARD_ROW_HEAD  equ     116             ; 8E9B  (head sits +2px right of the base)
+* --- GUARD: the DEFEATED guard, execution-corrected (Jay's gate: "two players on screen").
+*     The first cut drew $899C/$8ACB/$8E9B — those are the PLAYER (draw-A only, faces right;
+*     $8E9B is the player head, $899C/$8ACB the climb settle figure), so the screen had two
+*     identical players. The oracle's walk-off window draws the guard MIRRORED (entry By) from a
+*     DEFEAT-specific set that never appears in the fight: $8DA9/$8E83/$8F0E/$9290, lying near
+*     the ground at rows 151-154. Port cels are the pre-mirrored scene6_guard_*_mir.
+*     Columns track the SCROLL (col - $72 is a per-cel constant and $72 tracks $52), so the guard
+*     scrolls WITH the scene — it is parked in SCENE space, not pinned to the screen. Pinning it
+*     was the "dragged along" half of the same gate finding.
+*     Port registration: x = oracle_col*7 + sub + 20; col = (x>>2)+leading_trim, sub = x&3. ---
+GUARD_BASE_COL  equ     45              ; 8DA9 (dx +0 from $72) at scroll shift 0
+GUARD_9290_COL  equ     50
+GUARD_9290_SUB  equ     3
+GUARD_9290_ROW  equ     153
+GUARD_8DA9_COL  equ     45
+GUARD_8DA9_SUB  equ     2
+GUARD_8DA9_ROW  equ     151
+GUARD_8F0E_COL  equ     52
+GUARD_8F0E_SUB  equ     2
+GUARD_8F0E_ROW  equ     154
+GUARD_8E83_COL  equ     49
+GUARD_8E83_SUB  equ     0
+GUARD_8E83_ROW  equ     151
 
 SA_S52_HI       equ     $30             ; sweep start (climb hold value)
 SA_S52_LO       equ     $1B             ; sweep end
@@ -589,23 +606,35 @@ dpr_loop:
 *   same composition as the run's standing frame (head sits +2 px right of the base).
 * ===============================================================
 draw_guard_parked:
-        lda     #GUARD_SUB
+* Draw order is the oracle's: 9290, 8DA9, 8F0E, 8E83. Every column is offset LEFT by
+* scroll_shift so the guard travels with the scene (scene-space parking, not screen-space).
+        lda     #GUARD_9290_SUB
         sta     <blit_subbyte
-        lda     #GUARD_COL
-        ldb     #GUARD_ROW_LEGS
-        ldx     #scene6_player_899C
+        lda     #GUARD_9290_COL
+        suba    scroll_shift
+        ldb     #GUARD_9290_ROW
+        ldx     #scene6_guard_9290_mir
         jsr     HAL_gfx_blit_sprite
-        lda     #GUARD_SUB+2            ; head +2 px  (sub 2 + 2 -> col+1 sub 0, handled by HAL)
+        lda     #GUARD_8DA9_SUB
         sta     <blit_subbyte
-        lda     #GUARD_COL
-        ldb     #GUARD_ROW_HEAD
-        ldx     #scene6_player_8E9B
+        lda     #GUARD_8DA9_COL
+        suba    scroll_shift
+        ldb     #GUARD_8DA9_ROW
+        ldx     #scene6_guard_8DA9_mir
         jsr     HAL_gfx_blit_sprite
-        lda     #GUARD_SUB
+        lda     #GUARD_8F0E_SUB
         sta     <blit_subbyte
-        lda     #GUARD_COL
-        ldb     #GUARD_ROW_TORSO
-        ldx     #scene6_player_8ACB
+        lda     #GUARD_8F0E_COL
+        suba    scroll_shift
+        ldb     #GUARD_8F0E_ROW
+        ldx     #scene6_guard_8F0E_mir
+        jsr     HAL_gfx_blit_sprite
+        lda     #GUARD_8E83_SUB
+        sta     <blit_subbyte
+        lda     #GUARD_8E83_COL
+        suba    scroll_shift
+        ldb     #GUARD_8E83_ROW
+        ldx     #scene6_guard_8E83_mir
         jsr     HAL_gfx_blit_sprite
         rts
 
@@ -678,6 +707,12 @@ run_on_halt:
         include "../../content/player/player_run_torso_9E74/converted.s"
         include "../../content/player/player_run_torso_9E92/converted.s"
         include "../../content/player/scene6_player_8E9B/converted.s"
+* --- defeated-guard cels (pre-mirrored) ---
+        include "../../content/guard/scene6_guard_9290_mir/converted.s"
+        include "../../content/guard/scene6_guard_8DA9_mir/converted.s"
+        include "../../content/guard/scene6_guard_8F0E_mir/converted.s"
+        include "../../content/guard/scene6_guard_8E83_mir/converted.s"
+* --- player standing trio: still required by the run block's `st` frame ---
         include "../../content/player/scene6_player_899C/converted.s"
         include "../../content/player/scene6_player_8ACB/converted.s"
 

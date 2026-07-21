@@ -53,8 +53,21 @@ leaves `cur52`/`shift` untouched thereafter). Phase 2 walk-through is B3, not bu
 **AC6 — run animation semantics.** Observed `run_idx`: `0,1` (s0,s1 play in once) → `2..9` repeating
 (`c0..c7`) → on halt `10` (`e0` stop) → `11` (`st` standing, held). Exactly the `@loop` contract.
 
-**AC7 — guard parked.** 3-part trio at fixed `GUARD_COL/SUB` — redrawn every step over the scrolled
-scene, does not slide.
+**AC7 — guard parked. ⚠ CORRECTED after Jay's 25.3 gate ("there are two players on screen; one
+animates and moves, the other is dragged along"). Both halves were real defects:**
+- **Wrong figure.** I built the guard from `$899C`/`$8ACB`/`$8E9B` — but `$8E9B` is the **player**
+  head (draw-A only, faces right) and `$899C`/`$8ACB` are the climb settle figure, also the player.
+  The screen genuinely had two players. I had taken "guard, 3-part" from Recon 1's **fight**-window
+  model without checking what the **walk-off** window draws.
+- **What the walk-off actually draws:** the guard appears **mirrored (draw-B)** from a
+  **defeat-specific set absent from the fight** — `$8DA9`/`$8E83`/`$8F0E`/`$9290` — lying near the
+  ground at rows 151–154. All four were already ported as `scene6_guard_*_mir`.
+- **Wrong anchoring.** `col − $72` is a per-cel constant (`8DA9`+0, `8E83`+2, `9290`+3, `8F0E`+4)
+  and `$72` tracks `$52`, so the guard is parked in **scene** space and travels with the scroll.
+  Pinning it to a fixed **screen** column made it ride the viewport — Jay's "dragged along".
+- **Fixed:** correct mirrored cels at traced rows, every column offset by `scroll_shift`.
+  Re-measured: **still 0 overruns** (600 iterations); the actors phase rises 10,504 → **21,270 cyc
+  (35.2% → 71.2%)** because the defeat set is 295 B vs the wrong trio's 130 B — 8,589 cyc spare.
 
 **AC8 — named constants (§5, hard requirement).** `SCROLL_VBLS_PER_STEP`, `SCROLL_COLS_PER_STEP`,
 `PRESENT_VBLS_PER_STEP`, `RUN_POSES_PER_STEP`, plus `PH_*` phase assignments, `SCROLL_HALT_S52`,
