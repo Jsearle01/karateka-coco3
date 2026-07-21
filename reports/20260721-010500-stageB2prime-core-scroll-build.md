@@ -216,3 +216,90 @@ arrives through at least three paths — cel blits via `$1903/$1906/$1909/$190C`
 others' content as ABSENT, and absence is what drives the wrong fix. Before concluding "nothing
 draws here", enumerate the mechanisms, not just the addresses — and check the window covers scene
 ENTRY, not just steady state.
+
+---
+
+## ADDENDUM 2 — the 25.3 gate iteration (2026-07-21). Jay ran it live; 9 defects found and fixed.
+
+**Gate verdict on the run animation: "the player run gate looks pretty good… good for now"** (Jay
+notes it still needs seeing in the fight, which is downstream of B3). The rest of the session was
+Jay's eye against the live loop, and every item below is a real defect he caught that the
+measurements had passed.
+
+**Live-gate harness:** `harness/tools/b2prime_live_loop.lua` — loops the sweep (dwell ~1.5 s on the
+frozen end-state, then reset). The loop is in the HARNESS, not the driver: the halt at `$52==$1A` is
+an acceptance criterion, so looping it in shipped code would delete the thing being gated.
+
+### The nine fixes, in order
+
+| # | Symptom (Jay) | Root cause | Commit |
+|---|---|---|---|
+| 1 | "two players on screen" | I built the guard from `$899C/$8ACB/$8E9B` — those are the **player**. Walk-off draws the guard **mirrored** from a defeat-only set `$8DA9/$8E83/$8F0E/$9290` | `e6b1c88` |
+| 2 | "the other is dragged along" | Guard pinned to a **screen** column; `col−$72` is constant and `$72` tracks `$52`, so it is parked in **scene** space and must scroll | `e6b1c88` |
+| 3 | "right side all black" | The strip sampled/copied the **border**: `edge_byte` from col 79 (black) and a block copy spanning cols 25–79 | `26c8b4e` |
+| 4 | "pulled backward every cycle" | Foot-slip: stride implies translation, figure was pinned. Oracle's `$62` creeps 0F→13 during the scroll | `26c8b4e` |
+| 5 | "still held back" | **Scroll rate 57% of the oracle.** `$52` step = 1 APPLE col = **7 px**; the port shifted 1 COCO col = **4 px**. → `COLS=2` (114%) | `7a07425` |
+| 6 | "clipping too early on the right" | `+20` mapping puts the 280 px screen at coco **x20–299**, not x0–279. `PLAY_R` 69 → **74** | `7a07425` |
+| 7 | "everything should be drawn after Fuji" / "Fuji parts still need blitting" | Order was band→Fuji (mountain in front of wall); but Fuji drawn first is **erased** by the band's single opaque bitmap. → band → **Fuji** → cliff → actors | `8b2b2fa`, `e65bb29` |
+| 8 | "posts cut off by Fuji as they scroll past" | Every post eventually crosses Fuji's fixed cols. Re-assert the wall-top **RMW masks** after Fuji — they are sparse (`$FF,$00` no-ops), so only post pixels are written | `621d056` |
+| 9 | "no new post appears" / "rail lines run through the post" / "not clipped at the left edge" | Edge-extend can only replicate a column with no post in it → **generate** posts at the traced pitch; rails need the **notch**; RMW re-asserts wrote into the left border | `baff013`, `12c48d0`, `e8c5e26` |
+
+### The post generator (Jay's design, data-derived)
+Jay proposed pre-baked columns per sub-byte phase. Confirmed necessary: pitch **85 px** is not a
+multiple of 4. Everything derived from the gated tableau's own masks, nothing invented:
+- **shape** 2 px white at `x,x+1`, black at `x+2..x+5`; post rows 101–103 / 108–110
+- **pitch 85 px** — Jay's call to use the **2nd→3rd** spacing (183→268) was right for a reason the
+  data shows: post 1 sits at 103 where the regular series would put 98, so it is off-series and
+  would have poisoned the pitch.
+- **rail notch** — rows 104/111 carry `OR $C0/$3F` at the post bytes, never `$FF`; without
+  reproducing that the rail runs straight through the post.
+- **validation**: regenerating phase 3 reproduces the baked post at x=183 **byte-for-byte**
+  (`AND $FC,$00,$3F` / `OR $03,$C0,$00`), and the notch masks (`AND $FF,$C0,$3F`) black exactly
+  px185–188. The generator matches the shipped tableau, not merely plausibly.
+- **additive**: series starts one pitch beyond the last baked post (268+85=353), so the three
+  existing posts are untouched.
+
+### Run re-anchored to the climb handoff
+The block was normalised to `ANCHOR = 0x13*7 = 133` — a real observed legs X, but an arbitrary point
+mid-run, 55 px right of where the climb ends. `ANCHOR = 78` makes the run's `st` frame
+**byte-identical to `climb_crawl f6`** (`899C:25,2,138  8E9B:26,0,116  8ACB:25,2,124`), so the two
+beats hand off at the same position.
+
+### ⚠ A defect I introduced and reported as fixed
+`SCROLL_VBLS_PER_STEP` 16→11 **never landed**: the patch script printed "ok" and then crashed
+*before writing the file*. The driver ran at **3.7 steps/sec (79% of the oracle) for the whole
+session** while I reported the faithful 5.45. Same failure mode as the earlier silent `str.replace`
+no-ops: **trusting a tool's success message instead of reading back the artifact.** Now 11, verified
+by grepping the file; the other constants (`COLS=2`, `PLAY_R=74`, `PITCH=85`) were re-checked in-file
+the same way. **Standing rule: a constant is not changed until it is read back from the file.**
+
+### Final state (all measured, 0 overruns throughout)
+```
+cadence   11 VBL/step = 5.45 steps/sec (oracle B0) ; COLS=2 = 8 px/step = 43.6 px/s vs oracle 38.1
+phases    0 step_init | 1-7 strip (7x12 rows) | 8 Fuji | 9 cliff+seam | 10 posts+actors+present
+play area x20-299 (cols 5-74), symmetric 20 px borders, clipped per BYTE on both edges
+draw order band -> Fuji -> cliff -> posts(baked + generated) -> actors -> present
+halt      $52 -> $1B, scene freezes, run exits e0 -> st
+budget    0 no-wait iterations across every run; busiest phase 74.9%
+```
+
+### Scope confirmation — the player's rightward traverse is B3, not a B2' gap
+Jay: "the player doesn't move to the right side off the screen like he will during the demo fight."
+Trace settles it — in the walk-off window:
+
+| | `$52` | player `$62` |
+|---|---|---|
+| while the scroll runs (phase 1) | `$24 → $1C` | **3 cols** |
+| after the halt (phase 2) | frozen `$1B` | **21 cols → `$28`** |
+
+The 21-column traverse happens **entirely after the scroll freezes**, which is the dispatch's phase 2
+= **B3**. B2' behaves correctly. Two notes for B3: the run animation already cycles through the
+traverse and exits `e0 → st` on stop (the exit should fire at the END of the walk-through, not at
+the scroll halt), and the traverse is ~0.12 cols/frame — a steadier gait than the scroll-coupled
+drift, so `PLAYER_STEPS_PER_COL` will not carry over.
+
+### Still open
+- **Colour parity** on the run figure — never verifiable by me (CLAUDE.md §3); Jay's gate.
+- **Exact scroll rate** needs a **sub-byte scroll** (7 px = 1 col + 3 px). Byte-granular cannot hit
+  100%: 1 col = 57%, 2 cols = 114%, nothing between. Architectural follow-on, flagged in-source.
+- **Arch** — fully traced and costed (see ADDENDUM 1), ready to build as its own dispatch.
