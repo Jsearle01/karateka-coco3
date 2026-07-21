@@ -163,3 +163,56 @@ pending.
 
 ### §11 Commit
 <hash — stated inline>. Prod `88eba89b15cdf17c8d25e082d2d3e1f3cce57d38` untouched.
+
+---
+
+## ADDENDUM — the right-side black is FAITHFUL; it is the arch's absence (2026-07-21)
+
+Jay's gate reported the right side "not filling in". Chasing it produced one wrong turn and one
+settled answer, both worth recording.
+
+**The wrong turn.** A trampoline-only trace of the gap band (rows 117–151, port x180–279) returned
+`$A684`/`$A68A`, which I read as a "fight midground" and built as two `$52`-relative vertical
+strips. Jay identified it on sight: *"what you added is in the location where the arch will
+eventually be, in the shape of the arch."* Correct — it **was** the arch, built in the wrong stage.
+Reverted (`f50cc50`).
+
+**Why the trace misled me twice.** Two instrument blind spots, both previously documented:
+1. The trampoline tap cannot see the **pattern-fill path** — Recon 1 already recorded that the
+   castle "uses the fill path, so the trampoline draw trace did not see it." I added
+   `harness/tools/oracle_fillpath_trace.lua` (taps `$0A00/$0A03/$0A09/$0A40`) and found 165 fill
+   calls in the walk-off window the earlier traces never saw.
+2. My gap window (f8580+) started **mid-scroll**, so anything painted at scene entry and merely
+   scrolled thereafter could never appear. Re-traced from f5800 (before scene entry).
+
+**The settled answer.** Across the whole scene, with BOTH mechanisms instrumented:
+- **Zero fill-path calls land in rows 110–155.**
+- In rows 117–151 the only scenery is `$A68A` (2700 draws), `$A684` (2550) and `$AB8E` (1044, the
+  cliff). Everything else is transient fighter cels.
+
+**⇒ The oracle draws nothing in that band except the arch and the cliff. The port's black region is
+FAITHFUL, and it stays black until the arch is built** — which this dispatch explicitly scopes out
+("ARCH OMITTED — expected, not a defect"). No further B2' work is warranted on it.
+
+**Arch model, ready for the follow-on dispatch** (traced, not inferred):
+
+| cel | column | rows |
+|---|---|---|
+| `$A68A` | `$52` + 2 (offset single-valued over 3150 draws) | 111–151, step 2 |
+| `$A684` | `$52` + 7 (single-valued over 3450 draws) | 66–170, step 2 |
+| `$A877` | `$52` + 2 | 111 |
+| `$A87B` | `$52` + 1 | 153 |
+| `$A6EF` | `$52` + 9 | 153 |
+
+Both main strips are `$52`-relative, so the arch **scrolls with the scene and enters from the
+right** as `$52` falls — it is the reveal content. Port column = `((cur52 + off) * 7 + 20) >> 2`,
+sub = `& 3`. Cost measured when it was briefly built: **74 blits ≈ 12,900 cyc (43.2% of a VBL)**,
+and it needs **its own phase before the present** (freeing one via 6 strip chunks × 14 rows keeps
+the 11-VBL cadence). All cels are already converted.
+
+**Standing lesson (candidate):** `one-draw-mechanism-is-not-the-draw-program`. Scene-6 content
+arrives through at least three paths — cel blits via `$1903/$1906/$1909/$190C`, pattern fills via
+`$0A00/$0A09/$0A40`, and setup-time paints that later only scroll. A trace of one path reports the
+others' content as ABSENT, and absence is what drives the wrong fix. Before concluding "nothing
+draws here", enumerate the mechanisms, not just the addresses — and check the window covers scene
+ENTRY, not just steady state.
