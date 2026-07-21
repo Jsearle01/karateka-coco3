@@ -124,10 +124,11 @@ RUN_POSES_PER_STEP   equ 1              ; run-animation poses advanced per scrol
 *     window (B0 trace) = ~1 byte-col per 2-3 poses. Modelled here as a step counter. ---
 PLAYER_STEPS_PER_COL equ 3              ; scroll steps per +1 byte-col of player drift
 * --- phase assignments (indices into the SA_HOLD phase machine) ---
-PH_FUJI         equ     SA_NCHUNK       ; 12
-PH_CLIFF        equ     SA_NCHUNK+1     ; 13  (busiest — no actors here)
-PH_ACTORS       equ     SA_NCHUNK+2     ; 14  actors THEN present
-PH_IDLE         equ     SA_NCHUNK+3     ; 15  spare
+PH_FUJI         equ     0               ; FIRST: the distant backdrop + step_init
+PH_STRIP0       equ     1               ; strip chunks occupy 1..SA_NCHUNK
+PH_CLIFF        equ     SA_NCHUNK+1     ; cliff + seam (busiest — no actors here)
+PH_ACTORS       equ     SA_NCHUNK+2     ; actors THEN present
+PH_IDLE         equ     SA_NCHUNK+3     ; spare
 * --- halt (phase 1 ends here; phase 2 walk-through is B3) ---
 SCROLL_HALT_S52 equ     $1A             ; the oracle's phase-wrap compare
 SCROLL_SETTLE_S52 equ   $1B             ; $52 settles here and the scene freezes
@@ -220,31 +221,35 @@ test_start:
 main_loop:
         jsr     HAL_time_vbl_wait
         lda     mg_phase
+        beq     ml_fujiu                ; PHASE 0: step_init + FUJI FIRST (the distant backdrop)
         cmpa    #SA_NCHUNK
-        blo     ml_strip                ; phases 0..11: strip a chunk of rows
-        beq     ml_fujiu                ; phase 12: redraw the UPPER Fuji cels on top (fixed)
+        bls     ml_sc                   ; phases 1..SA_NCHUNK: strip a chunk of rows OVER Fuji
         cmpa    #SA_NCHUNK+1
-        beq     ml_cliff                ; phase 13: re-blit the cliff sprite at the scrolled col
+        beq     ml_cliff                ; re-blit the cliff sprite at the scrolled col
         cmpa    #SA_NCHUNK+2
-        beq     ml_flip                 ; phase 14: present + flip
-        bra     ml_next                 ; phase 15: idle
+        beq     ml_flip                 ; actors + present
+        bra     ml_next                 ; idle
 
-* The LOWEST Fuji cel ($A9E2) is NOT redrawn -> the strip (scrolling area, drawn "after" Fuji)
-*   overwrites it while it stays stationary. The UPPER Fuji cels ARE redrawn on top so they
-*   stay visible (the strip band overlaps their lower rows).
-
-ml_strip:
-        tsta
-        bne     ml_sc
-        jsr     step_init               ; phase 0: advance $52, shift, back_band, strip_row=0
-ml_sc:
-        jsr     strip_chunk
-        bra     ml_next
+* DRAW ORDER (Jay, 2026-07-21: "everything should be drawn after Fuji"). Fuji is the DISTANT
+* BACKDROP, so it is painted FIRST and every nearer layer draws over it: Fuji -> band (wall-top,
+* striations, ground) -> cliff -> actors -> present. Previously Fuji was redrawn at the END of the
+* step, which put the mountain IN FRONT of the wall — inherited from Stage A, where the lowest cel
+* was deliberately left unredrawn so the strip would cover it. Drawing Fuji first makes
+* `draw_a9e2_behind` behave as its name claims (occluded by the band) instead of contradicting it.
+*
+* Fuji could not simply move into phase 0's strip slot: step_init + a chunk is ~12,700 cyc and
+* Fuji ~18,100, which together overrun the 29,859-cycle window. So Fuji gets phase 0 to itself
+* (~18,300 = 61%) and the 7 strip chunks shift to phases 1..7 — the 11-VBL cadence is unchanged.
 
 ml_fujiu:
-        jsr     draw_a9e2_behind        ; lowest Fuji cel $A9E2 — stationary, behind the scroll (occluded)
-        jsr     draw_fuji_upper         ; upper Fuji cels — fixed, on top
-        jsr     clear_border_fuji       ; Fuji paints past x279 -> re-blacken the border rows
+        jsr     step_init               ; advance $52, shift, back_band, strip_row=0
+        jsr     draw_a9e2_behind        ; lowest Fuji cel — now genuinely behind (band paints over)
+        jsr     draw_fuji_upper         ; upper Fuji cels
+        jsr     clear_border_fuji       ; keep the right border (cols PLAY_R+1..79) black
+        bra     ml_next
+
+ml_sc:
+        jsr     strip_chunk
         bra     ml_next
 
 ml_cliff:
