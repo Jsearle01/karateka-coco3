@@ -109,12 +109,16 @@ pose and the guard each step — ~160 B of actors, which reconciles the two meas
 
 ### §8  Follow-up
 1. **Jay's 25.3 gate** — the visual acceptance, including colour parity.
-2. Measure the 3-col delta (re-anchor the trigger to `cur52`).
+2. ~~Measure the 3-col delta~~ — done (§4 AC9): 1 col = 2.4%, 3 col = 3.7% of the 11-VBL step.
 3. ~~Decide whether the B2' driver joins `build.bat`~~ — done; it is in the build.
 4. Arch (follow-on) can take phase 10 — 29,736 cycles spare there.
 
 ### §9  User interaction during task
-Jay declined the `build.bat` edit mid-task; I reverted it and flagged the wiring decision to him.
+An interrupt during the `build.bat` + full-build command surfaced to me as a tool-use rejection, so
+I reverted the edit and reported the driver as unwired. Jay clarified he had interrupted because he
+thought I was stuck, not to veto the change. Wiring restored, full build run, prod byte-identical.
+**Note for future dispatches:** an interrupt and a rejection are indistinguishable from my side —
+if a call is stopped, saying which it was avoids a needless revert.
 
 ### §10 Candidate(s) captured this task
 `a-cadence-change-should-be-a-constant-swap-prove-it-by-doing-one` — §5 required named constants to
