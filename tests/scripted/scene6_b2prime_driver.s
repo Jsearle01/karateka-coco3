@@ -234,6 +234,7 @@ ml_sc:
 ml_fujiu:
         jsr     draw_a9e2_behind        ; lowest Fuji cel $A9E2 — stationary, behind the scroll (occluded)
         jsr     draw_fuji_upper         ; upper Fuji cels — fixed, on top
+        jsr     clear_border_fuji       ; Fuji paints past x279 -> re-blacken the border rows
         bra     ml_next
 
 ml_cliff:
@@ -616,6 +617,41 @@ back_band       fdb     0
 cur_src         fdb     0
 cur_dst         fdb     0
 scroll_save     rmb     SA_BAND_LEN     ; clean gated-band snapshot (6480 bytes)
+
+* ===============================================================
+* clear_border_fuji — the right border (cols PLAY_R+1..79 = x280-319) is outside the 280 px
+*   virtual screen and must stay black. strip_one_row enforces that for the scroll BAND, but the
+*   Fuji cels live ABOVE the band (rows ~81-111) and were measured painting to col 74 (x299), so
+*   the band-only invariant did not cover them. Clear the border across the Fuji rows after every
+*   Fuji redraw. Rows 80..119 covers all four cels plus margin; 40 rows x 10 bytes = 400 stores.
+* ===============================================================
+CBF_ROW0        equ     80
+CBF_ROWS        equ     40
+clear_border_fuji:
+        lda     #CBF_ROW0
+        ldb     #80
+        mul                             ; D = row0*80
+        addd    #$8000
+        tfr     d,x
+        lda     <page_register          ; write to the BACK buffer (the one being drawn)
+        cmpa    #PAGE_A_TOKEN
+        beq     cbf_go
+        leax    $4000,x                 ; buffer B
+cbf_go:
+        leax    PLAY_R+1,x              ; X -> first border byte of row CBF_ROW0
+        lda     #CBF_ROWS
+cbf_row:
+        ldb     #79-PLAY_R              ; 10 border bytes
+        pshs    x
+cbf_b:
+        clr     ,x+
+        decb
+        bne     cbf_b
+        puls    x
+        leax    80,x                    ; next row
+        deca
+        bne     cbf_row
+        rts
 
 * ===============================================================
 * draw_player_run — blit the current run frame's 3 parts (legs -> head -> torso, the oracle's
