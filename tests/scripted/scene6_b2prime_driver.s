@@ -94,7 +94,17 @@ SA_HOLD         equ     SCROLL_VBLS_PER_STEP
 *     the run pose, ~5.5 steps/sec (16 VBL/step at 59.94 Hz = 3.7/s; oracle B0 = 11 VBL/pose).
 *     Do NOT hand-edit cadence anywhere else in this file — change it HERE. ---
 SCROLL_VBLS_PER_STEP equ 16             ; VBLs per scroll step (Stage-A proven; oracle B0 = 11)
-SCROLL_COLS_PER_STEP equ 1              ; byte-cols of $52 travel per step (oracle B0 = 1..3)
+SCROLL_COLS_PER_STEP equ 2              ; byte-cols of $52 travel per step
+* --- SCROLL RATE (Jay's gate: "the player still looks like he is being held back").
+*     The oracle's $52 step is ONE APPLE BYTE COLUMN = 7 px, and the port's registration is 1:1 px,
+*     so a faithful step travels 7 px. The port shifts WHOLE CoCo byte columns = 4 px each, so:
+*         COLS=1 -> 4 px/step = 21.8 px/s =  57% of the oracle (38.1 px/s)  <- was this: too slow
+*         COLS=2 -> 8 px/step = 43.6 px/s = 114%
+*     The run animation was already at the correct 5.45 poses/sec, so a world moving at 57% is
+*     exactly the "running but held back" read. 7 px is not a multiple of 4, so byte-granular
+*     scrolling CANNOT hit it exactly; 2 is the closest whole-column choice and errs fast rather
+*     than half-speed. EXACT fidelity needs a SUB-BYTE scroll (7 px = 1 col + 3 px), which the
+*     raw-byte strip copy cannot express — flagged as an architectural follow-on, not fudged here. ---
 PRESENT_VBLS_PER_STEP equ 1             ; presents per step (1 = present once, at phase 14)
 RUN_POSES_PER_STEP   equ 1              ; run-animation poses advanced per scroll step
 * --- PLAYER FORWARD DRIFT (Jay's gate: "the player looks like he is pulled backward a bit every
