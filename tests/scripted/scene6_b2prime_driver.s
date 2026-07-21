@@ -274,6 +274,7 @@ ml_flip:
 * Phase 14 is also ~99% empty (present = 186 cyc), so this is the only slot satisfying both.
 * The strip rebuilds the band from the pristine snapshot each step, so the actors are erased for
 * free — no clean-restore bbox needed (unlike climb_controller's cl_restore).
+        jsr     draw_posts_over_fuji    ; wall-top posts RE-ASSERTED in front of Fuji
         jsr     draw_player_run         ; 3-part run frame at the B0 anchor
         jsr     draw_guard_parked       ; 3-part guard, parked (does NOT slide with the scroll)
         jsr     HAL_gfx_present
@@ -676,6 +677,63 @@ cbf_b:
         leax    80,x                    ; next row
         deca
         bne     cbf_row
+        rts
+
+* ===============================================================
+* draw_posts_over_fuji — re-assert the wall-top posts IN FRONT of Fuji (Jay: "the top of the wall
+*   posts are still being cut off by Fuji as they scroll past").
+*
+*   The scene needs THREE depths — sky, then Fuji, then the wall-top — but the strip lays sky and
+*   wall-top down as ONE opaque bitmap, so Fuji can only be in front of both or behind both. Every
+*   post eventually scrolls through Fuji's fixed columns (26-36), so "Fuji after the band" clips
+*   each post in turn.
+*
+*   The wall-top is drawn as sparse RMW masks (AND/OR pairs over bytes 24..74, rows 101..111) and
+*   the vast majority of entries are $FF,$00 = NO-OP. So re-applying the same masks AFTER Fuji
+*   writes ONLY post pixels and leaves Fuji intact everywhere between them — the third depth, for
+*   free, without splitting the band or touching the gated tableau's own routine.
+*
+*   Two differences from draw_walltop_posts (which is init-only): this targets the BACK buffer via
+*   page_register, and it applies scroll_shift so the posts land where the strip put them. Mask
+*   pairs are consumed even for skipped bytes, or the table would desynchronise.
+* ===============================================================
+draw_posts_over_fuji:
+        ldu     #wt_rmw
+        lda     #101
+dpf_row:
+        pshs    a
+        ldb     #80
+        mul                             ; D = row*80
+        addd    #$8000
+        tfr     d,y
+        lda     <page_register          ; back buffer = the one being drawn
+        cmpa    #PAGE_A_TOKEN
+        beq     dpf_go
+        leay    $4000,y
+dpf_go:
+        ldx     #wt_bytes
+dpf_byte:
+        ldb     ,x+
+        cmpb    #$FF
+        beq     dpf_row_done
+        subb    scroll_shift            ; the posts travel with the band
+        bcs     dpf_skip                ; scrolled off the left edge
+        pshs    y
+        leay    b,y
+        lda     ,u+
+        anda    ,y
+        ora     ,u+
+        sta     ,y
+        puls    y
+        bra     dpf_byte
+dpf_skip:
+        leau    2,u                     ; consume the mask pair regardless
+        bra     dpf_byte
+dpf_row_done:
+        puls    a
+        inca
+        cmpa    #112
+        blo     dpf_row
         rts
 
 * ===============================================================
