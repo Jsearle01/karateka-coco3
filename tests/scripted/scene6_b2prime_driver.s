@@ -71,11 +71,8 @@ SA_BAND_ROWS    equ     81              ; rows 100..180 (wall-top + cliff-face +
 SA_BAND_LEN     equ     SA_BAND_ROWS*80 ; 6480 bytes per band
 SA_A_BAND       equ     $8000+SA_BAND_ROW*80    ; buffer A band base ($9F40)
 SA_B_BAND       equ     $C000+SA_BAND_ROW*80    ; buffer B band base ($DF40)
-SA_NCHUNK       equ     6               ; strip chunks/step. 6 x SA_RPC(14) = 84 >= 81 rows.
-*   Was 7 x 12. Dropping one chunk frees a phase for the MIDGROUND while keeping the 11-VBL
-*   (5.45 steps/sec) oracle cadence. Chunk cost rises ~20,700 -> ~24,000 cyc (80%), which is
-*   in line with the other heavy phases and still inside the window.
-SA_RPC          equ     14              ; rows per chunk (14*6=84 >= 81)
+SA_NCHUNK       equ     7               ; strip chunks (frames) per step (was 12 @ 16 VBL)
+SA_RPC          equ     12              ; rows per chunk (12*7=84 >= 81)
 * --- PLAY AREA (Jay, 2026-07-21): the CoCo3 screen is 320 px but the game's virtual screen is
 *     280 px, so x280-319 (byte cols 70-79) is a deliberate BLACK BORDER, not missing substrate.
 *     Verified on the live framebuffer: cols 64-69 carry content in 38/81 band rows, cols 70+ are
@@ -119,24 +116,8 @@ PLAYER_STEPS_PER_COL equ 3              ; scroll steps per +1 byte-col of player
 * --- phase assignments (indices into the SA_HOLD phase machine) ---
 PH_FUJI         equ     SA_NCHUNK       ; 12
 PH_CLIFF        equ     SA_NCHUNK+1     ; 13  (busiest — no actors here)
-PH_MID          equ     SA_NCHUNK+2     ; midground strips (must precede the present)
-PH_ACTORS       equ     SA_NCHUNK+3     ; actors THEN present
-PH_IDLE         equ     SA_NCHUNK+4     ; spare
-* --- MIDGROUND ($A684/$A68A) — traced from the oracle walk-off (B0 full2 log):
-*     A68A: col = $52 + 2, rows 111..151 step 2   (21 draws)
-*     A684: col = $52 + 7, rows  66..170 step 2   (53 draws)
-*     Both are $52-RELATIVE, so they SCROLL with the scene and enter from the right as $52 falls —
-*     they are the reveal content, and their absence is why rows 117-151 sat black to x179. This is
-*     the FIGHT midground, which the climb tableau omits by definition (climb-beat map: $A684 has
-*     ZERO draws in the climb), so it could never have come from the climb substrate.
-*     Port column = ((cur52 + off) * 7 + 20) >> 2, sub = that & 3 (the standard 1:1 + 20 mapping);
-*     skipped when it lands beyond PLAY_R (off-screen right, before it scrolls in). ---
-MID_A684_OFF    equ     7
-MID_A684_ROW0   equ     66
-MID_A684_ROWEND equ     171             ; exclusive; step 2
-MID_A68A_OFF    equ     2
-MID_A68A_ROW0   equ     111
-MID_A68A_ROWEND equ     152             ; exclusive; step 2
+PH_ACTORS       equ     SA_NCHUNK+2     ; 14  actors THEN present
+PH_IDLE         equ     SA_NCHUNK+3     ; 15  spare
 * --- halt (phase 1 ends here; phase 2 walk-through is B3) ---
 SCROLL_HALT_S52 equ     $1A             ; the oracle's phase-wrap compare
 SCROLL_SETTLE_S52 equ   $1B             ; $52 settles here and the scene freezes
@@ -235,9 +216,7 @@ main_loop:
         cmpa    #SA_NCHUNK+1
         beq     ml_cliff                ; phase 13: re-blit the cliff sprite at the scrolled col
         cmpa    #SA_NCHUNK+2
-        beq     ml_mid                  ; midground strips (scrolled, before the present)
-        cmpa    #SA_NCHUNK+3
-        beq     ml_flip                 ; actors + present
+        beq     ml_flip                 ; phase 14: present + flip
         bra     ml_next                 ; phase 15: idle
 
 * The LOWEST Fuji cel ($A9E2) is NOT redrawn -> the strip (scrolling area, drawn "after" Fuji)
@@ -264,12 +243,8 @@ ml_cliff:
         jsr     clip_left_border        ; clip a scrolled cliff cel at the virtual left edge (px20)
         bra     ml_next
 
-ml_mid:
-        jsr     draw_midground
-        bra     ml_next
-
 ml_flip:
-* ACTORS THEN PRESENT. Actors must come AFTER the band+cliff are built (or the strip
+* PHASE 14 — ACTORS THEN PRESENT. Actors must come AFTER the band+cliff are built (or the strip
 * would overwrite them) and BEFORE the VOFFSET swap (or they would not be on the displayed page).
 * Phase 14 is also ~99% empty (present = 186 cyc), so this is the only slot satisfying both.
 * The strip rebuilds the band from the pristine snapshot each step, so the actors are erased for
@@ -630,12 +605,6 @@ edge_byte       fcb     0
 copy_ct         fcb     0
 a9e2_h          fcb     0
 a9e2_w          fcb     0
-mid_cel         fdb     0               ; midground: current cel
-mid_row         fcb     0               ; midground: current row
-mid_rowend      fcb     0               ; midground: row limit (exclusive)
-mid_col         fcb     0               ; midground: port byte column
-mid_sub         fcb     0               ; midground: scratch (low byte of x)
-mid_subv        fcb     0               ; midground: sub-byte 0..3
 player_dx       fcb     0               ; player forward drift (byte cols) — see PLAYER_STEPS_PER_COL
 player_dctr     fcb     0               ; step counter feeding player_dx
 run_idx         fcb     0               ; current run frame (0=s0); advanced once per scroll step
@@ -648,62 +617,6 @@ back_band       fdb     0
 cur_src         fdb     0
 cur_dst         fdb     0
 scroll_save     rmb     SA_BAND_LEN     ; clean gated-band snapshot (6480 bytes)
-
-* ===============================================================
-* draw_midground — the two $52-relative vertical strips, tiled every 2 rows.
-*   Entry per strip: A = port col, blit_subbyte = sub, B = row, X = cel.
-* ===============================================================
-draw_midground:
-        lda     #MID_A684_OFF
-        ldx     #scene6_bg_A684
-        ldb     #MID_A684_ROW0
-        stb     mid_row
-        ldb     #MID_A684_ROWEND
-        stb     mid_rowend
-        jsr     mid_strip
-        lda     #MID_A68A_OFF
-        ldx     #scene6_bg_A68A
-        ldb     #MID_A68A_ROW0
-        stb     mid_row
-        ldb     #MID_A68A_ROWEND
-        stb     mid_rowend
-        jsr     mid_strip
-        rts
-
-* mid_strip — A = $52 offset, X = cel, mid_row/mid_rowend = row range (step 2).
-mid_strip:
-        stx     mid_cel
-        adda    cur52                   ; A = cur52 + offset  (oracle byte column)
-        ldb     #7
-        mul                             ; D = oracle_col * 7  (1:1 px registration)
-        addd    #20                     ; + the port's +20 origin
-        stb     mid_sub                 ; low byte -> sub lives in bits 1-0
-        lsra
-        rorb
-        lsra
-        rorb                            ; D = x >> 2 ; B = port byte column
-        cmpa    #0                      ; high byte non-zero => way off-screen right
-        bne     mid_done
-        cmpb    #PLAY_R
-        bhi     mid_done                ; not yet scrolled into the play area
-        stb     mid_col
-        lda     mid_sub
-        anda    #3
-        sta     mid_subv
-mid_loop:
-        lda     mid_subv
-        sta     <blit_subbyte           ; re-armed per blit (HAL may clobber)
-        lda     mid_col
-        ldb     mid_row
-        ldx     mid_cel
-        jsr     HAL_gfx_blit_sprite
-        lda     mid_row
-        adda    #2
-        sta     mid_row
-        cmpa    mid_rowend
-        blo     mid_loop
-mid_done:
-        rts
 
 * ===============================================================
 * clear_border_fuji — the right border (cols PLAY_R+1..79 = x280-319) is outside the 280 px
@@ -878,9 +791,6 @@ run_on_halt:
         include "../../content/player/player_run_torso_9E74/converted.s"
         include "../../content/player/player_run_torso_9E92/converted.s"
         include "../../content/player/scene6_player_8E9B/converted.s"
-* --- midground strips (the reveal content; $52-relative) ---
-        include "../../content/background/scene6_bg_A684/converted.s"
-        include "../../content/background/scene6_bg_A68A/converted.s"
 * --- defeated-guard cels (pre-mirrored) ---
         include "../../content/guard/scene6_guard_9290_mir/converted.s"
         include "../../content/guard/scene6_guard_8DA9_mir/converted.s"
