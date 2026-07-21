@@ -31,7 +31,13 @@ def leading_trim(addr):
     has = [any(packed[r*cw+c] != 0 for r in range(h)) for c in range(cw)]
     return next((i for i in range(cw) if has[i]), 0)
 
-ANCHOR = 0x13 * 7          # apple-px legs origin (observed steady-state pose, sub 0)
+ANCHOR = 78                # apple-px legs origin — CHOSEN so the run's standing frame (`st`)
+#   lands exactly on the CLIMB SETTLE position, which is where the player is standing when the
+#   run begins (Jay: "the run animation should start at the same location the climb settle was").
+#   climb_crawl f6 draws 899C at col 25 sub 2 = x102; with ANCHOR=78 the run's `st` frame draws
+#   the SAME cel at (78+20)=98 -> col 24 sub 2, +leading_trim(899C)=1 -> col 25 sub 2 = x102. Match.
+#   (Was 0x13*7 = 133, a real observed steady-state legs X, but an arbitrary point in the run —
+#   it put the figure 55 px right of where the climb leaves him.)
 DWELL  = 11                # VBL, steady-state measured (f8802-8947: 11,12,11,11,11,12,...)
 
 def place_px(x_apple, addr):

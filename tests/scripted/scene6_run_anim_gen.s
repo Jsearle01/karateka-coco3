@@ -10,85 +10,85 @@ run_loop_first:   fcb 2   ; @loop c0
 run_loop_last:    fcb 9   ; @loop c7
 run_s0:  fcb     11,3
         fdb     player_run_legs_9CAF
-        fcb     39,1,143
+        fcb     25,2,143
         fdb     scene6_player_8E9B
-        fcb     41,1,116
+        fcb     27,2,116
         fdb     player_run_torso_9E4A
-        fcb     40,0,123
+        fcb     26,1,123
 run_s1:  fcb     11,3
         fdb     player_run_legs_9CD7
-        fcb     38,1,139
+        fcb     24,2,139
         fdb     scene6_player_8E9B
-        fcb     42,0,118
+        fcb     28,1,118
         fdb     player_run_torso_9E74
-        fcb     40,0,125
+        fcb     26,1,125
 run_c0:  fcb     11,3
         fdb     player_run_legs_9B00
-        fcb     38,1,141
+        fcb     24,2,141
         fdb     scene6_player_8E9B
-        fcb     43,0,119
+        fcb     29,1,119
         fdb     player_run_torso_9D68
-        fcb     41,0,126
+        fcb     27,1,126
 run_c1:  fcb     11,3
         fdb     player_run_legs_9B6B
-        fcb     38,1,141
+        fcb     24,2,141
         fdb     scene6_player_8E9B
-        fcb     43,3,119
+        fcb     30,0,119
         fdb     player_run_torso_9D68
-        fcb     41,3,126
+        fcb     28,0,126
 run_c2:  fcb     11,3
         fdb     player_run_legs_9BE5
-        fcb     39,1,149
+        fcb     25,2,149
         fdb     scene6_player_8E9B
-        fcb     43,1,119
+        fcb     29,2,119
         fdb     player_run_torso_9DD5
-        fcb     41,3,126
+        fcb     28,0,126
 run_c3:  fcb     11,3
         fdb     player_run_legs_9C1B
-        fcb     38,1,138
+        fcb     24,2,138
         fdb     scene6_player_8E9B
-        fcb     41,0,118
+        fcb     27,1,118
         fdb     player_run_torso_9E05
-        fcb     40,0,125
+        fcb     26,1,125
 run_c4:  fcb     11,3
         fdb     player_run_legs_9B00
-        fcb     38,1,141
+        fcb     24,2,141
         fdb     scene6_player_8E9B
-        fcb     43,0,119
+        fcb     29,1,119
         fdb     player_run_torso_9D97
-        fcb     41,0,126
+        fcb     27,1,126
 run_c5:  fcb     11,3
         fdb     player_run_legs_9B6B
-        fcb     38,1,141
+        fcb     24,2,141
         fdb     scene6_player_8E9B
-        fcb     43,3,119
+        fcb     30,0,119
         fdb     player_run_torso_9D97
-        fcb     41,3,126
+        fcb     28,0,126
 run_c6:  fcb     11,3
         fdb     player_run_legs_9BE5
-        fcb     39,1,149
+        fcb     25,2,149
         fdb     scene6_player_8E9B
-        fcb     43,1,119
+        fcb     29,2,119
         fdb     player_run_torso_9DD5
-        fcb     41,3,126
+        fcb     28,0,126
 run_c7:  fcb     11,3
         fdb     player_run_legs_9C65
-        fcb     38,1,138
+        fcb     24,2,138
         fdb     scene6_player_8E9B
-        fcb     41,0,118
+        fcb     27,1,118
         fdb     player_run_torso_9E2E
-        fcb     40,0,125
+        fcb     26,1,125
 run_e0:  fcb     11,3
         fdb     player_run_legs_9D1E
-        fcb     38,1,138
+        fcb     24,2,138
         fdb     scene6_player_8E9B
-        fcb     40,0,118
+        fcb     26,1,118
         fdb     player_run_torso_9E92
-        fcb     38,1,126
+        fcb     24,2,126
 run_st:  fcb     21,3
         fdb     scene6_player_899C
-        fcb     39,1,138
+        fcb     25,2,138
         fdb     scene6_player_8E9B
-        fcb     39,3,116
+        fcb     26,0,116
         fdb     scene6_player_8ACB
-        fcb     39,1,124
+        fcb     25,2,124

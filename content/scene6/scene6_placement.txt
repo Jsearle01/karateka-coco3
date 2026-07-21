@@ -112,7 +112,9 @@ run:  # PLAYER RUN — legs+torso per frame, execution-confirmed from the oracle
 #   ANCHOR: the legs cel is drawn AT the player position (legs col == $62 every steady-state
 #   pose) => a frame's origin IS the player X and the torso sits at +dx px. Frames here are
 #   normalized to ONE anchor so the cycle plays IN PLACE; the engine (Stage B2) supplies the
-#   live X advance. Rows verbatim oracle. Registration via harness/tools/gen_stageb0_run.py
+#   live X advance. Rows verbatim oracle. ANCHOR re-set 2026-07-21 so `st` lands exactly on the
+#   CLIMB SETTLE (climb_crawl f6): both draw 899C at col 25 sub 2 row 138 — the run now begins
+#   where the climb leaves the player, instead of 55 px to its right. Registration via harness/tools/gen_stageb0_run.py
 #   (same x=col*7+sub+20 / leading_trim formula as the climb crawl). Dwell 11 VBL = the
 #   steady-state measured cadence (f8802-8947); the loop is compute-bound so the observed
 #   gap ranges 7-21 under scene load (idioms 8a) — 11 is the clean free-running value.
@@ -125,15 +127,15 @@ run:  # PLAYER RUN — legs+torso per frame, execution-confirmed from the oracle
 #   `st` = the standing straight pose the run settles into — the same trio and the same rows as
 #   climb_crawl f6 (899C 138 / 8ACB 124 / 8E9B 116); dwell 21 VBL (f6649->f6670, observed once).
   @loop c0 c7          # s0,s1 play in -> c0..c7 repeat -> e0,st play out (oracle: exactly this)
-  s0   11   9CAF:39,1,143   8E9B:41,1,116   9E4A:40,0,123
-  s1   11   9CD7:38,1,139   8E9B:42,0,118   9E74:40,0,125
-  c0   11   9B00:38,1,141   8E9B:43,0,119   9D68:41,0,126
-  c1   11   9B6B:38,1,141   8E9B:43,3,119   9D68:41,3,126
-  c2   11   9BE5:39,1,149   8E9B:43,1,119   9DD5:41,3,126
-  c3   11   9C1B:38,1,138   8E9B:41,0,118   9E05:40,0,125
-  c4   11   9B00:38,1,141   8E9B:43,0,119   9D97:41,0,126
-  c5   11   9B6B:38,1,141   8E9B:43,3,119   9D97:41,3,126
-  c6   11   9BE5:39,1,149   8E9B:43,1,119   9DD5:41,3,126
-  c7   11   9C65:38,1,138   8E9B:41,0,118   9E2E:40,0,125
-  e0   11   9D1E:38,1,138   8E9B:40,0,118   9E92:38,1,126
-  st   21   899C:39,1,138   8E9B:39,3,116   8ACB:39,1,124
+  s0   11   9CAF:25,2,143   8E9B:27,2,116   9E4A:26,1,123
+  s1   11   9CD7:24,2,139   8E9B:28,1,118   9E74:26,1,125
+  c0   11   9B00:24,2,141   8E9B:29,1,119   9D68:27,1,126
+  c1   11   9B6B:24,2,141   8E9B:30,0,119   9D68:28,0,126
+  c2   11   9BE5:25,2,149   8E9B:29,2,119   9DD5:28,0,126
+  c3   11   9C1B:24,2,138   8E9B:27,1,118   9E05:26,1,125
+  c4   11   9B00:24,2,141   8E9B:29,1,119   9D97:27,1,126
+  c5   11   9B6B:24,2,141   8E9B:30,0,119   9D97:28,0,126
+  c6   11   9BE5:25,2,149   8E9B:29,2,119   9DD5:28,0,126
+  c7   11   9C65:24,2,138   8E9B:27,1,118   9E2E:26,1,125
+  e0   11   9D1E:24,2,138   8E9B:26,1,118   9E92:24,2,126
+  st   21   899C:25,2,138   8E9B:26,0,116   8ACB:25,2,124
