@@ -69,8 +69,11 @@ _G._n = emu.add_machine_frame_notifier(function()
     if ex then cpu.state["PC"].value = ex; st = "run"; armed = true; base_f = fn end
   end
   if not armed or fn - base_f < 60 then return end
-  local ph = mem:read_u8(PHASE)
-  if ph == TRIGPH and last_phase ~= TRIGPH then         -- once per step, after the flip
+  -- Trigger on a cur52 CHANGE, not on a phase. A phase trigger misses steps: the step machine's
+  -- last phase can be cheap enough (123 cyc idle) to share a MAME frame with the next, so the
+  -- frame-notifier never samples it and no diff is ever taken. cur52 changing IS the step boundary.
+  local ph = mem:read_u8(S52)
+  if ph ~= last_phase and last_phase ~= -1 then
     local cur, base = grab()
     if prev then
       local r0, r1, c0, c1, n = 999, -1, 999, -1, 0

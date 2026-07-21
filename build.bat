@@ -71,6 +71,11 @@ lwasm --decb -o tests/scripted/scene6_walk_scrollA_driver.bin tests/scripted/sce
 if errorlevel 1 goto :error
 call :size tests/scripted/scene6_walk_scrollA_driver.bin
 
+echo --- Stage B2' core scroll (scroll + run + guard, actors on phase 14) ---
+lwasm --decb -o tests/scripted/scene6_b2prime_driver.bin tests/scripted/scene6_b2prime_driver.s
+if errorlevel 1 goto :error
+call :size tests/scripted/scene6_b2prime_driver.bin
+
 lwasm --decb -I src/engine -I src/hal/coco3-dsk -o tests/scripted/timer_framesync_driver.bin tests/scripted/timer_framesync_driver.s
 if errorlevel 1 goto :error
 call :size tests/scripted/timer_framesync_driver.bin

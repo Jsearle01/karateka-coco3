@@ -62,10 +62,23 @@ scene, does not slide.
 constants (`SCROLL_VBLS_PER_STEP` 16→11, `SA_NCHUNK` 12→7, `SA_RPC` 7→12) with no scroll-logic edit
 — the deferred Classic/Enhanced toggle is a constant swap, as required.
 
+**AC9 — 3-column step delta (measured on the built driver).** Dirty-region diff, `SCROLL_COLS_PER_STEP`
+1 vs 3 (the constant swap is the whole change):
+
+| cols/step | changed bytes/step | changing window | ≈ cycles @22.5 cyc/B | % of the 11-VBL step |
+|---|---:|---|---:|---:|
+| **1** | 325–412 (med ~355) | rows 100–180, 244 px | ~8,000 | **2.4%** |
+| **3** | 518–578 (med ~540) | rows 100–180, 220–252 px | ~12,150 | **3.7%** |
+
+**A 3-column step costs ~1.5× a 1-column step, not 3×** — the scroll delta scales sub-linearly
+(the moving features overlap) and the actor contribution is constant. So the oracle's 1–3 col
+variation is a non-event for the budget; sizing a delta-only redraw for the worst case costs ~4% of
+a step. *(The 1-col figure is 355 B against Stage A's 192 B because B2' now also redraws the run
+pose and the guard each step — ~160 B of actors, which reconciles the two measurements.)*
+
 ### §5  Verdict-time evidence (§11)
-25.1: the driver assembles clean via
-`lwasm --decb -o tests/scripted/scene6_b2prime_driver.bin tests/scripted/scene6_b2prime_driver.s`
-(7,229 B). **It is NOT wired into `build.bat`** — see §7. Prod hash unchanged:
+25.1: `build.bat` → `tests/scripted/scene6_b2prime_driver.bin (7229 bytes)` · `=== BUILD COMPLETE ===`
+(the driver is wired into the build alongside the Stage-A driver). Prod hash unchanged:
 `88eba89b15cdf17c8d25e082d2d3e1f3cce57d38`.
 25.2: `iterations=700  NO-WAIT (overrun) = 0  ->  PASS: 0 OVERRUNS` ·
 `cadence = 59.94/11 = 5.45 steps/sec  cur52 0x30->0x1b  halted=True` ·
@@ -76,15 +89,14 @@ constants (`SCROLL_VBLS_PER_STEP` 16→11, `SA_NCHUNK` 12→7, `SA_RPC` 7→12) 
 - **Cadence set to 11 VBL/step, not Stage A's 16.** §5 specifies the faithful coupled baseline
   (~5.5 steps/sec); 16 VBL gives 3.7/s. Reaching 11 required 7 chunks × 12 rows instead of 12 × 7.
   Strip chunks rose to 69–71.5% of a VBL — still under the window and still below the busiest phase.
-- **`build.bat` not modified.** I edited it to add the driver; Jay declined that change, and the
-  edit had already landed on disk, so I reverted it to HEAD. The driver therefore builds only by
-  direct lwasm invocation. Flagged as a decision for Jay, not a defect.
+- **`build.bat` wiring — resolved.** An interrupt mid-task read as a rejection of the edit, so I
+  reverted it; Jay clarified he had thought I was stuck. The driver is now wired into `build.bat`
+  and a full build passes with prod byte-identical.
 
 ### §7  Uncertainty flags
-- **3-column step delta: NOT MEASURED** (dispatch AC). The dirty-region tool triggers on the last
-  phase of the step machine, and at 11 phases that idle phase (123 cyc) can share a MAME frame with
-  the next, so the trigger never fired. **Fix: anchor the trigger to a `cur52` change, not a phase.**
-  Deferred, with the reason known.
+- ~~3-column step delta: NOT MEASURED~~ **RESOLVED — measured (see §4 AC9).** The phase trigger
+  never fired because the step machine's idle phase (123 cyc) can share a MAME frame; re-anchoring
+  the trigger to a **`cur52` change** (which *is* the step boundary) fixed it.
 - **Colour parity NOT verified.** §3's blue/orange swap check needs a pixel comparison at the run
   figure's render column — that is Jay's visual gate (CLAUDE.md §3 forbids my interpreting pixels).
   **This is an open acceptance item, not a pass.**
@@ -98,7 +110,7 @@ constants (`SCROLL_VBLS_PER_STEP` 16→11, `SA_NCHUNK` 12→7, `SA_RPC` 7→12) 
 ### §8  Follow-up
 1. **Jay's 25.3 gate** — the visual acceptance, including colour parity.
 2. Measure the 3-col delta (re-anchor the trigger to `cur52`).
-3. Decide whether the B2' driver joins `build.bat`.
+3. ~~Decide whether the B2' driver joins `build.bat`~~ — done; it is in the build.
 4. Arch (follow-on) can take phase 10 — 29,736 cycles spare there.
 
 ### §9  User interaction during task
