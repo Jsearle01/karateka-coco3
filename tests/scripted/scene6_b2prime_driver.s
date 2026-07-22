@@ -653,6 +653,9 @@ arch_ct         fcb     0               ; arch: cel counter
 arch_col        fcb     0               ; arch: port byte column
 arch_subv       fcb     0               ; arch: sub-byte 0..3
 arch_row        fcb     0               ; arch: current row
+arch_rend       fcb     0               ; arch: row limit (inclusive)
+arch_step       fcb     0               ; arch: row step
+arch_u          fdb     0               ; arch: saved table pointer across the blit
 dpg_shift       fdb     0               ; generated posts: scroll shift in pixels
 dpg_x           fdb     0               ; generated posts: current post x (signed)
 dpg_currow      fcb     0               ; generated posts: current row
@@ -730,12 +733,12 @@ restore_arch_sky:
         ldb     #80
         mul                             ; D = row0*80
         addd    #$8000
+        tfr     d,y                     ; move to Y FIRST (page_register read clobbers A=D.hi)
         lda     <page_register
         cmpa    #PAGE_A_TOKEN
         beq     ras_go
-        addd    #$4000                  ; back buffer B
+        leay    $4000,y                 ; back buffer B
 ras_go:
-        tfr     d,y
         leay    ARCH_SKY_L,y            ; Y -> row0, col ARCH_SKY_L
         lda     #ARCH_ROWSABV
 ras_row:
@@ -760,12 +763,12 @@ clear_arch_rborder:
         ldb     #80
         mul
         addd    #$8000
+        tfr     d,y                     ; move to Y FIRST (page_register read clobbers A=D.hi)
         lda     <page_register
         cmpa    #PAGE_A_TOKEN
         beq     cab_go
-        addd    #$4000
+        leay    $4000,y
 cab_go:
-        tfr     d,y
         leay    PLAY_R+1,y
         lda     #ARCH_ROWSABV
 cab_row:
@@ -821,9 +824,15 @@ dar_cel:
         addb    1,x                     ; col + width
         cmpb    #80
         bhi     dar_skip
-        * draw tiled rows row0..row1 step
+        * load row range into vars — HAL_gfx_blit_sprite CLOBBERS U, so nothing may be read from
+        * ,u across the blit (that was the crash: U went garbage -> off into the weeds).
         lda     2,u
-        sta     arch_row
+        sta     arch_row                ; row0
+        lda     3,u
+        sta     arch_rend               ; row1
+        lda     4,u
+        sta     arch_step               ; step
+        stu     arch_u                  ; save U across the blit loop
 dar_row:
         lda     arch_subv
         sta     <blit_subbyte
@@ -832,10 +841,11 @@ dar_row:
         ldx     arch_celp
         jsr     HAL_gfx_blit_sprite
         lda     arch_row
-        adda    4,u                     ; + step
+        adda    arch_step
         sta     arch_row
-        cmpa    3,u                     ; <= row1 ?
+        cmpa    arch_rend               ; <= row1 ?
         bls     dar_row
+        ldu     arch_u                  ; restore U (blit clobbered it)
 dar_skip:
         leau    5,u                     ; next entry (col,sub,row0,row1,step)
         dec     arch_ct
