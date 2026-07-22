@@ -267,7 +267,9 @@ ml_fujiu:
         bra     ml_next
 
 ml_arch:
+        jsr     restore_arch_sky        ; wipe the arch's trail above the band (the FLASH fix)
         jsr     draw_arch
+        jsr     clear_arch_rborder      ; black the right border where the arch spilled
         bra     ml_next
 
 ml_sc:
@@ -715,6 +717,70 @@ cbf_b:
 *   time). Drawn BEFORE cliff/actors — behind them; the player walks THROUGH it in B3.
 *   Entry: fdb cel ; fcb col, sub, row0, row1, step  (7 bytes).
 * ===============================================================
+* ARCH_SKY_L/R: the arch's play-area column span (A763 leftmost=55; PLAY_R=74 rightmost play col).
+ARCH_SKY_L      equ     55
+ARCH_ROW0       equ     30              ; arch top row (above the band)
+ARCH_ROWSABV    equ     70              ; rows 30..99 = the above-band region the strip never rebuilds
+
+* restore_arch_sky — repaint BLUE sky ($AAAA) over the arch's above-band region (rows 30..99,
+*   cols ARCH_SKY_L..PLAY_R) so the previous step's arch (a different position on this alternating
+*   buffer) is wiped before the arch is redrawn. Without this the arch's top smears/flashes.
+restore_arch_sky:
+        lda     #ARCH_ROW0
+        ldb     #80
+        mul                             ; D = row0*80
+        addd    #$8000
+        lda     <page_register
+        cmpa    #PAGE_A_TOKEN
+        beq     ras_go
+        addd    #$4000                  ; back buffer B
+ras_go:
+        tfr     d,y
+        leay    ARCH_SKY_L,y            ; Y -> row0, col ARCH_SKY_L
+        lda     #ARCH_ROWSABV
+ras_row:
+        ldx     #$AAAA
+        ldb     #PLAY_R-ARCH_SKY_L+1    ; content bytes 55..74
+        pshs    y
+ras_b:
+        stx     ,y++
+        decb
+        decb
+        bgt     ras_b
+        puls    y
+        leay    80,y
+        deca
+        bne     ras_row
+        rts
+
+* clear_arch_rborder — black cols PLAY_R+1..79 for rows 30..99 (the arch spills into the right
+*   border as it enters; the band rows are handled by the strip's border invariant).
+clear_arch_rborder:
+        lda     #ARCH_ROW0
+        ldb     #80
+        mul
+        addd    #$8000
+        lda     <page_register
+        cmpa    #PAGE_A_TOKEN
+        beq     cab_go
+        addd    #$4000
+cab_go:
+        tfr     d,y
+        leay    PLAY_R+1,y
+        lda     #ARCH_ROWSABV
+cab_row:
+        ldb     #79-PLAY_R
+        pshs    y
+cab_b:
+        clr     ,y+
+        decb
+        bne     cab_b
+        puls    y
+        leay    80,y
+        deca
+        bne     cab_row
+        rts
+
 draw_arch:
         lda     cur52
         suba    #SCROLL_SETTLE_S52      ; A = cur52 - $1B (0..21)
@@ -743,13 +809,17 @@ dar_cel:
         lsrb
         lsrb                            ; B = port_col (x < 256 so A was 0)
         cmpb    #PLAY_L
-        blo     dar_skip
-        stb     arch_col
-        * clip right: col + cel_width - 1 <= PLAY_R
-        ldx     arch_celp
-        addb    1,x                     ; + width (cel header byte 1)
-        decb
+        blo     dar_skip                ; wholly left of the play area
         cmpb    #PLAY_R
+        bhi     dar_skip                ; left edge past the right play edge -> not entered yet
+        stb     arch_col
+        * enter PARTIALLY from the right: draw as soon as the left edge is in the play area. The
+        * right part may spill into the border (cols 75..79), which clear_arch_rborder blacks; but
+        * a cel wide enough to WRAP past col 79 would corrupt the next row, so skip those until
+        * they fit within the screen width.
+        ldx     arch_celp
+        addb    1,x                     ; col + width
+        cmpb    #80
         bhi     dar_skip
         * draw tiled rows row0..row1 step
         lda     2,u
