@@ -71,9 +71,8 @@ SA_BAND_ROWS    equ     81              ; rows 100..180 (wall-top + cliff-face +
 SA_BAND_LEN     equ     SA_BAND_ROWS*80 ; 6480 bytes per band
 SA_A_BAND       equ     $8000+SA_BAND_ROW*80    ; buffer A band base ($9F40)
 SA_B_BAND       equ     $C000+SA_BAND_ROW*80    ; buffer B band base ($DF40)
-SA_NCHUNK       equ     6               ; strip chunks/step. 6 x SA_RPC(14) = 84 >= 81 rows.
-*   Was 7 x 12. Dropping one chunk frees a phase for the ARCH while holding the 11-VBL cadence.
-SA_RPC          equ     14              ; rows per chunk (14*6=84 >= 81)
+SA_NCHUNK       equ     7               ; strip chunks (frames) per step (was 12 @ 16 VBL)
+SA_RPC          equ     12              ; rows per chunk (12*7=84 >= 81)
 * --- PLAY AREA (Jay, 2026-07-21): the CoCo3 screen is 320 px but the game's virtual screen is
 *     280 px, so x280-319 (byte cols 70-79) is a deliberate BLACK BORDER, not missing substrate.
 *     Verified on the live framebuffer: cols 64-69 carry content in 38/81 band rows, cols 70+ are
@@ -233,10 +232,8 @@ main_loop:
         cmpa    #SA_NCHUNK+1
         beq     ml_fujiu                ; FUJI — after the band (which would erase it), before all
         cmpa    #SA_NCHUNK+2            ;   nearer layers
-        beq     ml_arch                 ; ARCH — $52-relative reveal, behind the cliff/actors
-        cmpa    #SA_NCHUNK+3            ;   (the player walks THROUGH it in B3)
-        beq     ml_cliff                ; cliff + seam, in FRONT of Fuji and the arch
-        cmpa    #SA_NCHUNK+4
+        beq     ml_cliff                ; cliff + seam, in FRONT of Fuji
+        cmpa    #SA_NCHUNK+3
         beq     ml_flip                 ; actors + present, in front of everything
         bra     ml_next
 
@@ -264,12 +261,6 @@ ml_fujiu:
         jsr     draw_a9e2_behind        ; lowest Fuji cel — now genuinely behind (band paints over)
         jsr     draw_fuji_upper         ; upper Fuji cels
         jsr     clear_border_fuji       ; keep the right border (cols PLAY_R+1..79) black
-        bra     ml_next
-
-ml_arch:
-        jsr     restore_arch_sky        ; wipe the arch's trail above the band (the FLASH fix)
-        jsr     draw_arch
-        jsr     clear_arch_rborder      ; black the right border where the arch spilled
         bra     ml_next
 
 ml_sc:
@@ -647,15 +638,6 @@ copy_ct         fcb     0
 a9e2_h          fcb     0
 a9e2_w          fcb     0
 dpg_mbase       fdb     0               ; generated posts: active mask table (post_masks/gap_masks)
-arch_delta      fdb     0               ; arch: common scroll delta (px)
-arch_celp       fdb     0               ; arch: current cel pointer
-arch_ct         fcb     0               ; arch: cel counter
-arch_col        fcb     0               ; arch: port byte column
-arch_subv       fcb     0               ; arch: sub-byte 0..3
-arch_row        fcb     0               ; arch: current row
-arch_rend       fcb     0               ; arch: row limit (inclusive)
-arch_step       fcb     0               ; arch: row step
-arch_u          fdb     0               ; arch: saved table pointer across the blit
 dpg_shift       fdb     0               ; generated posts: scroll shift in pixels
 dpg_x           fdb     0               ; generated posts: current post x (signed)
 dpg_currow      fcb     0               ; generated posts: current row
@@ -707,154 +689,6 @@ cbf_b:
         leax    80,x                    ; next row
         deca
         bne     cbf_row
-        rts
-
-* ===============================================================
-* draw_arch — the castle/archway (14 $52-relative cels, traced by spatial region 2026-07-22).
-*   The table (scene6_arch_gen.s) holds each cel's port position at the HALT reference $52=$1B.
-*   Every cel shares the $52 coefficient (their differing fixed offsets are baked into the halt
-*   cols), so the whole composite translates rigidly by ONE common scroll delta:
-*       delta_px = (cur52 - $1B) * 7      (0 at the halt; up to 147 px right at $52=$30)
-*   runtime_x = halt_x + delta_px ; port_col = x>>2, sub = x&3. Tiled pillars draw row0..row1 step.
-*   A cel is skipped unless it fits wholly in [PLAY_L .. PLAY_R] (enters/leaves a cel-width at a
-*   time). Drawn BEFORE cliff/actors — behind them; the player walks THROUGH it in B3.
-*   Entry: fdb cel ; fcb col, sub, row0, row1, step  (7 bytes).
-* ===============================================================
-* ARCH_SKY_L/R: the arch's play-area column span (A763 leftmost=55; PLAY_R=74 rightmost play col).
-ARCH_SKY_L      equ     55
-ARCH_ROW0       equ     30              ; arch top row (above the band)
-ARCH_ROWSABV    equ     70              ; rows 30..99 = the above-band region the strip never rebuilds
-
-* restore_arch_sky — repaint BLUE sky ($AAAA) over the arch's above-band region (rows 30..99,
-*   cols ARCH_SKY_L..PLAY_R) so the previous step's arch (a different position on this alternating
-*   buffer) is wiped before the arch is redrawn. Without this the arch's top smears/flashes.
-restore_arch_sky:
-        lda     #ARCH_ROW0
-        ldb     #80
-        mul                             ; D = row0*80
-        addd    #$8000
-        tfr     d,y                     ; move to Y FIRST (page_register read clobbers A=D.hi)
-        lda     <page_register
-        cmpa    #PAGE_A_TOKEN
-        beq     ras_go
-        leay    $4000,y                 ; back buffer B
-ras_go:
-        leay    ARCH_SKY_L,y            ; Y -> row0, col ARCH_SKY_L
-        lda     #ARCH_ROWSABV
-ras_row:
-        ldx     #$AAAA
-        ldb     #PLAY_R-ARCH_SKY_L+1    ; content bytes 55..74
-        pshs    y
-ras_b:
-        stx     ,y++
-        decb
-        decb
-        bgt     ras_b
-        puls    y
-        leay    80,y
-        deca
-        bne     ras_row
-        rts
-
-* clear_arch_rborder — black cols PLAY_R+1..79 for rows 30..99 (the arch spills into the right
-*   border as it enters; the band rows are handled by the strip's border invariant).
-clear_arch_rborder:
-        lda     #ARCH_ROW0
-        ldb     #80
-        mul
-        addd    #$8000
-        tfr     d,y                     ; move to Y FIRST (page_register read clobbers A=D.hi)
-        lda     <page_register
-        cmpa    #PAGE_A_TOKEN
-        beq     cab_go
-        leay    $4000,y
-cab_go:
-        leay    PLAY_R+1,y
-        lda     #ARCH_ROWSABV
-cab_row:
-        ldb     #79-PLAY_R
-        pshs    y
-cab_b:
-        clr     ,y+
-        decb
-        bne     cab_b
-        puls    y
-        leay    80,y
-        deca
-        bne     cab_row
-        rts
-
-draw_arch:
-        lda     cur52
-        suba    #SCROLL_SETTLE_S52      ; A = cur52 - $1B (0..21)
-        ldb     #7
-        mul                             ; D = delta_px (0..147)
-        std     arch_delta
-        lda     arch_count
-        sta     arch_ct
-        ldu     #arch_tbl
-dar_cel:
-        ldx     ,u++                    ; X = cel, U -> col
-        stx     arch_celp
-        * runtime_x = col*4 + sub + delta
-        lda     #4
-        ldb     ,u                      ; col
-        mul                             ; D = col*4
-        addb    1,u                     ; + sub
-        adca    #0
-        addd    arch_delta              ; D = runtime_x (can be 256..319 for cols 64..79)
-        * sub = x & 3
-        tfr     b,a
-        anda    #3
-        sta     arch_subv
-        * port_col = x >> 2 as a 16-BIT shift (the old `lsrb lsrb` dropped bit 8, and a bad
-        * `tsta;bne` skipped every x>=256 — together they hid the entire right/top of the arch,
-        * all of which sits at cols 64..69 i.e. x>=256). Shift D right twice; B = port_col.
-        lsra
-        rorb
-        lsra
-        rorb                            ; D = x>>2 ; B = port_col
-        tsta
-        bne     dar_skip                ; col > 255 -> genuinely off-screen
-        cmpb    #PLAY_L
-        blo     dar_skip                ; wholly left of the play area
-        cmpb    #PLAY_R
-        bhi     dar_skip                ; left edge past the right play edge -> not entered yet
-        stb     arch_col
-        * enter PARTIALLY from the right: draw as soon as the left edge is in the play area. The
-        * right part may spill into the border (cols 75..79), which clear_arch_rborder blacks; but
-        * a cel wide enough to WRAP past col 79 would corrupt the next row, so skip those until
-        * they fit within the screen width.
-        ldx     arch_celp
-        addb    1,x                     ; col + width
-        cmpb    #80
-        bhi     dar_skip
-        * load row range into vars — HAL_gfx_blit_sprite CLOBBERS U, so nothing may be read from
-        * ,u across the blit (that was the crash: U went garbage -> off into the weeds).
-        lda     2,u
-        sta     arch_row                ; row0
-        lda     3,u
-        sta     arch_rend               ; row1
-        lda     4,u
-        sta     arch_step               ; step
-        stu     arch_u                  ; save U across the blit loop
-dar_row:
-        lda     arch_subv
-        sta     <blit_subbyte
-        lda     arch_col
-        ldb     arch_row
-        ldx     arch_celp
-        jsr     HAL_gfx_blit_sprite
-        lda     arch_row
-        adda    arch_step
-        sta     arch_row
-        cmpa    arch_rend               ; <= row1 ?
-        bls     dar_row
-        ldu     arch_u                  ; restore U (blit clobbered it)
-dar_skip:
-        leau    5,u                     ; next entry (col,sub,row0,row1,step)
-        dec     arch_ct
-        bne     dar_cel
         rts
 
 * ===============================================================
@@ -1162,23 +996,6 @@ run_on_halt:
         include "scene6_placement_gen.s"  ; §2F single-home PLACEMENT table (codegen'd)
         include "scene6_post_masks_gen.s" ; pre-baked post masks, 4 sub-byte phases
         include "scene6_run_anim_gen.s"   ; §2F single-home RUN animation table (codegen'd, B0)
-        include "scene6_arch_gen.s"       ; §2F single-home ARCH composite table (codegen'd)
-* --- arch cels (14, $52-relative castle/archway; traced by spatial region) ---
-        include "../../content/background/scene6_bg_A707/converted.s"
-        include "../../content/background/scene6_bg_A857/converted.s"
-        include "../../content/background/scene6_bg_A82B/converted.s"
-        include "../../content/background/scene6_bg_A7D1/converted.s"
-        include "../../content/background/scene6_bg_A763/converted.s"
-        include "../../content/background/scene6_bg_A703/converted.s"
-        include "../../content/background/scene6_bg_A684/converted.s"
-        include "../../content/background/scene6_bg_A85F/converted.s"
-        include "../../content/background/scene6_bg_A865/converted.s"
-        include "../../content/background/scene6_bg_A68A/converted.s"
-        include "../../content/background/scene6_bg_A877/converted.s"
-        include "../../content/background/scene6_bg_A87B/converted.s"
-        include "../../content/background/scene6_bg_A6EF/converted.s"
-        include "../../content/background/scene6_bg_A6A6/converted.s"
-
 * --- run cels: 8 legs + 8 torsos ($9B00-$9E92) + the shared head/standing trio ---
         include "../../content/player/player_run_legs_9B00/converted.s"
         include "../../content/player/player_run_legs_9B6B/converted.s"
