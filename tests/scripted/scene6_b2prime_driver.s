@@ -71,8 +71,11 @@ SA_BAND_ROWS    equ     81              ; rows 100..180 (wall-top + cliff-face +
 SA_BAND_LEN     equ     SA_BAND_ROWS*80 ; 6480 bytes per band
 SA_A_BAND       equ     $8000+SA_BAND_ROW*80    ; buffer A band base ($9F40)
 SA_B_BAND       equ     $C000+SA_BAND_ROW*80    ; buffer B band base ($DF40)
-SA_NCHUNK       equ     7               ; strip chunks (frames) per step (was 12 @ 16 VBL)
-SA_RPC          equ     12              ; rows per chunk (12*7=84 >= 81)
+SA_NCHUNK       equ     6               ; strip chunks/step. 6 x SA_RPC(14) = 84 >= 81 rows.
+*   Was 7 x 12. Dropping one chunk frees a phase for the ARCH while holding the 11-VBL cadence
+*   (per the B2' report's arch plan). Chunk cost rises ~20,150 -> ~24,000 cyc (80%), in line with
+*   the other heavy phases and still inside the 29,859-cycle window. Verified by re-measure below.
+SA_RPC          equ     14              ; rows per chunk (14*6=84 >= 81)
 * --- PLAY AREA (Jay, 2026-07-21): the CoCo3 screen is 320 px but the game's virtual screen is
 *     280 px, so x280-319 (byte cols 70-79) is a deliberate BLACK BORDER, not missing substrate.
 *     Verified on the live framebuffer: cols 64-69 carry content in 38/81 band rows, cols 70+ are
@@ -232,8 +235,10 @@ main_loop:
         cmpa    #SA_NCHUNK+1
         beq     ml_fujiu                ; FUJI — after the band (which would erase it), before all
         cmpa    #SA_NCHUNK+2            ;   nearer layers
-        beq     ml_cliff                ; cliff + seam, in FRONT of Fuji
-        cmpa    #SA_NCHUNK+3
+        beq     ml_arch                 ; ARCH — $52-relative reveal content, behind the cliff/actors
+        cmpa    #SA_NCHUNK+3            ;   (the player walks THROUGH it in B3)
+        beq     ml_cliff                ; cliff + seam, in FRONT of Fuji and the arch
+        cmpa    #SA_NCHUNK+4
         beq     ml_flip                 ; actors + present, in front of everything
         bra     ml_next
 
@@ -261,6 +266,10 @@ ml_fujiu:
         jsr     draw_a9e2_behind        ; lowest Fuji cel — now genuinely behind (band paints over)
         jsr     draw_fuji_upper         ; upper Fuji cels
         jsr     clear_border_fuji       ; keep the right border (cols PLAY_R+1..79) black
+        bra     ml_next
+
+ml_arch:
+        jsr     draw_arch
         bra     ml_next
 
 ml_sc:
@@ -638,6 +647,15 @@ copy_ct         fcb     0
 a9e2_h          fcb     0
 a9e2_w          fcb     0
 dpg_mbase       fdb     0               ; generated posts: active mask table (post_masks/gap_masks)
+arch_cel        fdb     0               ; arch: current cel
+arch_off        fcb     0               ; arch: $52 offset
+arch_w          fcb     0               ; arch: cel width (bytes)
+arch_row        fcb     0               ; arch: current row
+arch_rend       fcb     0               ; arch: row limit (exclusive)
+arch_step       fcb     0               ; arch: row step
+arch_byte       fcb     0               ; arch: port byte column
+arch_sub        fcb     0               ; arch: scratch (low byte of x)
+arch_subv       fcb     0               ; arch: sub-byte 0..3
 dpg_shift       fdb     0               ; generated posts: scroll shift in pixels
 dpg_x           fdb     0               ; generated posts: current post x (signed)
 dpg_currow      fcb     0               ; generated posts: current row
@@ -689,6 +707,92 @@ cbf_b:
         leax    80,x                    ; next row
         deca
         bne     cbf_row
+        rts
+
+* ===============================================================
+* draw_arch — the phase-1 ARCH: 5 $52-relative cels that ride the scroll and enter from the right
+*   as $52 falls (reveal content). VERIFIED before wiring (this dispatch, §2):
+*     - all 5 have SINGLE-VALUED col-$52 offsets over thousands of draws -> they ride the scroll;
+*     - in rows 110-155 the only cel scenery is these + the cliff; the pattern-FILL path draws only
+*       horizontal bands (rows 30/84/112/114/153, $AA11/$AA31/$A684 patterns) = separate backdrop/
+*       floor lines the port already fills, NOT the arch. Recon 1's draw_castle_af76 fill at cols
+*       $1B/$1C is one of those horizontal fills, distinct from this cel arch.
+*   Model (offsets from $52, rows MEASURED from the entry trace — the dispatch table's A684 66-170
+*   was stale; actual 110-154):
+*     A684 $52+7 rows 110..154 step 2 (w4)   A68A $52+2 rows 111..151 step 2 (w3)
+*     A877 $52+2 row 111 (w4)                A87B $52+1 row 153 (w7)   A6EF $52+9 row 153 (w2)
+*   Port col = ((cur52+off)*7+20)>>2, sub = &3. A cel is SKIPPED unless it fits wholly in the play
+*   area [PLAY_L .. PLAY_R] — so it enters/leaves a cel-width at a time (8-28 px granularity) rather
+*   than writing into a border. Drawn BEFORE cliff/posts/actors (behind them; walked through in B3).
+* Table entry: fdb cel ; fcb off, width, row0, row_end(excl), step
+* ===============================================================
+arch_tbl:
+        fdb     scene6_bg_A684
+        fcb     7,4,110,156,2
+        fdb     scene6_bg_A68A
+        fcb     2,3,111,152,2
+        fdb     scene6_bg_A877
+        fcb     2,4,111,112,2
+        fdb     scene6_bg_A87B
+        fcb     1,7,153,154,2
+        fdb     scene6_bg_A6EF
+        fcb     9,2,153,154,2
+        fdb     0                       ; end marker
+
+draw_arch:
+        ldu     #arch_tbl
+da_entry:
+        ldx     ,u++                    ; X = cel (0 = end)
+        beq     da_done
+        stx     arch_cel
+        ldb     ,u+                     ; off
+        stb     arch_off
+        ldb     ,u+                     ; width
+        stb     arch_w
+        ldb     ,u+                     ; row0
+        stb     arch_row
+        ldb     ,u+                     ; row_end
+        stb     arch_rend
+        ldb     ,u+                     ; step
+        stb     arch_step
+        * column: x = (cur52 + off)*7 + 20 ; byte = x>>2, sub = x&3 — constant across this cel's rows
+        lda     cur52
+        adda    arch_off
+        ldb     #7
+        mul                             ; D = (cur52+off)*7
+        addd    #20
+        stb     arch_sub                ; low byte holds sub in bits 1-0
+        lsra
+        rorb
+        lsra
+        rorb                            ; D = x>>2 ; B = byte column
+        tsta
+        bne     da_entry                ; high byte set -> far off-screen right, skip cel
+        stb     arch_byte
+        * clip: skip unless [byte .. byte+w-1] fits wholly in [PLAY_L .. PLAY_R]
+        cmpb    #PLAY_L
+        blo     da_entry
+        addb    arch_w
+        decb                            ; B = byte + w - 1
+        cmpb    #PLAY_R
+        bhi     da_entry
+        lda     arch_sub
+        anda    #3
+        sta     arch_subv
+da_row:
+        lda     arch_subv
+        sta     <blit_subbyte           ; re-armed per blit (HAL may clobber)
+        lda     arch_byte
+        ldb     arch_row
+        ldx     arch_cel
+        jsr     HAL_gfx_blit_sprite
+        lda     arch_row
+        adda    arch_step
+        sta     arch_row
+        cmpa    arch_rend
+        blo     da_row
+        bra     da_entry
+da_done:
         rts
 
 * ===============================================================
@@ -996,6 +1100,12 @@ run_on_halt:
         include "scene6_placement_gen.s"  ; §2F single-home PLACEMENT table (codegen'd)
         include "scene6_post_masks_gen.s" ; pre-baked post masks, 4 sub-byte phases
         include "scene6_run_anim_gen.s"   ; §2F single-home RUN animation table (codegen'd, B0)
+* --- arch cels (phase-1 reveal content; $52-relative) ---
+        include "../../content/background/scene6_bg_A684/converted.s"
+        include "../../content/background/scene6_bg_A68A/converted.s"
+        include "../../content/background/scene6_bg_A877/converted.s"
+        include "../../content/background/scene6_bg_A87B/converted.s"
+        include "../../content/background/scene6_bg_A6EF/converted.s"
 * --- run cels: 8 legs + 8 torsos ($9B00-$9E92) + the shared head/standing trio ---
         include "../../content/player/player_run_legs_9B00/converted.s"
         include "../../content/player/player_run_legs_9B6B/converted.s"
