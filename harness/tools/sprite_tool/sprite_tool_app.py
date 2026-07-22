@@ -335,8 +335,10 @@ def main():
         framevar.set(entry_order[j]); select_entry(entry_order[j])
 
     def canvas_to_frame(e):
-        # map widget coords -> CANVAS coords first (so painting stays correct after scrolling)
-        cx, cy = canvas.canvasx(e.x), canvas.canvasy(e.y)
+        # map widget coords -> CANVAS coords first (so painting stays correct after scrolling).
+        # canvasx/canvasy return FLOATS — int() them or screen_to_sprite yields float sprite coords
+        # that then fail to index the pixel arrays (pixels[float]), which silently killed painting.
+        cx, cy = int(canvas.canvasx(e.x)), int(canvas.canvasy(e.y))
         return screen_to_sprite(cx - state.get("new_x0", MARGIN), cy - state.get("new_y0", MARGIN), state["zoom"])
 
     def on_move(e):
