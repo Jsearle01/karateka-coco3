@@ -112,7 +112,18 @@ def main():
     celmenu.config(width=10, anchor="w")
     celmenu.pack(side="left")
 
-    canvas = tk.Canvas(root, width=1040, height=640, bg="#282828"); canvas.pack(fill="both", expand=True)
+    # canvas in a frame with vertical + horizontal scrollbars, so a zoomed image can be panned.
+    cframe = tk.Frame(root); cframe.pack(fill="both", expand=True)
+    vbar = tk.Scrollbar(cframe, orient="vertical")
+    hbar = tk.Scrollbar(cframe, orient="horizontal")
+    canvas = tk.Canvas(cframe, width=1040, height=640, bg="#282828",
+                       xscrollcommand=hbar.set, yscrollcommand=vbar.set)
+    vbar.config(command=canvas.yview); hbar.config(command=canvas.xview)
+    vbar.pack(side="right", fill="y"); hbar.pack(side="bottom", fill="x")
+    canvas.pack(side="left", fill="both", expand=True)
+    # mouse wheel = vertical pan; Shift+wheel = horizontal (Windows delta is ±120 per notch)
+    canvas.bind("<MouseWheel>",       lambda e: canvas.yview_scroll(-e.delta // 120, "units"))
+    canvas.bind("<Shift-MouseWheel>", lambda e: canvas.xview_scroll(-e.delta // 120, "units"))
     # prominent SAVE banner (bottom): only save writes it, so redraw() can't clobber the result.
     savebar = tk.Label(root, text="ready — paint, then Save (Ctrl-S)", anchor="w",
                        font=("Consolas", 12, "bold"), fg="white", bg="#444",
@@ -324,7 +335,9 @@ def main():
         framevar.set(entry_order[j]); select_entry(entry_order[j])
 
     def canvas_to_frame(e):
-        return screen_to_sprite(e.x - state.get("new_x0", MARGIN), e.y - state.get("new_y0", MARGIN), state["zoom"])
+        # map widget coords -> CANVAS coords first (so painting stays correct after scrolling)
+        cx, cy = canvas.canvasx(e.x), canvas.canvasy(e.y)
+        return screen_to_sprite(cx - state.get("new_x0", MARGIN), cy - state.get("new_y0", MARGIN), state["zoom"])
 
     def on_move(e):
         fx, fy = canvas_to_frame(e)
