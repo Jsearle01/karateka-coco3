@@ -802,15 +802,20 @@ dar_cel:
         mul                             ; D = col*4
         addb    1,u                     ; + sub
         adca    #0
-        addd    arch_delta              ; D = runtime_x
-        tsta
-        bne     dar_skip                ; high byte set -> col > 255, off-screen right
-        * port_col = x>>2 (B), sub = x&3
+        addd    arch_delta              ; D = runtime_x (can be 256..319 for cols 64..79)
+        * sub = x & 3
         tfr     b,a
         anda    #3
-        sta     arch_subv               ; sub
-        lsrb
-        lsrb                            ; B = port_col (x < 256 so A was 0)
+        sta     arch_subv
+        * port_col = x >> 2 as a 16-BIT shift (the old `lsrb lsrb` dropped bit 8, and a bad
+        * `tsta;bne` skipped every x>=256 — together they hid the entire right/top of the arch,
+        * all of which sits at cols 64..69 i.e. x>=256). Shift D right twice; B = port_col.
+        lsra
+        rorb
+        lsra
+        rorb                            ; D = x>>2 ; B = port_col
+        tsta
+        bne     dar_skip                ; col > 255 -> genuinely off-screen
         cmpb    #PLAY_L
         blo     dar_skip                ; wholly left of the play area
         cmpb    #PLAY_R
