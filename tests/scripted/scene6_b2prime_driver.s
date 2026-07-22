@@ -71,8 +71,9 @@ SA_BAND_ROWS    equ     81              ; rows 100..180 (wall-top + cliff-face +
 SA_BAND_LEN     equ     SA_BAND_ROWS*80 ; 6480 bytes per band
 SA_A_BAND       equ     $8000+SA_BAND_ROW*80    ; buffer A band base ($9F40)
 SA_B_BAND       equ     $C000+SA_BAND_ROW*80    ; buffer B band base ($DF40)
-SA_NCHUNK       equ     7               ; strip chunks (frames) per step (was 12 @ 16 VBL)
-SA_RPC          equ     12              ; rows per chunk (12*7=84 >= 81)
+SA_NCHUNK       equ     6               ; strip chunks/step. 6 x SA_RPC(14) = 84 >= 81 rows.
+*   Was 7 x 12. Dropping one chunk frees a phase for the ARCH while holding the 11-VBL cadence.
+SA_RPC          equ     14              ; rows per chunk (14*6=84 >= 81)
 * --- PLAY AREA (Jay, 2026-07-21): the CoCo3 screen is 320 px but the game's virtual screen is
 *     280 px, so x280-319 (byte cols 70-79) is a deliberate BLACK BORDER, not missing substrate.
 *     Verified on the live framebuffer: cols 64-69 carry content in 38/81 band rows, cols 70+ are
@@ -232,8 +233,10 @@ main_loop:
         cmpa    #SA_NCHUNK+1
         beq     ml_fujiu                ; FUJI — after the band (which would erase it), before all
         cmpa    #SA_NCHUNK+2            ;   nearer layers
-        beq     ml_cliff                ; cliff + seam, in FRONT of Fuji
-        cmpa    #SA_NCHUNK+3
+        beq     ml_arch                 ; ARCH — $52-relative reveal, behind the cliff/actors
+        cmpa    #SA_NCHUNK+3            ;   (the player walks THROUGH it in B3)
+        beq     ml_cliff                ; cliff + seam, in FRONT of Fuji and the arch
+        cmpa    #SA_NCHUNK+4
         beq     ml_flip                 ; actors + present, in front of everything
         bra     ml_next
 
@@ -261,6 +264,10 @@ ml_fujiu:
         jsr     draw_a9e2_behind        ; lowest Fuji cel — now genuinely behind (band paints over)
         jsr     draw_fuji_upper         ; upper Fuji cels
         jsr     clear_border_fuji       ; keep the right border (cols PLAY_R+1..79) black
+        bra     ml_next
+
+ml_arch:
+        jsr     draw_arch
         bra     ml_next
 
 ml_sc:
@@ -638,6 +645,12 @@ copy_ct         fcb     0
 a9e2_h          fcb     0
 a9e2_w          fcb     0
 dpg_mbase       fdb     0               ; generated posts: active mask table (post_masks/gap_masks)
+arch_delta      fdb     0               ; arch: common scroll delta (px)
+arch_celp       fdb     0               ; arch: current cel pointer
+arch_ct         fcb     0               ; arch: cel counter
+arch_col        fcb     0               ; arch: port byte column
+arch_subv       fcb     0               ; arch: sub-byte 0..3
+arch_row        fcb     0               ; arch: current row
 dpg_shift       fdb     0               ; generated posts: scroll shift in pixels
 dpg_x           fdb     0               ; generated posts: current post x (signed)
 dpg_currow      fcb     0               ; generated posts: current row
@@ -689,6 +702,74 @@ cbf_b:
         leax    80,x                    ; next row
         deca
         bne     cbf_row
+        rts
+
+* ===============================================================
+* draw_arch — the castle/archway (14 $52-relative cels, traced by spatial region 2026-07-22).
+*   The table (scene6_arch_gen.s) holds each cel's port position at the HALT reference $52=$1B.
+*   Every cel shares the $52 coefficient (their differing fixed offsets are baked into the halt
+*   cols), so the whole composite translates rigidly by ONE common scroll delta:
+*       delta_px = (cur52 - $1B) * 7      (0 at the halt; up to 147 px right at $52=$30)
+*   runtime_x = halt_x + delta_px ; port_col = x>>2, sub = x&3. Tiled pillars draw row0..row1 step.
+*   A cel is skipped unless it fits wholly in [PLAY_L .. PLAY_R] (enters/leaves a cel-width at a
+*   time). Drawn BEFORE cliff/actors — behind them; the player walks THROUGH it in B3.
+*   Entry: fdb cel ; fcb col, sub, row0, row1, step  (7 bytes).
+* ===============================================================
+draw_arch:
+        lda     cur52
+        suba    #SCROLL_SETTLE_S52      ; A = cur52 - $1B (0..21)
+        ldb     #7
+        mul                             ; D = delta_px (0..147)
+        std     arch_delta
+        lda     arch_count
+        sta     arch_ct
+        ldu     #arch_tbl
+dar_cel:
+        ldx     ,u++                    ; X = cel, U -> col
+        stx     arch_celp
+        * runtime_x = col*4 + sub + delta
+        lda     #4
+        ldb     ,u                      ; col
+        mul                             ; D = col*4
+        addb    1,u                     ; + sub
+        adca    #0
+        addd    arch_delta              ; D = runtime_x
+        tsta
+        bne     dar_skip                ; high byte set -> col > 255, off-screen right
+        * port_col = x>>2 (B), sub = x&3
+        tfr     b,a
+        anda    #3
+        sta     arch_subv               ; sub
+        lsrb
+        lsrb                            ; B = port_col (x < 256 so A was 0)
+        cmpb    #PLAY_L
+        blo     dar_skip
+        stb     arch_col
+        * clip right: col + cel_width - 1 <= PLAY_R
+        ldx     arch_celp
+        addb    1,x                     ; + width (cel header byte 1)
+        decb
+        cmpb    #PLAY_R
+        bhi     dar_skip
+        * draw tiled rows row0..row1 step
+        lda     2,u
+        sta     arch_row
+dar_row:
+        lda     arch_subv
+        sta     <blit_subbyte
+        lda     arch_col
+        ldb     arch_row
+        ldx     arch_celp
+        jsr     HAL_gfx_blit_sprite
+        lda     arch_row
+        adda    4,u                     ; + step
+        sta     arch_row
+        cmpa    3,u                     ; <= row1 ?
+        bls     dar_row
+dar_skip:
+        leau    5,u                     ; next entry (col,sub,row0,row1,step)
+        dec     arch_ct
+        bne     dar_cel
         rts
 
 * ===============================================================
@@ -996,6 +1077,23 @@ run_on_halt:
         include "scene6_placement_gen.s"  ; §2F single-home PLACEMENT table (codegen'd)
         include "scene6_post_masks_gen.s" ; pre-baked post masks, 4 sub-byte phases
         include "scene6_run_anim_gen.s"   ; §2F single-home RUN animation table (codegen'd, B0)
+        include "scene6_arch_gen.s"       ; §2F single-home ARCH composite table (codegen'd)
+* --- arch cels (14, $52-relative castle/archway; traced by spatial region) ---
+        include "../../content/background/scene6_bg_A707/converted.s"
+        include "../../content/background/scene6_bg_A857/converted.s"
+        include "../../content/background/scene6_bg_A82B/converted.s"
+        include "../../content/background/scene6_bg_A7D1/converted.s"
+        include "../../content/background/scene6_bg_A763/converted.s"
+        include "../../content/background/scene6_bg_A703/converted.s"
+        include "../../content/background/scene6_bg_A684/converted.s"
+        include "../../content/background/scene6_bg_A85F/converted.s"
+        include "../../content/background/scene6_bg_A865/converted.s"
+        include "../../content/background/scene6_bg_A68A/converted.s"
+        include "../../content/background/scene6_bg_A877/converted.s"
+        include "../../content/background/scene6_bg_A87B/converted.s"
+        include "../../content/background/scene6_bg_A6EF/converted.s"
+        include "../../content/background/scene6_bg_A6A6/converted.s"
+
 * --- run cels: 8 legs + 8 torsos ($9B00-$9E92) + the shared head/standing trio ---
         include "../../content/player/player_run_legs_9B00/converted.s"
         include "../../content/player/player_run_legs_9B6B/converted.s"
