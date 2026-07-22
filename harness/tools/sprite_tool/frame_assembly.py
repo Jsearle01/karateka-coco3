@@ -57,7 +57,9 @@ def assemble_animation(table, block, frame_index):
     placed = []
     for part in frame.parts:
         cel = Cel(table.cel_path(part.cel_id))
-        placed.append(PlacedCel(part.cel_id, cel, part.x_px, part.y_px, _cel_dir(table, part.cel_id)))
+        cel_dir = _cel_dir(table, part.cel_id)
+        for row in part.rows():                    # one PlacedCel per row (tiled parts draw many)
+            placed.append(PlacedCel(part.cel_id, cel, part.x_px, row, cel_dir))
     return AssembledFrame(placed, f"{block}[{frame.fid}]")
 
 def assemble_static(table, placement_id):

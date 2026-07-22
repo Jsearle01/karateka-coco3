@@ -17,12 +17,23 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.a
 DEFAULT = os.path.join(ROOT, "content", "scene6", "scene6_placement.txt")
 
 class Part:
-    def __init__(self, cel_id, col, sub, row):
+    """A composited cel. SINGLE position (row1=None) or a VERTICAL TILE (row1/step set): the
+    same cel drawn at row, row+step, ... up to and including row1 — used for the arch's pillars
+    (e.g. a 2-row cel tiled every 2 rows to build a tall vertical strip)."""
+    def __init__(self, cel_id, col, sub, row, row1=None, step=None):
         self.cel_id, self.col, self.sub, self.row = cel_id, col, sub, row
+        self.row1, self.step = row1, step
     @property
     def x_px(self):  return self.col * 4 + self.sub   # sub-byte pixel origin (4 px/byte)
     @property
     def y_px(self):  return self.row
+    @property
+    def tiled(self): return self.row1 is not None
+    def rows(self):
+        """Every row this part draws at (one value if single)."""
+        if not self.tiled:
+            return [self.row]
+        return list(range(self.row, self.row1 + 1, self.step))
 
 class Frame:
     def __init__(self, fid, dwell, parts):
@@ -65,8 +76,14 @@ class Table:
                     parts = []
                     for t in toks:
                         cel, csr = t.split(":")
-                        c, sub, r = (int(v) for v in csr.split(","))
-                        parts.append(Part(cel, c, sub, r))
+                        v = [int(x) for x in csr.split(",")]
+                        if len(v) == 3:                      # col,sub,row  — single position
+                            parts.append(Part(cel, v[0], v[1], v[2]))
+                        elif len(v) == 5:                    # col,sub,row0,row1,step — vertical tile
+                            parts.append(Part(cel, v[0], v[1], v[2], v[3], v[4]))
+                        else:
+                            raise ValueError(f"[animation] {block} {fid}: part '{t}' must be "
+                                             f"cel:col,sub,row or cel:col,sub,row0,row1,step")
                     self.anim[block].append(Frame(fid, dwell, parts))
 
     def cel_path(self, cel_id):
