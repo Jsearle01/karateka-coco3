@@ -151,19 +151,26 @@ def main():
     LABEL_H = 18
     def redraw():
         z = state["zoom"]
-        old = render_frame(frame, zoom=z, boundaries=True,
-                           pixels_by_cel={cid: ce.orig_pixels for cid, ce in edit.cels.items()},
-                           opacity_by_cel={cid: ce.orig_opacity for cid, ce in edit.cels.items()})
+        # OLD (baseline) never changes while painting — render it once and cache. Re-render only
+        # when the baseline or zoom changes (frame load / save / revert / zoom). This halves the
+        # per-stroke render cost, which was the paint lag.
+        if state.get("old_dirty", True) or state.get("old_zoom") != z:
+            old = render_frame(frame, zoom=z, boundaries=True,
+                               pixels_by_cel={cid: ce.orig_pixels for cid, ce in edit.cels.items()},
+                               opacity_by_cel={cid: ce.orig_opacity for cid, ce in edit.cels.items()})
+            state["old_img"] = ImageTk.PhotoImage(old)
+            state["old_w"], state["old_h"] = old.width, old.height
+            state["old_dirty"] = False; state["old_zoom"] = z
         new = render_frame(frame, zoom=z, boundaries=True,
                            opacity_by_cel=opac_map(), changed_by_cel=chg_map())
-        state["old_img"] = ImageTk.PhotoImage(old)
         state["new_img"] = ImageTk.PhotoImage(new)
+        old_w, old_h = state["old_w"], state["old_h"]
         canvas.delete("all")
         # OLD (read-only, left) | NEW (editable, right)
         canvas.create_text(MARGIN, 2, anchor="nw", text="OLD  (read-only)", fill="#bbbbbb",
                            font=("Consolas", 10, "bold"))
         canvas.create_image(MARGIN, LABEL_H, anchor="nw", image=state["old_img"])
-        nx = MARGIN + old.width + 36
+        nx = MARGIN + old_w + 36
         state["new_x0"], state["new_y0"] = nx, LABEL_H
         canvas.create_text(nx, 2, anchor="nw", text="NEW  (paint here — yellow = changed)",
                            fill="#ffe400", font=("Consolas", 10, "bold"))
@@ -183,6 +190,7 @@ def main():
         else:                                             # kind == "cel": standalone content cel
             frame = assemble_cel(arg)
         edit = FrameEdit(table, frame)
+        state["old_dirty"] = True                          # new frame -> re-render the OLD cache
         prev_label[0] = label
         m = celmenu["menu"]; m.delete(0, "end")           # rebuild the cel (overlap) selector
         for cid in edit.cels:
@@ -356,12 +364,20 @@ def main():
         for ce in edit.cels.values(): ce.begin_stroke()   # snapshot all for a coherent undo step
         state["painting"] = True
         on_drag(e)
+    def _coalesced_redraw():
+        # collapse a burst of drag events into one redraw per idle cycle (painting itself is
+        # cheap; the per-event full re-render was the lag).
+        if not state.get("redraw_pending"):
+            state["redraw_pending"] = True
+            root.after_idle(lambda: (state.update(redraw_pending=False), redraw()))
     def on_drag(e):
         if not state["painting"] or state.get("playing"): return
         fx, fy = canvas_to_frame(e)
         if 0 <= fx < frame.W and 0 <= fy < frame.H:
-            edit.paint_canvas(fx, fy, state["entry"]); redraw()
-    def on_release(e): state["painting"] = False
+            edit.paint_canvas(fx, fy, state["entry"]); _coalesced_redraw()
+    def on_release(e):
+        state["painting"] = False
+        redraw()                          # final authoritative redraw at stroke end
 
     def do_undo(_=None):
         for ce in edit.cels.values(): ce.undo_stroke()
@@ -385,6 +401,7 @@ def main():
                 sc = f"opacity.s ({r['kind']}) written" if r["state"] == "authored" else "no sidecar (none)"
                 ok_msgs.append(f"Saved {ce.cel_id} — {conv}, {sc}, registry→{r['state']}")
                 ce.mark_saved()                 # the saved state is the new Old baseline (clean)
+                state["old_dirty"] = True        # baseline changed -> re-render the OLD cache
             except O.CannotEncode as ex:
                 stop_msgs.append(f"NOT SAVED — {ce.cel_id}: marking needs per-pixel (row-varying) "
                                  f"opacity; mixed/masked can't encode it → stencil_punch path. [{ex}]")
