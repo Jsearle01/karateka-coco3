@@ -18,14 +18,14 @@ scene6_bg_A763:
         fcb     $AF,$FF,$C0,$00,$00,$AA,$FF,$FF,$FF,$00,$00  ; row 4
         fcb     $FF,$FF,$0F,$55,$50,$AF,$FF,$FF,$F0,$00,$00  ; row 5
         fcb     $FF,$F0,$FF,$00,$00,$FF,$FF,$FF,$00,$00,$00  ; row 6
-        fcb     $FF,$C0,$FF,$55,$0F,$FF,$FF,$F0,$00,$00,$80  ; row 7
-        fcb     $FC,$00,$FF,$00,$FF,$FF,$FF,$00,$00,$0A,$80  ; row 8
-        fcb     $80,$00,$FF,$0F,$FF,$FF,$C0,$00,$00,$AA,$80  ; row 9
-        fcb     $00,$00,$FF,$7F,$FF,$FC,$00,$00,$0A,$AA,$80  ; row 10
-        fcb     $AA,$AA,$FF,$7F,$FF,$C0,$00,$00,$AA,$AA,$80  ; row 11
-        fcb     $AA,$AA,$FF,$7F,$FC,$00,$00,$AA,$AA,$AA,$80  ; row 12
-        fcb     $AA,$AF,$FF,$7F,$C0,$00,$0A,$AA,$AA,$AA,$80  ; row 13
-        fcb     $AA,$FF,$FF,$7C,$00,$00,$AA,$AA,$AA,$AA,$80  ; row 14
-        fcb     $AA,$FF,$FF,$00,$00,$0A,$AA,$AA,$AA,$AA,$80  ; row 15
-        fcb     $AA,$FF,$FF,$55,$50,$AA,$AA,$AA,$AA,$AA,$80  ; row 16
-        fcb     $AA,$FF,$FF,$00,$00,$AA,$AA,$AA,$AA,$AA,$80  ; row 17
+        fcb     $FF,$C0,$FF,$55,$0F,$FF,$FF,$F0,$00,$00,$A0  ; row 7
+        fcb     $FC,$00,$FF,$00,$FF,$FF,$FF,$00,$00,$0A,$A0  ; row 8
+        fcb     $80,$00,$FF,$0F,$FF,$FF,$C0,$00,$00,$AA,$A0  ; row 9
+        fcb     $00,$00,$FF,$7F,$FF,$FC,$00,$00,$0A,$AA,$A0  ; row 10
+        fcb     $AA,$AA,$FF,$7F,$FF,$C0,$00,$00,$AA,$AA,$A0  ; row 11
+        fcb     $AA,$AA,$FF,$7F,$FC,$00,$00,$AA,$AA,$AA,$A0  ; row 12
+        fcb     $AA,$AF,$FF,$7F,$C0,$00,$0A,$AA,$AA,$AA,$A0  ; row 13
+        fcb     $AA,$FF,$FF,$7C,$00,$00,$AA,$AA,$AA,$AA,$A0  ; row 14
+        fcb     $AA,$FF,$FF,$00,$00,$0A,$AA,$AA,$AA,$AA,$A0  ; row 15
+        fcb     $AA,$FF,$FF,$55,$50,$AA,$AA,$AA,$AA,$AA,$A0  ; row 16
+        fcb     $AA,$FF,$FF,$00,$00,$AA,$AA,$AA,$AA,$AA,$A0  ; row 17

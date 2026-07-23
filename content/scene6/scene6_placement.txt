@@ -63,7 +63,7 @@ A684    content/background/scene6_bg_A684        authored
 A85F    content/background/scene6_bg_A85F        authored
 A865    content/background/scene6_bg_A865        authored
 A68A    content/background/scene6_bg_A68A        authored
-A877    content/background/scene6_bg_A877        none
+A877    content/background/scene6_bg_A877        authored
 A87B   content/background/scene6_bg_A87B
 A6EF   content/background/scene6_bg_A6EF
 A6A6   content/background/scene6_bg_A6A6
