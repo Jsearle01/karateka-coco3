@@ -782,14 +782,16 @@ dar_cel:
         mul                             ; D = col*4
         addb    1,u                     ; + sub
         adca    #0
-        addd    arch_delta              ; D = runtime_x
+        addd    arch_delta              ; D = runtime_x (A=hi, B=lo)
+        pshs    a                       ; preserve hi across the sub extraction
         tfr     b,a
         anda    #3
-        sta     arch_subv
+        sta     arch_subv               ; sub = runtime_x & 3
+        puls    a                       ; A:B = runtime_x again (hi restored)
         lsra
         rorb
         lsra
-        rorb                            ; D=x>>2 ; B=port col
+        rorb                            ; D = runtime_x>>2 ; B = port col
         tsta
         bne     dar_skip
         cmpb    #PLAY_L
