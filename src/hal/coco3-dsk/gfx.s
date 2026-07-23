@@ -729,7 +729,9 @@ mix_rw          equ $1C                 ; region width
 mix_sr          equ $1D                 ; region start_row
 mix_nr          equ $1E                 ; region num_rows
 mix_op          equ $1F                 ; region opacity
-MIX_SCRATCH     equ $3E00               ; extracted sub-sprite scratch (free RAM; below FLIP_BUF)
+        ifndef  MIX_SCRATCH             ; caller may override BEFORE including gfx.s (large programs
+MIX_SCRATCH     equ $3E00               ; whose load reaches $3E00 must relocate it to free RAM).
+        endc                            ; default: extracted sub-sprite scratch below FLIP_BUF
 
 HAL_gfx_blit_sprite_mixed:
         sta     <mix_col

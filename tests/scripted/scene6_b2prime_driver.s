@@ -1160,6 +1160,11 @@ run_on_halt:
         rts
 
 * --- HAL + shared substrate modules (single source) ---
+* This driver's load reaches ~$43DD (10KB+ of HAL + 14 arch cels + player/guard cels), so the
+* mixed-blit's default MIX_SCRATCH ($3E00) would land inside the player run-leg cel data and get
+* corrupted every time the arch mixed-blits — the player vanished as the arch entered. Relocate the
+* scratch to free RAM ($43DE..$7FFF window, below the $8000 framebuffers).
+MIX_SCRATCH     equ $6000
         include "../../src/hal/coco3-dsk/sys.s"
         include "../../src/hal/coco3-dsk/irq_vbl.s"
         include "../../src/hal/coco3-dsk/gfx.s"
