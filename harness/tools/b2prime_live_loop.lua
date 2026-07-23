@@ -12,6 +12,7 @@
 local BIN   = os.getenv("S_BIN") or "C:/Projects/karateka_coco3/tests/scripted/scene6_b2prime_driver.bin"
 local MON   = tonumber(os.getenv("MONITOR") or "1")
 local HOLD  = tonumber(os.getenv("HOLD") or "90")          -- ~1.5 s on the frozen end-state
+local LOOP  = tonumber(os.getenv("LOOP") or "0")           -- 0 = STOP at the frozen halt; 1 = re-sweep
 local A = {
   mg_phase      = tonumber(os.getenv("A_PHASE")  or "0x04D6"),
   cur52         = tonumber(os.getenv("A_S52")    or "0x04D7"),
@@ -63,7 +64,10 @@ _G._live = emu.add_machine_frame_notifier(function()
   end
   if st ~= "run" then return end
   if mem:read_u8(A.scroll_halted) == 0 then hold_ctr = 0; return end
-  -- halted: dwell on the frozen end-state (it is an acceptance criterion — let it be seen)
+  -- halted: the driver freezes here on its own (halt is an acceptance criterion). Default is to
+  -- STOP on the frozen end-state; only re-sweep when LOOP=1.
+  if LOOP == 0 then return end
+  -- dwell on the frozen end-state, then restart the sweep
   hold_ctr = hold_ctr + 1
   if hold_ctr < HOLD then return end
   hold_ctr = 0; loops = loops + 1
