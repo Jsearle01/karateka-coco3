@@ -31,23 +31,30 @@ def render_frame(frame, zoom=3, boundaries=True, opacity_by_cel=None, changed_by
     pixels_by_cel[cel_id] overrides the pixel source (used to render the Old/on-open view)."""
     if Image is None:
         raise RuntimeError("Pillow required: pip install pillow")
-    cw, ch = CELL_W * zoom, CELL_H * zoom
-    img = Image.new("RGB", (frame.W * cw, frame.H * ch), BG)
-    px = img.load()
+    # Render at 1:1 (one buffer entry per sprite pixel) then let PIL's C-level NEAREST resize do
+    # the zoom expansion. The old code set every zoomed pixel in a Python quadruple loop
+    # (cel x pixel x zoom_y x zoom_x) — millions of `px[]=` calls per frame, which was the lag.
+    W, H = frame.W, frame.H
+    buf = [BG] * (W * H)
     for p in frame.placed:                        # back to front
         opac = (opacity_by_cel or {}).get(p.cel_id)
-        chg = (changed_by_cel or {}).get(p.cel_id, set())
         pixels = (pixels_by_cel or {}).get(p.cel_id, p.cel.pixels)
+        bx, by = p.x - frame.x0, p.y - frame.y0
         for cy in range(p.h_px):
-            for cx in range(p.w_px):
-                val = pixels[cy][cx]
-                # ALWAYS the true colour: opaque-black solid, trans gray, 1/2/3 colours.
-                color = OPAQUE_BLACK if (val == 0 and opac is not None and opac[cy][cx]) else RGB[val]
-                ox = (p.x - frame.x0 + cx) * cw
-                oy = (p.y - frame.y0 + cy) * ch
-                for yy in range(ch):
-                    for xx in range(cw):
-                        px[ox + xx, oy + yy] = color
+            row = pixels[cy]
+            base = (by + cy) * W + bx
+            if opac is None:
+                for cx in range(p.w_px):
+                    buf[base + cx] = RGB[row[cx]]
+            else:
+                orow = opac[cy]
+                for cx in range(p.w_px):
+                    val = row[cx]
+                    buf[base + cx] = OPAQUE_BLACK if (val == 0 and orow[cx]) else RGB[val]
+    img = Image.new("RGB", (W, H))
+    img.putdata(buf)
+    cw, ch = CELL_W * zoom, CELL_H * zoom
+    img = img.resize((W * cw, H * ch), Image.NEAREST)   # C-level zoom, nearest-neighbor
     d = ImageDraw.Draw(img)
     if boundaries:
         for p in frame.placed:
