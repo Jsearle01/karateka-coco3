@@ -54,12 +54,12 @@ A5CC   content/player/scene6_climb_A5CC
 8E9B   content/player/scene6_player_8E9B
 # arch composite — 15 $52-relative scenery cels (traced 2026-07-22; see [animation] arch: below)
 A707    content/background/scene6_bg_A707        authored
-A857    content/background/scene6_bg_A857        authored
+A857    content/background/scene6_bg_A857        none
 A82B    content/background/scene6_bg_A82B        authored
 A7D1    content/background/scene6_bg_A7D1        authored
 A763    content/background/scene6_bg_A763        authored
 A703    content/background/scene6_bg_A703        authored
-A684   content/background/scene6_bg_A684
+A684    content/background/scene6_bg_A684        none
 A85F    content/background/scene6_bg_A85F        authored
 A865    content/background/scene6_bg_A865        authored
 A68A    content/background/scene6_bg_A68A        authored
