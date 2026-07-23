@@ -112,10 +112,8 @@ at_row_loop:
         sta     <blit_subbyte
         lda     at_col
         ldb     at_row
-        * OPAQUE blit (black drawn solid) for the 10 opaque cels; plain TRANSPARENT blit for the 4
-        * Jay kept keyed: A684, A6EF, A6A6, A87B. (Jay marked the rest index-0-opaque 2026-07-22.)
-        cmpx    #scene6_bg_A684
-        beq     at_trans
+        * OPAQUE blit (black drawn solid) for the opaque cels; plain TRANSPARENT blit only for the 3
+        * Jay kept keyed: A6EF, A6A6, A87B. (A684 is OPAQUE per Jay 2026-07-22.)
         cmpx    #scene6_bg_A6EF
         beq     at_trans
         cmpx    #scene6_bg_A6A6
