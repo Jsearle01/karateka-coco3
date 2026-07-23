@@ -106,25 +106,38 @@ at_cel:
         lda     4,u                     ; step
         sta     at_step
         stu     at_u
+        * find this cel's opaque STENCIL (0 = none -> plain transparent blit only, black keyed).
+        clr     at_stencil
+        clr     at_stencil+1
+        ldy     #arch_opacity_tbl
+aop_find:
+        ldx     ,y++                    ; cel (0 = end)
+        beq     aop_have
+        cmpx    at_celp
+        beq     aop_got
+        leay    2,y                     ; skip stencil ptr
+        bra     aop_find
+aop_got:
+        ldx     ,y
+        stx     at_stencil
+aop_have:
 at_row_loop:
-        ldx     at_celp
+        * (1) plain transparent blit: colours + KEYED black (index-0 shows the background)
         lda     at_sub
         sta     <blit_subbyte
         lda     at_col
         ldb     at_row
-        * OPAQUE blit (black drawn solid) for the opaque cels; plain TRANSPARENT blit only for the 3
-        * Jay kept keyed: A6EF, A6A6, A87B. (A684 is OPAQUE per Jay 2026-07-22.)
-        cmpx    #scene6_bg_A6EF
-        beq     at_trans
-        cmpx    #scene6_bg_A6A6
-        beq     at_trans
-        cmpx    #scene6_bg_A87B
-        beq     at_trans
-        jsr     HAL_gfx_blit_sprite_opaque
-        bra     at_advance
-at_trans:
+        ldx     at_celp
         jsr     HAL_gfx_blit_sprite
-at_advance:
+        * (2) punch the OPAQUE black via the pre-shifted stencil (byte-aligned), matching the tool
+        ldx     at_stencil
+        beq     at_nopunch
+        clr     <blit_subbyte
+        lda     at_col
+        ldb     at_row
+        ldx     at_stencil
+        jsr     HAL_gfx_blit_stencil_punch
+at_nopunch:
         lda     at_row
         adda    at_step
         sta     at_row
@@ -145,6 +158,7 @@ at_row          fcb     0
 at_rend         fcb     0
 at_step         fcb     0
 at_u            fdb     0
+at_stencil      fdb     0
 
 * --- palette (Jay-gated index-selected; same as the scroll driver) ---
         ifndef  PAL_SEL_DEFAULT
@@ -176,6 +190,7 @@ palette_sets:
         include "../../src/hal/coco3-dsk/gfx.s"
         include "../../src/hal/coco3-dsk/time.s"
         include "scene6_arch_gen.s"       ; §2F single-home ARCH composite table
+        include "scene6_arch_opacity_gen.s" ; pre-shifted opaque stencils (matches the tool)
         include "../../content/background/scene6_bg_A707/converted.s"
         include "../../content/background/scene6_bg_A857/converted.s"
         include "../../content/background/scene6_bg_A82B/converted.s"
