@@ -58,12 +58,12 @@ A857    content/background/scene6_bg_A857        none
 A82B    content/background/scene6_bg_A82B        authored
 A7D1    content/background/scene6_bg_A7D1        authored
 A763    content/background/scene6_bg_A763        authored
-A703    content/background/scene6_bg_A703        authored
+A703    content/background/scene6_bg_A703        none
 A684    content/background/scene6_bg_A684        authored
 A85F    content/background/scene6_bg_A85F        authored
 A865    content/background/scene6_bg_A865        authored
 A68A    content/background/scene6_bg_A68A        authored
-A877    content/background/scene6_bg_A877        authored
+A877    content/background/scene6_bg_A877        none
 A87B   content/background/scene6_bg_A87B
 A6EF   content/background/scene6_bg_A6EF
 A6A6   content/background/scene6_bg_A6A6
