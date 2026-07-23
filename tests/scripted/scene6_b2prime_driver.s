@@ -71,8 +71,8 @@ SA_BAND_ROWS    equ     81              ; rows 100..180 (wall-top + cliff-face +
 SA_BAND_LEN     equ     SA_BAND_ROWS*80 ; 6480 bytes per band
 SA_A_BAND       equ     $8000+SA_BAND_ROW*80    ; buffer A band base ($9F40)
 SA_B_BAND       equ     $C000+SA_BAND_ROW*80    ; buffer B band base ($DF40)
-SA_NCHUNK       equ     7               ; strip chunks (frames) per step (was 12 @ 16 VBL)
-SA_RPC          equ     12              ; rows per chunk (12*7=84 >= 81)
+SA_NCHUNK       equ     6               ; strip chunks/step (was 7x12); frees a phase for the ARCH
+SA_RPC          equ     14              ; rows per chunk (14*6=84 >= 81)
 * --- PLAY AREA (Jay, 2026-07-21): the CoCo3 screen is 320 px but the game's virtual screen is
 *     280 px, so x280-319 (byte cols 70-79) is a deliberate BLACK BORDER, not missing substrate.
 *     Verified on the live framebuffer: cols 64-69 carry content in 38/81 band rows, cols 70+ are
@@ -230,11 +230,13 @@ main_loop:
         cmpa    #SA_NCHUNK
         bls     ml_sc                   ; phases 1..SA_NCHUNK: strip the band (sky + wall + ground)
         cmpa    #SA_NCHUNK+1
-        beq     ml_fujiu                ; FUJI — after the band (which would erase it), before all
-        cmpa    #SA_NCHUNK+2            ;   nearer layers
-        beq     ml_cliff                ; cliff + seam, in FRONT of Fuji
+        beq     ml_fujiu                ; FUJI
+        cmpa    #SA_NCHUNK+2
+        beq     ml_arch                 ; ARCH ($52-relative reveal; behind cliff/actors)
         cmpa    #SA_NCHUNK+3
-        beq     ml_flip                 ; actors + present, in front of everything
+        beq     ml_cliff                ; cliff + seam
+        cmpa    #SA_NCHUNK+4
+        beq     ml_flip                 ; actors + present
         bra     ml_next
 
 * DRAW ORDER (Jay, 2026-07-21). Two constraints that look contradictory until the layering is
@@ -261,6 +263,12 @@ ml_fujiu:
         jsr     draw_a9e2_behind        ; lowest Fuji cel — now genuinely behind (band paints over)
         jsr     draw_fuji_upper         ; upper Fuji cels
         jsr     clear_border_fuji       ; keep the right border (cols PLAY_R+1..79) black
+        bra     ml_next
+
+ml_arch:
+        jsr     restore_arch_sky        ; wipe the arch trail above the band (flash fix)
+        jsr     draw_arch
+        jsr     clear_arch_rborder
         bra     ml_next
 
 ml_sc:
@@ -692,6 +700,172 @@ cbf_b:
         rts
 
 * ===============================================================
+* ARCH ($52-relative reveal content, traced by spatial region; behind cliff/actors — walked
+*   through in B3). Whole composite translates by ONE common delta = (cur52-$1B)*7 px. Tiled
+*   pillars clip at ARCH_FLOOR_CLIP (the band floor occludes below). Opacity via the MIXED blit
+*   (rides sub-byte, so it works at every scroll sub); cels with no descriptor -> plain blit.
+* ===============================================================
+ARCH_SKY_L      equ     55
+ARCH_ROW0       equ     30
+ARCH_ROWSABV    equ     70              ; rows 30..99 (above the band; not rebuilt by the strip)
+ARCH_FLOOR_CLIP equ     152             ; tiled pillars stop here; the band floor shows below
+
+restore_arch_sky:
+        lda     #ARCH_ROW0
+        ldb     #80
+        mul
+        addd    #$8000
+        tfr     d,y
+        lda     <page_register
+        cmpa    #PAGE_A_TOKEN
+        beq     ras_go
+        leay    $4000,y
+ras_go:
+        leay    ARCH_SKY_L,y
+        lda     #ARCH_ROWSABV
+ras_row:
+        ldx     #$AAAA
+        ldb     #PLAY_R-ARCH_SKY_L+1
+        pshs    y
+ras_b:
+        stx     ,y++
+        decb
+        decb
+        bgt     ras_b
+        puls    y
+        leay    80,y
+        deca
+        bne     ras_row
+        rts
+
+clear_arch_rborder:
+        lda     #ARCH_ROW0
+        ldb     #80
+        mul
+        addd    #$8000
+        tfr     d,y
+        lda     <page_register
+        cmpa    #PAGE_A_TOKEN
+        beq     cab_go
+        leay    $4000,y
+cab_go:
+        leay    PLAY_R+1,y
+        lda     #ARCH_ROWSABV
+cab_row:
+        ldb     #79-PLAY_R
+        pshs    y
+cab_b:
+        clr     ,y+
+        decb
+        bne     cab_b
+        puls    y
+        leay    80,y
+        deca
+        bne     cab_row
+        rts
+
+draw_arch:
+        lda     cur52
+        suba    #SCROLL_SETTLE_S52
+        ldb     #7
+        mul
+        std     arch_delta
+        lda     arch_count
+        sta     arch_ct
+        ldu     #arch_tbl
+dar_cel:
+        ldx     ,u++                    ; X=cel, U->col
+        stx     arch_celp
+        stu     arch_u                  ; save table ptr (the mixed blit clobbers U)
+        lda     #4
+        ldb     ,u                      ; col
+        mul                             ; D = col*4
+        addb    1,u                     ; + sub
+        adca    #0
+        addd    arch_delta              ; D = runtime_x
+        tfr     b,a
+        anda    #3
+        sta     arch_subv
+        lsra
+        rorb
+        lsra
+        rorb                            ; D=x>>2 ; B=port col
+        tsta
+        bne     dar_skip
+        cmpb    #PLAY_L
+        blo     dar_skip
+        cmpb    #PLAY_R
+        bhi     dar_skip
+        stb     arch_col
+        ldx     arch_celp
+        addb    1,x                     ; col + width
+        cmpb    #80
+        bhi     dar_skip
+        * mixed opacity descriptor for this cel (0 = plain blit)
+        clr     arch_desc
+        clr     arch_desc+1
+        ldy     #arch_opacity_tbl
+das_f:
+        ldx     ,y++
+        beq     das_h
+        cmpx    arch_celp
+        beq     das_g
+        leay    2,y
+        bra     das_f
+das_g:
+        ldx     ,y
+        stx     arch_desc
+das_h:
+        * row range; TILED pillars clip at the floor
+        lda     2,u                     ; row0
+        sta     arch_row
+        lda     4,u                     ; step
+        sta     arch_step
+        lda     3,u                     ; row1
+        cmpa    2,u                     ; single (row1==row0)?
+        beq     dar_setend
+        cmpa    #ARCH_FLOOR_CLIP
+        bls     dar_setend
+        lda     #ARCH_FLOOR_CLIP
+dar_setend:
+        sta     arch_rend
+dar_row:
+        lda     arch_subv
+        sta     <blit_subbyte
+        lda     arch_col
+        ldb     arch_row
+        ldx     arch_celp
+        ldu     arch_desc
+        beq     dar_plain
+        jsr     HAL_gfx_blit_sprite_mixed
+        bra     dar_adv
+dar_plain:
+        jsr     HAL_gfx_blit_sprite
+dar_adv:
+        lda     arch_row
+        adda    arch_step
+        sta     arch_row
+        cmpa    arch_rend
+        bls     dar_row
+dar_skip:
+        ldu     arch_u                  ; restore table ptr
+        leau    5,u
+        dec     arch_ct
+        lbne    dar_cel
+        rts
+
+arch_delta      fdb     0
+arch_celp       fdb     0
+arch_u          fdb     0
+arch_desc       fdb     0
+arch_ct         fcb     0
+arch_col        fcb     0
+arch_subv       fcb     0
+arch_row        fcb     0
+arch_rend       fcb     0
+arch_step       fcb     0
+
+* ===============================================================
 * draw_posts_generated — GENERATE new wall-top posts as the scroll reveals fresh wall.
 *
 *   The band's edge-extend can only replicate the rightmost existing column, and there is no post
@@ -996,6 +1170,23 @@ run_on_halt:
         include "scene6_placement_gen.s"  ; §2F single-home PLACEMENT table (codegen'd)
         include "scene6_post_masks_gen.s" ; pre-baked post masks, 4 sub-byte phases
         include "scene6_run_anim_gen.s"   ; §2F single-home RUN animation table (codegen'd, B0)
+        include "scene6_arch_gen.s"       ; arch composite table
+        include "scene6_arch_opacity_mixed_gen.s" ; mixed opacity (rides sub-byte)
+        include "../../content/background/scene6_bg_A707/converted.s"
+        include "../../content/background/scene6_bg_A857/converted.s"
+        include "../../content/background/scene6_bg_A82B/converted.s"
+        include "../../content/background/scene6_bg_A7D1/converted.s"
+        include "../../content/background/scene6_bg_A763/converted.s"
+        include "../../content/background/scene6_bg_A703/converted.s"
+        include "../../content/background/scene6_bg_A684/converted.s"
+        include "../../content/background/scene6_bg_A85F/converted.s"
+        include "../../content/background/scene6_bg_A865/converted.s"
+        include "../../content/background/scene6_bg_A68A/converted.s"
+        include "../../content/background/scene6_bg_A877/converted.s"
+        include "../../content/background/scene6_bg_A87B/converted.s"
+        include "../../content/background/scene6_bg_A6EF/converted.s"
+        include "../../content/background/scene6_bg_A6A6/converted.s"
+
 * --- run cels: 8 legs + 8 torsos ($9B00-$9E92) + the shared head/standing trio ---
         include "../../content/player/player_run_legs_9B00/converted.s"
         include "../../content/player/player_run_legs_9B6B/converted.s"
