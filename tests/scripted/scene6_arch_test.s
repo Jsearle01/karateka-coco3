@@ -107,12 +107,26 @@ at_cel:
         sta     at_step
         stu     at_u
 at_row_loop:
+        ldx     at_celp
         lda     at_sub
         sta     <blit_subbyte
         lda     at_col
         ldb     at_row
-        ldx     at_celp
+        * OPAQUE blit (black drawn solid) for the 10 opaque cels; plain TRANSPARENT blit for the 4
+        * Jay kept keyed: A684, A6EF, A6A6, A87B. (Jay marked the rest index-0-opaque 2026-07-22.)
+        cmpx    #scene6_bg_A684
+        beq     at_trans
+        cmpx    #scene6_bg_A6EF
+        beq     at_trans
+        cmpx    #scene6_bg_A6A6
+        beq     at_trans
+        cmpx    #scene6_bg_A87B
+        beq     at_trans
+        jsr     HAL_gfx_blit_sprite_opaque
+        bra     at_advance
+at_trans:
         jsr     HAL_gfx_blit_sprite
+at_advance:
         lda     at_row
         adda    at_step
         sta     at_row
