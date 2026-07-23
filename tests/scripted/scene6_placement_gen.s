@@ -43,6 +43,20 @@ reg_9E92:  fcb 4,12,0   ; w, h, start_col
 reg_899C:  fcb 3,24,0   ; w, h, start_col
 reg_8ACB:  fcb 3,14,0   ; w, h, start_col
 reg_8E9B:  fcb 2,8,0   ; w, h, start_col
+reg_A707:  fcb 9,18,244   ; w, h, start_col
+reg_A857:  fcb 2,6,237   ; w, h, start_col
+reg_A82B:  fcb 11,7,223   ; w, h, start_col
+reg_A7D1:  fcb 14,11,209   ; w, h, start_col
+reg_A763:  fcb 11,18,202   ; w, h, start_col
+reg_A703:  fcb 2,2,258   ; w, h, start_col
+reg_A684:  fcb 4,2,248   ; w, h, start_col
+reg_A85F:  fcb 4,2,209   ; w, h, start_col
+reg_A865:  fcb 4,8,209   ; w, h, start_col
+reg_A68A:  fcb 3,2,209   ; w, h, start_col
+reg_A877:  fcb 4,1,209   ; w, h, start_col
+reg_A87B:  fcb 7,6,202   ; w, h, start_col
+reg_A6EF:  fcb 2,18,258   ; w, h, start_col
+reg_A6A6:  fcb 7,6,216   ; w, h, start_col
 * --- placement: plc_<id> = fcb col, sub, row (byte-col, sub-byte shift 0..3, row) ---
 plc_AB4A:  fcb 5,0,112   ; AB4A: col, sub, row
 plc_AA7D:  fcb 15,0,152   ; AA7D: col, sub, row
