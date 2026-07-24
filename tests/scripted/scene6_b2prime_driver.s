@@ -110,6 +110,13 @@ SCROLL_VBLS_PER_STEP equ 11             ; VBLs/step = the ORACLE cadence (B0: 11
 *   The 11 phases map exactly: 0 step_init, 1..7 strip (7 x 12 rows = 84 >= 81), 8 Fuji,
 *   9 cliff+seam, 10 posts+actors+present.
 SCROLL_COLS_PER_STEP equ 2              ; byte-cols of $52 travel per step
+* --- FIGHT STAGE 1.5: three-phase sequencing (walk-in -> fight-shell -> traverse). Trace-confirmed
+*     (verdict_fight-stage1b): the $B29D servo is the FIGHT mechanism, IDLE during the walk-in; the
+*     walk-in is a plain $62 walk (0B->0F) with $52 held (NO scroll). At $62==$0F the $53 handoff fires
+*     and the fight begins ($52 scrolls 30->1B, arch enters, player HOLDS the st pose — NOT the run). ---
+WALKIN_START    equ     $0B             ; $62 (player pos) at the start of the walk-in
+WALKIN_END      equ     $0F             ; fighting distance — walk-in ends, fight begins ($53 flips)
+WALKIN_STEPS_PER_POS equ 7              ; scroll-steps per +1 of walk_pos (0B->0F over ~28 steps)
 * --- CLASSIC/ENHANCED smooth-scroll toggle (constant swap; §4). SUBBYTE_ENABLE=0 = today's byte-
 *     granular strip path, byte-identical (the faithful/Classic floor). =1 = the Enhanced path:
 *     static band drawn once (no per-step strip), movers (wall-top posts + arch + actors) carried by
@@ -327,33 +334,53 @@ ml_next:
 * step_init — phase 0: advance $52 (dec, wrap $1B->$30), set shift, back_band, strip_row.
 * ---------------------------------------------------------------
 step_init:
-* HALT (not wrap): phase 1 ends at the oracle's phase-wrap compare $52==$1A, settling $1B. The
-* Stage-A sweep looped $1B->$30 for watchability; B2' must FREEZE (phase 2 walk-through is B3).
-        lda     scroll_halted
-        beq     si_active               ; not halted: normal step
-        jsr     run_settle              ; halted: e0 -> st, then hold; cur52/shift untouched
+* PHASE 1 = WALK-IN: the player walks to fighting distance ($62 0B->0F) with the RUN animation and NO
+* scroll (cur52 held at SA_S52_HI -> scroll_shift computes to 0, arch off-screen). The $B29D servo is
+* IDLE here (trace: $50/$51 frozen). At $62==$0F the HANDOFF fires and PHASE 2 = FIGHT begins.
+        lda     walkin_active
+        beq     si_fight                ; walk-in complete -> fight step
+        jsr     run_advance             ; run animation plays DURING the walk-in (not the scroll)
+        inc     player_dctr             ; player creeps forward as it walks in
+        lda     player_dctr
+        cmpa    #PLAYER_STEPS_PER_COL
+        blo     wi_pos
+        clr     player_dctr
+        inc     player_dx
+wi_pos:
+        inc     walkin_ctr
+        lda     walkin_ctr
+        cmpa    #WALKIN_STEPS_PER_POS
+        blo     si_shift                ; cur52 UNTOUCHED -> shift = $30-$30 = 0 (no scroll)
+        clr     walkin_ctr
+        inc     walk_pos                ; $62 advances one step toward $0F
+        lda     walk_pos
+        cmpa    #WALKIN_END
+        blo     si_shift
+* --- HANDOFF at $62==$0F: walk-in ends, fight begins, guard entry armed, player switches to HOLD ---
+        clr     walkin_active
+        lda     #$FE
+        sta     handoff_53              ; $53 flip (walk-complete; matches oracle $53=$FE at $62=$0F)
+        lda     #RUN_IDX_ST
+        sta     run_idx                 ; player HOLDS the standing (st) pose for the fight — NOT run
         bra     si_shift
-si_active:
+* PHASE 2 = FIGHT: $52 scrolls 30->1B (arch enters), player HOLDS st (no run_advance, no drift), guard
+* drawn. The traverse ($62->$2A) is PHASE 3 = B3 (this halts at $1B, the fight/traverse boundary).
+si_fight:
+        lda     scroll_halted
+        beq     sf_active               ; not halted: scroll step
+        bra     si_shift                ; halted: hold (player already st)
+sf_active:
         lda     cur52
         suba    #SCROLL_COLS_PER_STEP
         cmpa    #SCROLL_HALT_S52
-        bhi     si_store                ; still above the halt compare -> keep scrolling
-        lda     #SCROLL_SETTLE_S52      ; reached it: settle $1B and freeze
+        bhi     sf_store                ; still scrolling
+        lda     #SCROLL_SETTLE_S52      ; reached the settle -> freeze at $1B (traverse = B3)
         sta     cur52
         lda     #1
         sta     scroll_halted
-        jsr     run_on_halt             ; run animation exits its cycle: -> e0 -> st (held)
         bra     si_shift
-si_store:
-        sta     cur52
-        jsr     run_advance             ; one run pose per scroll step (RUN_POSES_PER_STEP)
-        inc     player_dctr             ; forward drift: +1 col every PLAYER_STEPS_PER_COL steps
-        lda     player_dctr
-        cmpa    #PLAYER_STEPS_PER_COL
-        blo     si_store_done
-        clr     player_dctr
-        inc     player_dx
-si_store_done:
+sf_store:
+        sta     cur52                   ; scroll advances; player HOLDS st (no run_advance / no drift)
 si_shift:
         lda     #SA_S52_HI
         suba    cur52
@@ -762,6 +789,11 @@ player_dx       fcb     0               ; player forward drift (byte cols) — s
 player_dctr     fcb     0               ; step counter feeding player_dx
 run_idx         fcb     0               ; current run frame (0=s0); advanced once per scroll step
 scroll_halted   fcb     0               ; 1 once $52 hit the halt compare -> scene frozen
+* --- FIGHT STAGE 1.5 three-phase state ---
+walkin_active   fcb     1               ; 1 = PHASE 1 walk-in (run, no scroll); 0 = PHASE 2 fight (scroll)
+walk_pos        fcb     WALKIN_START    ; $62 (player position), walks $0B -> $0F during the walk-in
+walkin_ctr      fcb     0               ; sub-counter: WALKIN_STEPS_PER_POS steps per +1 of walk_pos
+handoff_53      fcb     0               ; $53 walk-complete flag: $FE once $62 reaches $0F (the handoff)
 rp_cnt          fcb     0               ; run render: part counter
 rp_ptr          fdb     0               ; run render: current part pointer
 clip_k          fcb     0
