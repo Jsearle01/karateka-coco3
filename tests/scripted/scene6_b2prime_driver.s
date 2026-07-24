@@ -110,6 +110,17 @@ SCROLL_VBLS_PER_STEP equ 11             ; VBLs/step = the ORACLE cadence (B0: 11
 *   The 11 phases map exactly: 0 step_init, 1..7 strip (7 x 12 rows = 84 >= 81), 8 Fuji,
 *   9 cliff+seam, 10 posts+actors+present.
 SCROLL_COLS_PER_STEP equ 2              ; byte-cols of $52 travel per step
+* --- CLASSIC/ENHANCED smooth-scroll toggle (constant swap; §4). SUBBYTE_ENABLE=0 = today's byte-
+*     granular strip path, byte-identical (the faithful/Classic floor). =1 = the Enhanced path:
+*     static band drawn once (no per-step strip), movers (wall-top posts + arch + actors) carried by
+*     bbox restore-and-redraw from a common SUB-BYTE scroll position, glided in fine px increments.
+*     Basis: verdict_recon-scroll-layers.md — 70/81 band rows are scroll-invariant; the wall-top RMW
+*     needs its blue-sky background (83% keep-bg) so the static band bakes blue there, NOT black. ---
+        ifndef  SUBBYTE_ENABLE
+SUBBYTE_ENABLE  equ     0               ; 0 = Classic (strip, byte-identical to today); 1 = Enhanced (smooth)
+        endc
+SCROLL_PX_PER_STEP equ  7               ; Enhanced: px the common scroll position advances per update
+                                        ;   (7 = the oracle's exact byte = the arch's existing rate)
 * --- SCROLL RATE (Jay's gate: "the player still looks like he is being held back").
 *     The oracle's $52 step is ONE APPLE BYTE COLUMN = 7 px, and the port's registration is 1:1 px,
 *     so a faithful step travels 7 px. The port shifts WHOLE CoCo byte columns = 4 px each, so:
