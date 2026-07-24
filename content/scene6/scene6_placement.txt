@@ -67,8 +67,8 @@ A877    content/background/scene6_bg_A877        authored
 A87B    content/background/scene6_bg_A87B        authored
 A6EF    content/background/scene6_bg_A6EF        authored
 A6A6    content/background/scene6_bg_A6A6        authored
-A6C0    content/background/scene6_bg_A6C0        none
-A6D4    content/background/scene6_bg_A6D4        none
+A6C0    content/background/scene6_bg_A6C0        authored
+A6D4    content/background/scene6_bg_A6D4        authored
 
 [placement]  # placement_id  sprite_id  col  sub  row   (resolved placed byte-col, sub-byte pixel
 #   shift 0..3, row; verbatim from the gated drivers. sub carried ALWAYS — never dropped (climb lesson).)
