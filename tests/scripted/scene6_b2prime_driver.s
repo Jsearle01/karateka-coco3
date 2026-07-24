@@ -289,7 +289,11 @@ ml_arch:
         bra     ml_next
 
 ml_sc:
-        jsr     strip_chunk
+        ifne    SUBBYTE_ENABLE
+        jsr     enh_restore_phase       ; ENHANCED PROBE: bbox restore-and-erase per mover (no strip)
+        else
+        jsr     strip_chunk             ; CLASSIC: the amortized band strip
+        endc
         bra     ml_next
 
 ml_cliff:
@@ -369,6 +373,94 @@ si_dst:
 * ---------------------------------------------------------------
 * strip_chunk — strip up to SA_RPC rows (from strip_row), each shifted LEFT by scroll_shift.
 * ---------------------------------------------------------------
+        ifne    SUBBYTE_ENABLE
+* ===============================================================
+* ENHANCED PROBE — bbox restore-and-erase for the movers (replaces the strip). One mover per phase
+* (1..5) so stageb2_phasecost breaks the cost out per mover. Erase source = scroll_save (the clean
+* band); posts-free source is a CORRECTNESS concern for the full glide, not a COST one, so the probe
+* uses scroll_save as an identical-cost proxy (§4: cost only, no visual gate). Positions unchanged
+* (byte-granular) — we measure the erase+redraw WORK, not the fine motion.
+* ===============================================================
+enh_restore_phase:
+        lda     mg_phase
+        deca                            ; phase 1 -> mover 0
+        bmi     erp_done
+        cmpa    #ERP_NMOVERS
+        bhs     erp_done
+        ldx     #erp_tbl
+        ldb     #4
+        mul                             ; A*4 -> offset into 4-byte rows
+        leax    d,x
+        lda     ,x                      ; row0
+        sta     rbx_row0
+        lda     1,x                     ; nrows
+        sta     rbx_nrows
+        lda     2,x                     ; c0
+        sta     rbx_c0
+        lda     3,x                     ; cw
+        sta     rbx_cw
+        jsr     restore_bbox
+erp_done:
+        rts
+* mover bboxes (row0, nrows, c0, cw). Generous footprints covering where each mover sweeps.
+ERP_NMOVERS     equ 5
+erp_tbl:
+        fcb     101,11,5,70             ; 0 wall-top posts (rows 101-111, full play width)
+        fcb     100,76,55,20            ; 1 ARCH band (rows 100-175, cols 55-74) — the suspect
+        fcb     108,55,20,26            ; 2 player   (rows 108-162, cols 20-45)
+        fcb     108,55,45,26            ; 3 guard    (rows 108-162, cols 45-70)
+        fcb     150,31,5,26             ; 4 cliff    (rows 150-180, cols 5-30)
+
+* restore_bbox — copy rbx_nrows x rbx_cw rectangle at (rbx_row0,rbx_c0) from scroll_save into the
+*   BACK buffer (page_register). Straight copy (no shift) — the erase cost we are measuring.
+restore_bbox:
+        lda     <page_register
+        cmpa    #PAGE_A_TOKEN
+        bne     rbx_useb
+        ldu     #$8000
+        bra     rbx_dst
+rbx_useb:
+        ldu     #$C000
+rbx_dst:
+        lda     rbx_row0
+        ldb     #80
+        mul                             ; D = row0*80
+        addb    rbx_c0
+        adca    #0
+        leau    d,u                     ; U = dest top-left
+        lda     rbx_row0
+        suba    #SA_BAND_ROW            ; row0-100
+        ldb     #80
+        mul
+        addb    rbx_c0
+        adca    #0
+        addd    #scroll_save
+        tfr     d,x                     ; X = src top-left
+        lda     rbx_cw
+        lsra
+        sta     rbx_cw2                 ; cw/2 (bboxes are even-width) for 16-bit copy
+        lda     rbx_nrows
+rbx_row:
+        pshs    a,x,u
+        ldb     rbx_cw2
+rbx_col:
+        ldd     ,x++                    ; 16-bit copy (2 bytes/iter) — the real erase cost
+        std     ,u++
+        decb
+        bne     rbx_col
+        puls    a,x,u
+        leax    80,x
+        leau    80,u
+        deca
+        bne     rbx_row
+        rts
+rbx_row0        fcb 0
+rbx_nrows       fcb 0
+rbx_c0          fcb 0
+rbx_cw          fcb 0
+rbx_cw2         fcb 0
+        endc
+
 strip_chunk:
         lda     #SA_RPC
         sta     chunk_ct
