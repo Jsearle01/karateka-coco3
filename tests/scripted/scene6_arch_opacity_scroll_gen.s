@@ -555,6 +555,38 @@ aops_A6D4_s3:  ; stencil pre-shifted right by sub=3px
         fcb     $00,$00,$3F,$F0,$FF,$FF,$FF,$F0,$00,$00  ; row 2
         fcb     $00,$00,$00,$FF,$C0,$00,$FF,$FF,$00,$00  ; row 3
         fcb     $00,$00,$00,$3F,$FF,$FF,$FF,$FF,$F0,$00  ; row 4
+aops_archfill1_s0:  ; stencil pre-shifted right by sub=0px
+        fcb     6,2
+        fcb     $FF,$C0  ; row 0
+        fcb     $FF,$C0  ; row 1
+        fcb     $FF,$C0  ; row 2
+        fcb     $FF,$C0  ; row 3
+        fcb     $FF,$C0  ; row 4
+        fcb     $FF,$C0  ; row 5
+aops_archfill1_s1:  ; stencil pre-shifted right by sub=1px
+        fcb     6,3
+        fcb     $3F,$F0,$00  ; row 0
+        fcb     $3F,$F0,$00  ; row 1
+        fcb     $3F,$F0,$00  ; row 2
+        fcb     $3F,$F0,$00  ; row 3
+        fcb     $3F,$F0,$00  ; row 4
+        fcb     $3F,$F0,$00  ; row 5
+aops_archfill1_s2:  ; stencil pre-shifted right by sub=2px
+        fcb     6,3
+        fcb     $0F,$FC,$00  ; row 0
+        fcb     $0F,$FC,$00  ; row 1
+        fcb     $0F,$FC,$00  ; row 2
+        fcb     $0F,$FC,$00  ; row 3
+        fcb     $0F,$FC,$00  ; row 4
+        fcb     $0F,$FC,$00  ; row 5
+aops_archfill1_s3:  ; stencil pre-shifted right by sub=3px
+        fcb     6,3
+        fcb     $03,$FF,$00  ; row 0
+        fcb     $03,$FF,$00  ; row 1
+        fcb     $03,$FF,$00  ; row 2
+        fcb     $03,$FF,$00  ; row 3
+        fcb     $03,$FF,$00  ; row 4
+        fcb     $03,$FF,$00  ; row 5
 
 arch_stencil_tbl:  ; {fdb cel; fdb s0; fdb s1; fdb s2; fdb s3}, 0-terminated
         fdb     scene6_bg_A707
@@ -585,4 +617,6 @@ arch_stencil_tbl:  ; {fdb cel; fdb s0; fdb s1; fdb s2; fdb s3}, 0-terminated
         fdb     aops_A6C0_s0,aops_A6C0_s1,aops_A6C0_s2,aops_A6C0_s3
         fdb     scene6_bg_A6D4
         fdb     aops_A6D4_s0,aops_A6D4_s1,aops_A6D4_s2,aops_A6D4_s3
+        fdb     scene6_bg_archfill1
+        fdb     aops_archfill1_s0,aops_archfill1_s1,aops_archfill1_s2,aops_archfill1_s3
         fdb     0                       ; end

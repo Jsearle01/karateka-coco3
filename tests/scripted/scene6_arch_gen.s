@@ -4,7 +4,7 @@
 *   Positions are the port registration at the halt reference $52=$1B; the driver applies
 *   the common scroll delta. Read by the Stage-B2' driver; include-only.
 *   Per cel: fdb cel ; fcb col, sub, row0, row1, step  (single => row1=row0, step=1).
-arch_count:  fcb 16
+arch_count:  fcb 17
 arch_tbl:
         fdb     scene6_bg_A707
         fcb     66,0,30,30,1
@@ -38,3 +38,5 @@ arch_tbl:
         fcb     60,3,165,165,1
         fdb     scene6_bg_A6D4
         fcb     64,1,171,171,1
+        fdb     scene6_bg_archfill1
+        fcb     64,3,165,165,1

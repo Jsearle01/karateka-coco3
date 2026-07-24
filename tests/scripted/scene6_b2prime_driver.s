@@ -1202,6 +1202,7 @@ run_on_halt:
         include "../../content/background/scene6_bg_A6A6/converted.s"
         include "../../content/background/scene6_bg_A6C0/converted.s"
         include "../../content/background/scene6_bg_A6D4/converted.s"
+        include "../../content/background/scene6_bg_archfill1/converted.s"
 
 * --- run cels: 8 legs + 8 torsos ($9B00-$9E92) + the shared head/standing trio ---
         include "../../content/player/player_run_legs_9B00/converted.s"
