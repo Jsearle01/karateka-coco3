@@ -57,6 +57,8 @@ reg_A877:  fcb 4,1,209   ; w, h, start_col
 reg_A87B:  fcb 7,6,202   ; w, h, start_col
 reg_A6EF:  fcb 2,18,258   ; w, h, start_col
 reg_A6A6:  fcb 7,6,216   ; w, h, start_col
+reg_A6C0:  fcb 4,6,223   ; w, h, start_col
+reg_A6D4:  fcb 9,5,237   ; w, h, start_col
 * --- placement: plc_<id> = fcb col, sub, row (byte-col, sub-byte shift 0..3, row) ---
 plc_AB4A:  fcb 5,0,112   ; AB4A: col, sub, row
 plc_AA7D:  fcb 15,0,152   ; AA7D: col, sub, row
