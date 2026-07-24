@@ -259,7 +259,7 @@ aops_A865_s0:  ; stencil pre-shifted right by sub=0px
         fcb     $00,$3F,$FF,$C0  ; row 3
         fcb     $00,$00,$03,$C0  ; row 4
         fcb     $00,$3F,$FF,$C0  ; row 5
-        fcb     $00,$00,$0F,$C0  ; row 6
+        fcb     $00,$00,$03,$C0  ; row 6
         fcb     $00,$3F,$FC,$0F  ; row 7
 aops_A865_s1:  ; stencil pre-shifted right by sub=1px
         fcb     8,5
@@ -269,7 +269,7 @@ aops_A865_s1:  ; stencil pre-shifted right by sub=1px
         fcb     $00,$0F,$FF,$F0,$00  ; row 3
         fcb     $00,$00,$00,$F0,$00  ; row 4
         fcb     $00,$0F,$FF,$F0,$00  ; row 5
-        fcb     $00,$00,$03,$F0,$00  ; row 6
+        fcb     $00,$00,$00,$F0,$00  ; row 6
         fcb     $00,$0F,$FF,$03,$C0  ; row 7
 aops_A865_s2:  ; stencil pre-shifted right by sub=2px
         fcb     8,5
@@ -279,7 +279,7 @@ aops_A865_s2:  ; stencil pre-shifted right by sub=2px
         fcb     $00,$03,$FF,$FC,$00  ; row 3
         fcb     $00,$00,$00,$3C,$00  ; row 4
         fcb     $00,$03,$FF,$FC,$00  ; row 5
-        fcb     $00,$00,$00,$FC,$00  ; row 6
+        fcb     $00,$00,$00,$3C,$00  ; row 6
         fcb     $00,$03,$FF,$C0,$F0  ; row 7
 aops_A865_s3:  ; stencil pre-shifted right by sub=3px
         fcb     8,5
@@ -289,7 +289,7 @@ aops_A865_s3:  ; stencil pre-shifted right by sub=3px
         fcb     $00,$00,$FF,$FF,$00  ; row 3
         fcb     $00,$00,$00,$0F,$00  ; row 4
         fcb     $00,$00,$FF,$FF,$00  ; row 5
-        fcb     $00,$00,$00,$3F,$00  ; row 6
+        fcb     $00,$00,$00,$0F,$00  ; row 6
         fcb     $00,$00,$FF,$F0,$3C  ; row 7
 aops_A877_s0:  ; stencil pre-shifted right by sub=0px
         fcb     1,4
@@ -303,6 +303,118 @@ aops_A877_s2:  ; stencil pre-shifted right by sub=2px
 aops_A877_s3:  ; stencil pre-shifted right by sub=3px
         fcb     1,5
         fcb     $00,$00,$00,$03,$00  ; row 0
+aops_A87B_s0:  ; stencil pre-shifted right by sub=0px
+        fcb     6,7
+        fcb     $00,$00,$00,$FF,$FF,$00,$00  ; row 0
+        fcb     $00,$FF,$00,$00,$0F,$C0,$00  ; row 1
+        fcb     $00,$3F,$00,$FF,$FF,$00,$00  ; row 2
+        fcb     $00,$00,$F0,$00,$0F,$FC,$00  ; row 3
+        fcb     $00,$00,$3F,$FF,$FF,$FF,$00  ; row 4
+        fcb     $00,$00,$00,$FF,$FF,$FF,$FC  ; row 5
+aops_A87B_s1:  ; stencil pre-shifted right by sub=1px
+        fcb     6,8
+        fcb     $00,$00,$00,$3F,$FF,$C0,$00,$00  ; row 0
+        fcb     $00,$3F,$C0,$00,$03,$F0,$00,$00  ; row 1
+        fcb     $00,$0F,$C0,$3F,$FF,$C0,$00,$00  ; row 2
+        fcb     $00,$00,$3C,$00,$03,$FF,$00,$00  ; row 3
+        fcb     $00,$00,$0F,$FF,$FF,$FF,$C0,$00  ; row 4
+        fcb     $00,$00,$00,$3F,$FF,$FF,$FF,$00  ; row 5
+aops_A87B_s2:  ; stencil pre-shifted right by sub=2px
+        fcb     6,8
+        fcb     $00,$00,$00,$0F,$FF,$F0,$00,$00  ; row 0
+        fcb     $00,$0F,$F0,$00,$00,$FC,$00,$00  ; row 1
+        fcb     $00,$03,$F0,$0F,$FF,$F0,$00,$00  ; row 2
+        fcb     $00,$00,$0F,$00,$00,$FF,$C0,$00  ; row 3
+        fcb     $00,$00,$03,$FF,$FF,$FF,$F0,$00  ; row 4
+        fcb     $00,$00,$00,$0F,$FF,$FF,$FF,$C0  ; row 5
+aops_A87B_s3:  ; stencil pre-shifted right by sub=3px
+        fcb     6,8
+        fcb     $00,$00,$00,$03,$FF,$FC,$00,$00  ; row 0
+        fcb     $00,$03,$FC,$00,$00,$3F,$00,$00  ; row 1
+        fcb     $00,$00,$FC,$03,$FF,$FC,$00,$00  ; row 2
+        fcb     $00,$00,$03,$C0,$00,$3F,$F0,$00  ; row 3
+        fcb     $00,$00,$00,$FF,$FF,$FF,$FC,$00  ; row 4
+        fcb     $00,$00,$00,$03,$FF,$FF,$FF,$F0  ; row 5
+aops_A6EF_s0:  ; stencil pre-shifted right by sub=0px
+        fcb     18,2
+        fcb     $00,$00  ; row 0
+        fcb     $0C,$00  ; row 1
+        fcb     $00,$00  ; row 2
+        fcb     $0C,$00  ; row 3
+        fcb     $00,$00  ; row 4
+        fcb     $0C,$00  ; row 5
+        fcb     $00,$00  ; row 6
+        fcb     $0C,$00  ; row 7
+        fcb     $00,$00  ; row 8
+        fcb     $FC,$00  ; row 9
+        fcb     $F0,$00  ; row 10
+        fcb     $FC,$00  ; row 11
+        fcb     $F0,$00  ; row 12
+        fcb     $FC,$00  ; row 13
+        fcb     $F0,$00  ; row 14
+        fcb     $FC,$00  ; row 15
+        fcb     $F0,$00  ; row 16
+        fcb     $FC,$00  ; row 17
+aops_A6EF_s1:  ; stencil pre-shifted right by sub=1px
+        fcb     18,3
+        fcb     $00,$00,$00  ; row 0
+        fcb     $03,$00,$00  ; row 1
+        fcb     $00,$00,$00  ; row 2
+        fcb     $03,$00,$00  ; row 3
+        fcb     $00,$00,$00  ; row 4
+        fcb     $03,$00,$00  ; row 5
+        fcb     $00,$00,$00  ; row 6
+        fcb     $03,$00,$00  ; row 7
+        fcb     $00,$00,$00  ; row 8
+        fcb     $3F,$00,$00  ; row 9
+        fcb     $3C,$00,$00  ; row 10
+        fcb     $3F,$00,$00  ; row 11
+        fcb     $3C,$00,$00  ; row 12
+        fcb     $3F,$00,$00  ; row 13
+        fcb     $3C,$00,$00  ; row 14
+        fcb     $3F,$00,$00  ; row 15
+        fcb     $3C,$00,$00  ; row 16
+        fcb     $3F,$00,$00  ; row 17
+aops_A6EF_s2:  ; stencil pre-shifted right by sub=2px
+        fcb     18,3
+        fcb     $00,$00,$00  ; row 0
+        fcb     $00,$C0,$00  ; row 1
+        fcb     $00,$00,$00  ; row 2
+        fcb     $00,$C0,$00  ; row 3
+        fcb     $00,$00,$00  ; row 4
+        fcb     $00,$C0,$00  ; row 5
+        fcb     $00,$00,$00  ; row 6
+        fcb     $00,$C0,$00  ; row 7
+        fcb     $00,$00,$00  ; row 8
+        fcb     $0F,$C0,$00  ; row 9
+        fcb     $0F,$00,$00  ; row 10
+        fcb     $0F,$C0,$00  ; row 11
+        fcb     $0F,$00,$00  ; row 12
+        fcb     $0F,$C0,$00  ; row 13
+        fcb     $0F,$00,$00  ; row 14
+        fcb     $0F,$C0,$00  ; row 15
+        fcb     $0F,$00,$00  ; row 16
+        fcb     $0F,$C0,$00  ; row 17
+aops_A6EF_s3:  ; stencil pre-shifted right by sub=3px
+        fcb     18,3
+        fcb     $00,$00,$00  ; row 0
+        fcb     $00,$30,$00  ; row 1
+        fcb     $00,$00,$00  ; row 2
+        fcb     $00,$30,$00  ; row 3
+        fcb     $00,$00,$00  ; row 4
+        fcb     $00,$30,$00  ; row 5
+        fcb     $00,$00,$00  ; row 6
+        fcb     $00,$30,$00  ; row 7
+        fcb     $00,$00,$00  ; row 8
+        fcb     $03,$F0,$00  ; row 9
+        fcb     $03,$C0,$00  ; row 10
+        fcb     $03,$F0,$00  ; row 11
+        fcb     $03,$C0,$00  ; row 12
+        fcb     $03,$F0,$00  ; row 13
+        fcb     $03,$C0,$00  ; row 14
+        fcb     $03,$F0,$00  ; row 15
+        fcb     $03,$C0,$00  ; row 16
+        fcb     $03,$F0,$00  ; row 17
 aops_A684_s0:  ; stencil pre-shifted right by sub=0px
         fcb     2,4
         fcb     $00,$00,$00,$0F  ; row 0
@@ -365,6 +477,10 @@ arch_stencil_tbl:  ; {fdb cel; fdb s0; fdb s1; fdb s2; fdb s3}, 0-terminated
         fdb     aops_A865_s0,aops_A865_s1,aops_A865_s2,aops_A865_s3
         fdb     scene6_bg_A877
         fdb     aops_A877_s0,aops_A877_s1,aops_A877_s2,aops_A877_s3
+        fdb     scene6_bg_A87B
+        fdb     aops_A87B_s0,aops_A87B_s1,aops_A87B_s2,aops_A87B_s3
+        fdb     scene6_bg_A6EF
+        fdb     aops_A6EF_s0,aops_A6EF_s1,aops_A6EF_s2,aops_A6EF_s3
         fdb     scene6_bg_A684
         fdb     aops_A684_s0,aops_A684_s1,aops_A684_s2,aops_A684_s3
         fdb     scene6_bg_A85F

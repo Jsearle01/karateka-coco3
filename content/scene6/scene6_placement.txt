@@ -64,8 +64,8 @@ A85F    content/background/scene6_bg_A85F        authored
 A865    content/background/scene6_bg_A865        authored
 A68A    content/background/scene6_bg_A68A        authored
 A877    content/background/scene6_bg_A877        authored
-A87B   content/background/scene6_bg_A87B
-A6EF   content/background/scene6_bg_A6EF
+A87B    content/background/scene6_bg_A87B        authored
+A6EF    content/background/scene6_bg_A6EF        authored
 A6A6   content/background/scene6_bg_A6A6
 
 [placement]  # placement_id  sprite_id  col  sub  row   (resolved placed byte-col, sub-byte pixel
@@ -164,4 +164,4 @@ arch:  # PHASE-1 ARCH — the castle/archway the player walks through in B3. 15 
 #   cel:col,sub,row0,row1,step (a 2-row cel repeated to build a tall vertical strip); the rest are
 #   single tall cels at their row. Row = oracle row (1:1 vertical). Colour parity = Jay's gate.
 #   NOT the 5-cel "midground" of the reverted f50cc50/649c254 — those were the wrong element.
-  a0  0   A707:66,0,30   A857:64,1,42   A82B:60,3,48   A7D1:57,1,55   A763:55,2,66   A865:57,1,104   A877:57,1,111   A87B:55,2,153   A6EF:69,2,153   A6A6:59,0,159   A703:69,2,66,102,2   A684:66,0,66,160,2   A85F:57,1,84,102,2   A68A:57,1,111,151,2
+  a0  0   A707:66,0,30   A857:64,1,42   A82B:60,3,48   A7D1:57,1,55   A763:55,2,66   A865:57,1,104   A877:57,1,111   A87B:55,2,153   A6EF:69,2,153   A6A6:59,0,159   A703:69,2,66,102,2   A684:66,0,66,170,2   A85F:57,1,84,102,2   A68A:57,1,111,151,2

@@ -708,9 +708,9 @@ cbf_b:
 ARCH_SKY_L      equ     55
 ARCH_ROW0       equ     30
 ARCH_ROWSABV    equ     70              ; rows 30..99 (above the band; not rebuilt by the strip)
-ARCH_FLOOR_CLIP equ     160             ; = A684's table row1 (oracle extent): the FRONT leg reaches
-                                        ; the ground. The old 152 cap was a static-test artifact (no
-                                        ; band) that shortened the front leg — Jay's scroll eye: too short.
+ARCH_FLOOR_CLIP equ     176             ; safety floor only; the placement row1 governs. A684's front
+                                        ; leg tiles to its authored row1 (170) — down to meet the opaque
+                                        ; black Jay painted on A6EF (col 69) at screen row 170.
 
 restore_arch_sky:
         lda     #ARCH_ROW0

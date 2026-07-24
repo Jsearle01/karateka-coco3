@@ -29,7 +29,7 @@ arch_tbl:
         fdb     scene6_bg_A703
         fcb     69,2,66,102,2
         fdb     scene6_bg_A684
-        fcb     66,0,66,160,2
+        fcb     66,0,66,170,2
         fdb     scene6_bg_A85F
         fcb     57,1,84,102,2
         fdb     scene6_bg_A68A
