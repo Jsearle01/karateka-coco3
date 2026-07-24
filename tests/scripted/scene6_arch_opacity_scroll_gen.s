@@ -415,6 +415,38 @@ aops_A6EF_s3:  ; stencil pre-shifted right by sub=3px
         fcb     $03,$F0,$00  ; row 15
         fcb     $03,$C0,$00  ; row 16
         fcb     $03,$F0,$00  ; row 17
+aops_A6A6_s0:  ; stencil pre-shifted right by sub=0px
+        fcb     6,7
+        fcb     $FF,$FC,$00,$3F,$00,$00,$00  ; row 0
+        fcb     $0C,$00,$00,$00,$C0,$00,$00  ; row 1
+        fcb     $03,$F0,$00,$00,$3F,$00,$00  ; row 2
+        fcb     $00,$0C,$00,$00,$00,$FC,$00  ; row 3
+        fcb     $00,$03,$F0,$00,$00,$03,$00  ; row 4
+        fcb     $00,$00,$0C,$00,$00,$00,$FC  ; row 5
+aops_A6A6_s1:  ; stencil pre-shifted right by sub=1px
+        fcb     6,8
+        fcb     $3F,$FF,$00,$0F,$C0,$00,$00,$00  ; row 0
+        fcb     $03,$00,$00,$00,$30,$00,$00,$00  ; row 1
+        fcb     $00,$FC,$00,$00,$0F,$C0,$00,$00  ; row 2
+        fcb     $00,$03,$00,$00,$00,$3F,$00,$00  ; row 3
+        fcb     $00,$00,$FC,$00,$00,$00,$C0,$00  ; row 4
+        fcb     $00,$00,$03,$00,$00,$00,$3F,$00  ; row 5
+aops_A6A6_s2:  ; stencil pre-shifted right by sub=2px
+        fcb     6,8
+        fcb     $0F,$FF,$C0,$03,$F0,$00,$00,$00  ; row 0
+        fcb     $00,$C0,$00,$00,$0C,$00,$00,$00  ; row 1
+        fcb     $00,$3F,$00,$00,$03,$F0,$00,$00  ; row 2
+        fcb     $00,$00,$C0,$00,$00,$0F,$C0,$00  ; row 3
+        fcb     $00,$00,$3F,$00,$00,$00,$30,$00  ; row 4
+        fcb     $00,$00,$00,$C0,$00,$00,$0F,$C0  ; row 5
+aops_A6A6_s3:  ; stencil pre-shifted right by sub=3px
+        fcb     6,8
+        fcb     $03,$FF,$F0,$00,$FC,$00,$00,$00  ; row 0
+        fcb     $00,$30,$00,$00,$03,$00,$00,$00  ; row 1
+        fcb     $00,$0F,$C0,$00,$00,$FC,$00,$00  ; row 2
+        fcb     $00,$00,$30,$00,$00,$03,$F0,$00  ; row 3
+        fcb     $00,$00,$0F,$C0,$00,$00,$0C,$00  ; row 4
+        fcb     $00,$00,$00,$30,$00,$00,$03,$F0  ; row 5
 aops_A684_s0:  ; stencil pre-shifted right by sub=0px
         fcb     2,4
         fcb     $00,$00,$00,$0F  ; row 0
@@ -481,6 +513,8 @@ arch_stencil_tbl:  ; {fdb cel; fdb s0; fdb s1; fdb s2; fdb s3}, 0-terminated
         fdb     aops_A87B_s0,aops_A87B_s1,aops_A87B_s2,aops_A87B_s3
         fdb     scene6_bg_A6EF
         fdb     aops_A6EF_s0,aops_A6EF_s1,aops_A6EF_s2,aops_A6EF_s3
+        fdb     scene6_bg_A6A6
+        fdb     aops_A6A6_s0,aops_A6A6_s1,aops_A6A6_s2,aops_A6A6_s3
         fdb     scene6_bg_A684
         fdb     aops_A684_s0,aops_A684_s1,aops_A684_s2,aops_A684_s3
         fdb     scene6_bg_A85F
