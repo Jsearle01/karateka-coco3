@@ -11,5 +11,5 @@
 
 scene6_bg_A85F:
         fcb     2,4  ; height=2 rows, coco3_width=4 bytes/row (4px/byte)
-        fcb     $BF,$D5,$54,$00  ; row 0
-        fcb     $BF,$C0,$00,$00  ; row 1
+        fcb     $3F,$D5,$54,$00  ; row 0
+        fcb     $3F,$C0,$00,$00  ; row 1

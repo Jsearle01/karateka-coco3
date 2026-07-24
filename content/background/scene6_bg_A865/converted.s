@@ -11,11 +11,11 @@
 
 scene6_bg_A865:
         fcb     8,4  ; height=8 rows, coco3_width=4 bytes/row (4px/byte)
-        fcb     $BF,$D5,$54,$00  ; row 0
-        fcb     $BF,$C0,$00,$00  ; row 1
-        fcb     $BF,$D5,$54,$00  ; row 2
-        fcb     $BF,$C0,$00,$00  ; row 3
-        fcb     $BF,$D5,$54,$00  ; row 4
-        fcb     $BF,$C0,$00,$00  ; row 5
-        fcb     $BF,$D5,$54,$00  ; row 6
+        fcb     $3F,$D5,$54,$00  ; row 0
+        fcb     $3F,$C0,$00,$00  ; row 1
+        fcb     $3F,$D5,$54,$00  ; row 2
+        fcb     $3F,$C0,$00,$00  ; row 3
+        fcb     $3F,$D5,$54,$00  ; row 4
+        fcb     $3F,$C0,$00,$00  ; row 5
+        fcb     $3F,$D5,$54,$00  ; row 6
         fcb     $BF,$C0,$00,$20  ; row 7

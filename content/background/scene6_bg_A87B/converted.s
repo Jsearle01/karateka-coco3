@@ -12,7 +12,7 @@
 scene6_bg_A87B:
         fcb     6,7  ; height=6 rows, coco3_width=7 bytes/row (4px/byte)
         fcb     $AA,$AA,$FF,$00,$00,$AA,$A8  ; row 0
-        fcb     $15,$00,$FF,$55,$50,$15,$55  ; row 1
+        fcb     $14,$00,$FF,$55,$50,$15,$55  ; row 1
         fcb     $AA,$80,$FF,$00,$00,$AA,$A8  ; row 2
         fcb     $15,$55,$0F,$55,$50,$01,$55  ; row 3
         fcb     $AA,$AA,$80,$00,$00,$00,$A8  ; row 4

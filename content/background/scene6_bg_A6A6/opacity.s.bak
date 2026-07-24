@@ -3,9 +3,9 @@
 *   cel-local (byte-aligned); a sub-byte-placed cel needs build-side mask shifting.
 scene6_bg_A6A6_opacity_stencil:
         fcb     6,7
-        fcb     $FF,$FC,$00,$3F,$00,$00,$00  ; row 0
-        fcb     $0C,$00,$00,$00,$C0,$00,$00  ; row 1
-        fcb     $03,$F0,$00,$00,$3F,$00,$00  ; row 2
-        fcb     $00,$0C,$00,$00,$00,$FC,$00  ; row 3
-        fcb     $00,$03,$F0,$00,$00,$03,$00  ; row 4
-        fcb     $00,$00,$0C,$00,$00,$00,$FC  ; row 5
+        fcb     $FF,$FF,$FF,$FF,$00,$00,$00  ; row 0
+        fcb     $0F,$FF,$FF,$FF,$C0,$00,$00  ; row 1
+        fcb     $03,$FF,$FF,$FF,$FF,$00,$00  ; row 2
+        fcb     $00,$0F,$FF,$FF,$FF,$FC,$00  ; row 3
+        fcb     $00,$03,$FF,$FF,$FF,$FF,$00  ; row 4
+        fcb     $00,$00,$0F,$FF,$FF,$FF,$FC  ; row 5

@@ -9,9 +9,9 @@
 *   start_col=256  screen-col parity=EVEN
 scene6_bg_archfill1:
         fcb     6,2  ; height=6 rows, coco3_width=2 bytes/row (4px/byte)
-        fcb     $00,$3F  ; row 0
-        fcb     $00,$3F  ; row 1
-        fcb     $00,$3F  ; row 2
-        fcb     $00,$3F  ; row 3
-        fcb     $00,$3F  ; row 4
-        fcb     $00,$3F  ; row 5
+        fcb     $00,$00  ; row 0
+        fcb     $00,$00  ; row 1
+        fcb     $00,$00  ; row 2
+        fcb     $00,$00  ; row 3
+        fcb     $00,$00  ; row 4
+        fcb     $00,$00  ; row 5

@@ -17,5 +17,5 @@ scene6_bg_A865:
         fcb     $BF,$C0,$00,$00  ; row 3
         fcb     $BF,$D5,$54,$00  ; row 4
         fcb     $BF,$C0,$00,$00  ; row 5
-        fcb     $BF,$D5,$50,$00  ; row 6
+        fcb     $BF,$D5,$54,$00  ; row 6
         fcb     $BF,$C0,$00,$20  ; row 7

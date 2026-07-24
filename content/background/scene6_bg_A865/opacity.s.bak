@@ -9,5 +9,5 @@ scene6_bg_A865_opacity_stencil:
         fcb     $00,$3F,$FF,$C0  ; row 3
         fcb     $00,$00,$03,$C0  ; row 4
         fcb     $00,$3F,$FF,$C0  ; row 5
-        fcb     $00,$00,$0F,$C0  ; row 6
+        fcb     $00,$00,$03,$C0  ; row 6
         fcb     $00,$3F,$FC,$0F  ; row 7
