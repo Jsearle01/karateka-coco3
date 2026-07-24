@@ -309,7 +309,9 @@ ml_flip:
 * The strip rebuilds the band from the pristine snapshot each step, so the actors are erased for
 * free — no clean-restore bbox needed (unlike climb_controller's cl_restore).
         jsr     draw_player_run         ; 3-part run frame at the B0 anchor
-        jsr     draw_guard_parked       ; 3-part guard, parked (does NOT slide with the scroll)
+* draw_guard_parked REMOVED (Jay, 2026-07-24): it drew the guard in a DEFEATED pose (mirrored defeat
+* set $8DA9/$8E83/$8F0E/$9290) during the run-in — but the guard is not defeated yet; combat is a later
+* stage. The guard's real entry (at the fight, post-settle) is a future stage, not the run-in scene.
         jsr     HAL_gfx_present
         lda     <page_register
         eora    #PAGE_TOGGLE
