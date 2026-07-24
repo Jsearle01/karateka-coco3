@@ -708,7 +708,9 @@ cbf_b:
 ARCH_SKY_L      equ     55
 ARCH_ROW0       equ     30
 ARCH_ROWSABV    equ     70              ; rows 30..99 (above the band; not rebuilt by the strip)
-ARCH_FLOOR_CLIP equ     152             ; tiled pillars stop here; the band floor shows below
+ARCH_FLOOR_CLIP equ     160             ; = A684's table row1 (oracle extent): the FRONT leg reaches
+                                        ; the ground. The old 152 cap was a static-test artifact (no
+                                        ; band) that shortened the front leg — Jay's scroll eye: too short.
 
 restore_arch_sky:
         lda     #ARCH_ROW0
