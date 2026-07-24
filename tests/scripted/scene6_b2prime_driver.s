@@ -263,6 +263,12 @@ ml_fujiu:
         jsr     draw_a9e2_behind        ; lowest Fuji cel — now genuinely behind (band paints over)
         jsr     draw_fuji_upper         ; upper Fuji cels
         jsr     clear_border_fuji       ; keep the right border (cols PLAY_R+1..79) black
+        * POSTS here (before the ARCH phase) so the arch's FRONT LEG occludes the wall-top post it
+        * overlaps (Jay: "the top of wall post is showing through on the front leg"). Posts are at
+        * rows 101+ (below restore_arch_sky's 30-99 wipe) and the cliff sits at row 152, so nothing
+        * between here and present clobbers them. They still land after Fuji (drawn just above).
+        jsr     draw_posts_over_fuji    ; the 3 BAKED posts, re-asserted in front of Fuji
+        jsr     draw_posts_generated    ; NEW posts entering from the right at the 85 px pitch
         bra     ml_next
 
 ml_arch:
@@ -287,8 +293,6 @@ ml_flip:
 * Phase 14 is also ~99% empty (present = 186 cyc), so this is the only slot satisfying both.
 * The strip rebuilds the band from the pristine snapshot each step, so the actors are erased for
 * free — no clean-restore bbox needed (unlike climb_controller's cl_restore).
-        jsr     draw_posts_over_fuji    ; the 3 BAKED posts, re-asserted in front of Fuji
-        jsr     draw_posts_generated    ; NEW posts entering from the right at the 85 px pitch
         jsr     draw_player_run         ; 3-part run frame at the B0 anchor
         jsr     draw_guard_parked       ; 3-part guard, parked (does NOT slide with the scroll)
         jsr     HAL_gfx_present
