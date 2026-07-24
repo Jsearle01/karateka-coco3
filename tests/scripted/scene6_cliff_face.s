@@ -67,7 +67,9 @@ dcgr_bf:
         addb    #2
         cmpb    #180
         blo     dcgr_b
-        ldb     #152                    ; ORANGE even ground rows 152..180
+        ldb     #154                    ; ORANGE even ground rows 154..180 (was 152; Jay: the TOP floor
+                                        ;   line must be BLUE, so drop the topmost orange row — the floor
+                                        ;   now starts at row 153 BLUE, row 152 rejoins the black above)
 dcgr_o:
         pshs    b
         tfr     b,a
