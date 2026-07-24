@@ -803,20 +803,20 @@ dar_cel:
         addb    1,x                     ; col + width
         cmpb    #80
         bhi     dar_skip
-        * mixed opacity descriptor for this cel (0 = plain blit)
+        * opaque-black STENCIL set for this cel (0 = none -> plain transparent blit only).
+        * arch_desc = &{s0,s1,s2,s3}; draw picks the stencil pre-shifted for the runtime sub.
         clr     arch_desc
         clr     arch_desc+1
-        ldy     #arch_opacity_tbl
+        ldy     #arch_stencil_tbl
 das_f:
-        ldx     ,y++
+        ldx     ,y++                    ; cel (0 = end)
         beq     das_h
         cmpx    arch_celp
         beq     das_g
-        leay    2,y
+        leay    8,y                     ; skip 4 stencil ptrs
         bra     das_f
 das_g:
-        ldx     ,y
-        stx     arch_desc
+        sty     arch_desc               ; Y points at s0 (after ldx ,y++) = base of the 4 ptrs
 das_h:
         * row range; TILED pillars clip at the floor
         lda     2,u                     ; row0
@@ -832,17 +832,25 @@ das_h:
 dar_setend:
         sta     arch_rend
 dar_row:
+        * (1) plain transparent blit: colours + KEYED black (index-0 shows the sky through)
         lda     arch_subv
         sta     <blit_subbyte
         lda     arch_col
         ldb     arch_row
         ldx     arch_celp
-        ldu     arch_desc
-        beq     dar_plain
-        jsr     HAL_gfx_blit_sprite_mixed
-        bra     dar_adv
-dar_plain:
         jsr     HAL_gfx_blit_sprite
+        * (2) punch the OPAQUE black via the stencil pre-shifted for THIS sub (byte-aligned).
+        *     Pixel-precise, no per-region overflow -> clean (reproduces the approved static arch).
+        ldu     arch_desc
+        beq     dar_adv
+        lda     arch_subv
+        asla                            ; *2 (fdb table of 4 stencil ptrs)
+        ldx     a,u                     ; X = stencil for sub=arch_subv
+        beq     dar_adv
+        clr     <blit_subbyte
+        lda     arch_col
+        ldb     arch_row
+        jsr     HAL_gfx_blit_stencil_punch
 dar_adv:
         lda     arch_row
         adda    arch_step
@@ -1160,11 +1168,8 @@ run_on_halt:
         rts
 
 * --- HAL + shared substrate modules (single source) ---
-* This driver's load reaches ~$43DD (10KB+ of HAL + 14 arch cels + player/guard cels), so the
-* mixed-blit's default MIX_SCRATCH ($3E00) would land inside the player run-leg cel data and get
-* corrupted every time the arch mixed-blits — the player vanished as the arch entered. Relocate the
-* scratch to free RAM ($43DE..$7FFF window, below the $8000 framebuffers).
-MIX_SCRATCH     equ $6000
+* (The arch opacity now uses byte-aligned stencil punches, which need no scratch buffer, so the
+* earlier MIX_SCRATCH relocation is no longer required.)
         include "../../src/hal/coco3-dsk/sys.s"
         include "../../src/hal/coco3-dsk/irq_vbl.s"
         include "../../src/hal/coco3-dsk/gfx.s"
@@ -1178,7 +1183,7 @@ MIX_SCRATCH     equ $6000
         include "scene6_post_masks_gen.s" ; pre-baked post masks, 4 sub-byte phases
         include "scene6_run_anim_gen.s"   ; §2F single-home RUN animation table (codegen'd, B0)
         include "scene6_arch_gen.s"       ; arch composite table
-        include "scene6_arch_opacity_mixed_gen.s" ; mixed opacity (rides sub-byte)
+        include "scene6_arch_opacity_scroll_gen.s" ; per-sub opaque stencils (pixel-precise, clean)
         include "../../content/background/scene6_bg_A707/converted.s"
         include "../../content/background/scene6_bg_A857/converted.s"
         include "../../content/background/scene6_bg_A82B/converted.s"
