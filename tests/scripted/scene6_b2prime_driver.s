@@ -334,6 +334,7 @@ step_init:
         lda     scroll_halted
         beq     si_active               ; not halted: normal step
         jsr     run_settle              ; halted: e0 -> st, then hold; cur52/shift untouched
+        jsr     fight_step              ; STAGE 2a: fight action-selection engine runs post-settle
         bra     si_shift
 si_active:
         lda     cur52
@@ -764,6 +765,10 @@ player_dx       fcb     0               ; player forward drift (byte cols) — s
 player_dctr     fcb     0               ; step counter feeding player_dx
 run_idx         fcb     0               ; current run frame (0=s0); advanced once per scroll step
 scroll_halted   fcb     0               ; 1 once $52 hit the halt compare -> scene frozen
+* --- FIGHT STAGE 2a selection-engine state ---
+fight_59        fcb     $01             ; LCG state ($59), seeded non-zero
+fight_33        fcb     $07             ; current combat state (the tier index, 07..0D)
+fight_action    fcb     $00             ; selected action code (consumed by stage 2b/2c draw+position)
 rp_cnt          fcb     0               ; run render: part counter
 rp_ptr          fdb     0               ; run render: current part pointer
 clip_k          fcb     0
@@ -1271,6 +1276,87 @@ rs_to_st:
         sta     run_idx
 rs_done:
         rts
+
+* ===============================================================
+* FIGHT STAGE 2a — action-SELECTION engine (measure-then-port). Runs post-settle each step.
+*   Faithful mechanism: LCG $59 = $59*5+$13 (8-bit). MEASURED map (verdict_recon-fight-action-stream):
+*   roll1 picks the combat state $33 (07..0D) from its observed distribution; roll2 picks the action
+*   code from THAT state's observed action distribution. This drives selection from the CAPTURED map,
+*   NOT the oracle's out-of-range-indexed tables (unsafe to reconstruct). Position/draw = stage 2b/2c.
+* ===============================================================
+fight_step:
+        jsr     fight_lcg               ; roll 1 -> pick the combat state $33
+        ldx     #f33_tbl
+fs_p33:
+        cmpa    ,x
+        blo     fs_p33got
+        leax    2,x
+        bra     fs_p33
+fs_p33got:
+        ldb     1,x
+        stb     fight_33
+        jsr     fight_lcg               ; roll 2 -> pick the action from $33's distribution
+        ldb     fight_33
+        subb    #$07                    ; 0..6 index
+        aslb                            ; *2 (fdb)
+        ldx     #fa_ptr
+        abx
+        ldx     ,x                      ; X -> this state's action table
+fs_sa:
+        cmpa    ,x
+        blo     fs_sagot
+        leax    2,x
+        bra     fs_sa
+fs_sagot:
+        ldb     1,x
+        stb     fight_action            ; the selected action code (consumed by stage 2b/2c)
+        rts
+
+* LCG: $59 = ($59*5 + $13) mod 256 (verbatim: asl,asl = x4, +$59 = x5, +$13). Returns A = new $59.
+fight_lcg:
+        lda     fight_59
+        asla
+        asla
+        adda    fight_59
+        adda    #$13
+        sta     fight_59
+        rts
+
+* $33 state distribution (measured counts scaled to 256): {thresh, $33}, roll < thresh -> that state.
+f33_tbl:
+        fcb     96,$07                  ; 07 (n=87)  richest tier
+        fcb     158,$09                 ; 09 (n=56)  C5-dominant
+        fcb     228,$0B                 ; 0B (n=63)  idle+strike
+        fcb     236,$08                 ; 08 (n=7)
+        fcb     240,$0A                 ; 0A (n=4)
+        fcb     242,$0C                 ; 0C (n=2)
+        fcb     255,$0D                 ; 0D (n=12)
+* per-state action distributions (measured; {thresh, action-code}). Weights are APPROXIMATE proportions.
+fa_ptr: fdb     fa_07,fa_08,fa_09,fa_0A,fa_0B,fa_0C,fa_0D
+fa_07:  fcb     94,$D7
+        fcb     185,$00
+        fcb     226,$C5
+        fcb     243,$D1
+        fcb     248,$FF
+        fcb     251,$C6
+        fcb     255,$9B
+fa_08:  fcb     109,$01
+        fcb     183,$FF
+        fcb     219,$C5
+        fcb     255,$00
+fa_09:  fcb     137,$C5
+        fcb     237,$00
+        fcb     247,$D7
+        fcb     252,$FF
+        fcb     255,$01
+fa_0A:  fcb     127,$C5
+        fcb     255,$00
+fa_0B:  fcb     222,$00
+        fcb     255,$01
+fa_0C:  fcb     127,$01
+        fcb     255,$00
+fa_0D:  fcb     148,$01
+        fcb     255,$00
 
 * run_on_halt — first halted step: enter the exit sequence at e0.
 run_on_halt:
