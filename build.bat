@@ -25,7 +25,8 @@ lwasm --decb -o build/karateka.bin ^
     src/engine/broderbund_scene.s src/engine/intro_scenes.s src/engine/scene4_scroll.s ^
     src/hal/coco3-dsk/sys.s src/hal/coco3-dsk/irq_vbl.s src/hal/coco3-dsk/gfx.s ^
     src/hal/coco3-dsk/time.s src/hal/coco3-dsk/input.s src/hal/coco3-dsk/sound.s ^
-    src/hal/coco3-dsk/file.s tests/scripted/scene5_e2e_driver.s src/hal/coco3-dsk/mem.s
+    src/hal/coco3-dsk/file.s tests/scripted/scene5_e2e_driver.s src/hal/coco3-dsk/mem.s ^
+    src/engine/entry.s
 if errorlevel 1 goto :error
 call :size build/karateka.bin
 
