@@ -9,6 +9,35 @@ setlocal
 for %%I in ("%~dp0.") do set "REPO_ROOT=%%~fI"
 cd /d "%REPO_ROOT%"
 
+REM ======================================================================
+REM PRE-BUILD: HAL-SYNC BRIDGE (P2.4 Phase B) — the ONLY karateka change in P2.4.
+REM
+REM karateka still builds ABSOLUTE and is unaffected by POP's conversion: the
+REM `ifdef OBJTARGET` guards in the shared HAL source are OFF here, and this
+REM binary is byte-identical to what it built before them. What IS shared is the
+REM HAL source itself, which now exists as two copies (POP linked, karateka
+REM absolute) until the kernel becomes a single source. Two copies drift.
+REM
+REM So the check runs HERE, on every build, before anything is assembled, and
+REM FAILS the build on substantive drift. A sync script that merely exists
+REM enforces nothing. If POP is genuinely absent the check WARNS and the build
+REM proceeds — a check that blocks legitimate builds gets deleted, and then it
+REM enforces nothing either.
+REM
+REM TEMPORARY BY DESIGN: this block and harness\tools\hal_sync_check.py both
+REM delete cleanly when karateka converts to linked and the kernel is one source.
+REM ======================================================================
+where python >nul 2>&1
+if errorlevel 1 (
+    echo [hal-sync] WARNING: python not found on PATH — HAL-sync check SKIPPED.
+) else (
+    python harness\tools\hal_sync_check.py
+    if errorlevel 1 (
+        echo *** BUILD BLOCKED BY HAL DRIFT — see [hal-sync] above ***
+        exit /b 1
+    )
+)
+
 where lwasm >nul 2>&1
 if errorlevel 1 (
     echo ERROR: lwasm.exe not found on PATH.

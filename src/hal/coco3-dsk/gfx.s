@@ -57,7 +57,29 @@
 *   always returns CC.C clear in this implementation.
 * ---------------------------------------------------------------
 
+        ifdef   OBJTARGET
+        * setdp is NOT permitted for the object target — the fourth
+        * object-incompatible directive class (P2.4; the recon found three).
+        * The HAL uses explicit `<` direct-mode operands, so omitting the
+        * declaration changes nothing it relies on.
+        else
         setdp   0
+        endc
+        
+        ifdef   OBJTARGET
+        * Object/linked build (POP, P2.4). Guard OFF = the absolute build
+        * (karateka today): not one byte of this file changes.
+        section code
+        export  HAL_gfx_init
+        export  HAL_gfx_clear
+        export  HAL_gfx_present
+        export  HAL_gfx_blit_sprite_opaque
+        export  HAL_gfx_blit_sprite
+        export  HAL_gfx_blit_sprite_mixed
+        export  HAL_gfx_blit_sprite_masked
+        export  HAL_gfx_blit_stencil_punch
+        export  HAL_gfx_blit_scroll
+        endc
 
 * DP allocations and shared constants declared in src/engine/globals.s (P2.3a.3).
 * [ref: src/engine/globals.s — canonical home]
@@ -1044,3 +1066,7 @@ blit_opaque_table_mid:
         fcb     $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
         fcb     $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
         fcb     $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+                
+                ifdef   OBJTARGET
+                endsection
+                endc
